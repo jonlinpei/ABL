@@ -76,32 +76,18 @@ The result is a structured **goal brief**:
 | Speed, depth or practical results | PRD story 10 |
 | Interests and work context | Material for analogies and examples (F5) |
 
-### Questions specific to each subject area
+### Any goal is welcome
 
-The tutor asks only what's missing and infers the rest from what the learner already said.
+Discovery accepts any learning goal, not only the launch subject areas. The tutor asks only what's missing and infers the rest. Which questions matter depends on the goal: an exam date and required courses for a credential, role and employer policy for a work goal, equipment for a skill practiced away from the screen. The goal-clarification skill ([skills/goal-clarification/SKILL.md](../skills/goal-clarification/SKILL.md)) holds the full playbook, including how to handle credentials, goals where a mistake could cause harm, and requests to do a task rather than learn it.
 
-- **Real estate**
-  - Pre-license courses: done, in progress, or not started?
-  - Target exam date?
-  - The end goal: a full-time agent, part-time, an investor, or understanding their own home purchase?
-  - Which Bay Area counties or cities?
-- **Data analytics**
-  - The end goal: a new analyst job, analysis in their current role, or a specific project?
-  - Target role or deadline, if any.
-  - Current tools: spreadsheets, SQL, Python, a BI tool?
-  - What data they work with now, described in general terms rather than pasted.
-  - Any tools their target employer requires?
-- **AI at work**
-  - Role, and the tasks that take up their week.
-  - Their current AI use.
-  - Which tools their employer allows, and any AI policy that limits what they can do.
+`[NEEDS INPUT]` What happens after discovery for goals outside the launch areas, which have no reviewed skill map or source library yet, is still open.
 
 ### How it works
 
 - **Conversational and short.** It fits inside the 10-minute onboarding target (PRD Goal 4), and asks only for what matters. If a goal is vague, the tutor offers 2–3 more specific goals to choose from (PRD story 1).
 - **The learner confirms the brief.** The tutor plays it back ("Here's what I heard…"), and the learner edits it and approves it before any assessment or plan starts. The brief stays viewable and editable under "what my tutor knows" (PRD story 9).
 - **The brief is revisited over time.** Goals change. Replanning, restart weeks and milestones all ask "is this still your goal?" A changed brief creates a new plan version.
-- **Checked like any other output.** Deterministic checks confirm the required fields are present and the goal is in a supported subject area. A goal outside the supported areas gets an honest "not yet" instead of a weak plan. The Plan reviewer then checks that the plan serves the brief.
+- **Checked like any other output.** Deterministic checks confirm the required fields are present. The Plan reviewer then checks that the plan serves the brief.
 
 `[NEEDS INPUT]` PRD story 1 limits clarification to "up to 3 clarifying questions." Discovery as described here may need a few more turns. Suggested replacement: "Discovery asks only for missing information, finishes within the 10-minute onboarding budget, and ends with a brief the learner confirms."
 

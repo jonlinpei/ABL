@@ -5,9 +5,8 @@ import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
 
 import type { DiscoveryMessage } from "@/app/api/discover/route";
-import type { RoadmapResponse } from "@/app/api/roadmap/route";
 import type { CallTrace } from "@/lib/ai/trace";
-import { DOMAINS, GoalBriefSchema, type GoalBrief, type Roadmap } from "@/lib/goals/schema";
+import { GoalBriefSchema, type GoalBrief, type InferableField } from "@/lib/goals/schema";
 
 const PRIORITY_LABEL: Record<GoalBrief["priority"], string> = {
   speed: "Speed",
@@ -15,16 +14,22 @@ const PRIORITY_LABEL: Record<GoalBrief["priority"], string> = {
   practical: "Practical results",
 };
 
+/** Starting points to click. Any goal works; these only show the range. */
+const EXAMPLE_GOALS = [
+  "I want to pass the California real estate salesperson exam",
+  "I'd like to move into a data analyst role within a year",
+  "I want to play a few jazz standards on piano",
+  "I want to hold a basic conversation in Japanese before my trip",
+];
+
 /**
  * Demo of the first learner-facing flow (docs/content.md, "Goal discovery"):
- * a discovery conversation, a goal brief the learner confirms, then a first
- * roadmap. Every AI call shows what the router chose and what it cost.
+ * a discovery conversation that ends in a goal brief the learner confirms.
+ * Every AI call shows what the router chose and what it cost.
  */
 export function GoalDiscoveryDemo() {
   const [input, setInput] = useState("");
   const [confirmed, setConfirmed] = useState<GoalBrief | null>(null);
-  const [plan, setPlan] = useState<RoadmapResponse | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
 
   const { messages, sendMessage, status, error, clearError, setMessages } =
     useChat<DiscoveryMessage>({
@@ -35,10 +40,10 @@ export function GoalDiscoveryDemo() {
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, status, confirmed, plan]);
+  }, [messages, status, confirmed]);
 
   const latestBriefId = findLatestBriefPartId(messages);
-  const traces = collectTraces(messages, plan?.trace);
+  const traces = collectTraces(messages);
 
   function send(text: string) {
     const trimmed = text.trim();
@@ -48,32 +53,11 @@ export function GoalDiscoveryDemo() {
     setInput("");
   }
 
-  async function confirmBrief(brief: GoalBrief) {
-    setConfirmed(brief);
-    setPlanError(null);
-    try {
-      const res = await fetch("/api/roadmap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
-      setPlan(data as RoadmapResponse);
-    } catch (err) {
-      setPlanError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
   function startOver() {
     setMessages([]);
     setConfirmed(null);
-    setPlan(null);
-    setPlanError(null);
     clearError();
   }
-
-  const planning = confirmed && !plan && !planError;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -81,19 +65,18 @@ export function GoalDiscoveryDemo() {
         <section>
           <h1 className="text-2xl font-semibold tracking-tight">What do you want to learn?</h1>
           <p className="mt-2 text-foreground/70">
-            Pick an area or describe your goal in your own words. I&apos;ll ask a few questions so
+            Describe your goal in your own words, whatever it is. I&apos;ll ask a few questions so
             your plan fits your goal and your week.
           </p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {DOMAINS.map((d) => (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {EXAMPLE_GOALS.map((goal) => (
               <button
-                key={d.id}
-                onClick={() => send(`I'd like to work on ${d.label.toLowerCase()}.`)}
+                key={goal}
+                onClick={() => send(goal)}
                 disabled={busy}
-                className="rounded-lg border border-foreground/15 p-4 text-left transition hover:border-foreground/40 disabled:opacity-50"
+                className="rounded-full border border-foreground/15 px-3 py-1.5 text-left text-sm text-foreground/70 transition hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
               >
-                <div className="font-medium">{d.label}</div>
-                <div className="mt-1 text-sm text-foreground/60">{d.blurb}</div>
+                {goal}
               </button>
             ))}
           </div>
@@ -137,7 +120,7 @@ export function GoalDiscoveryDemo() {
                       brief={brief.data}
                       active={isLatest && !confirmed && !busy}
                       confirmed={isLatest && !!confirmed}
-                      onConfirm={() => confirmBrief(brief.data)}
+                      onConfirm={() => setConfirmed(brief.data)}
                     />
                   );
                 }
@@ -155,20 +138,15 @@ export function GoalDiscoveryDemo() {
         </section>
       )}
 
-      {planning && (
+      {confirmed && (
         <div className="rounded-lg border border-dashed border-foreground/20 p-4 text-sm text-foreground/70">
-          Building your roadmap with the deep-tier planner. This can take up to a minute…
-        </div>
-      )}
-      {planError && (
-        <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
-          Couldn&apos;t build the roadmap: {planError}{" "}
-          <button className="underline" onClick={() => confirmed && confirmBrief(confirmed)}>
-            Try again
+          Goal discovery is done. Next comes a short check of what you already know, then your
+          first roadmap. Those steps aren&apos;t in this demo yet.{" "}
+          <button className="underline" onClick={startOver}>
+            Start over
           </button>
         </div>
       )}
-      {plan && <RoadmapView roadmap={plan.roadmap} trace={plan.trace} />}
 
       {!confirmed && (
         <form
@@ -218,36 +196,44 @@ function BriefCard({
   confirmed: boolean;
   onConfirm: () => void;
 }) {
-  const domain = DOMAINS.find((d) => d.id === brief.domain);
-  const rows: [string, string | null][] = [
-    ["Why", brief.motivation],
-    ["Success looks like", brief.successLooksLike],
-    ["Deadline", brief.deadline],
-    ["Starting point", brief.startingPoint],
+  const rows: [string, string | null, InferableField[]][] = [
+    ["Why", brief.motivation, ["motivation"]],
+    ["Success looks like", brief.successLooksLike, ["successLooksLike"]],
+    ["Deadline", brief.deadline ?? "None set", ["deadline"]],
+    ["Starting point", brief.startingPoint, ["startingPoint"]],
     [
       "Time",
       `${brief.weeklyHours} h/week · ${brief.sessionMinutes}-min sessions${
         brief.preferredTimes ? ` · ${brief.preferredTimes}` : ""
       }`,
+      ["weeklyHours", "sessionMinutes", "preferredTimes"],
     ],
-    ["Tried before", brief.pastAttempts],
-    ["Priority", PRIORITY_LABEL[brief.priority]],
-    ["Interests & context", brief.interests.length ? brief.interests.join(", ") : null],
+    ["Tried before", brief.pastAttempts ?? "First time", ["pastAttempts"]],
+    ["Priority", PRIORITY_LABEL[brief.priority], ["priority"]],
+    ["Interests & context", brief.interests.length ? brief.interests.join(", ") : null, []],
   ];
+  const guessed = (fields: InferableField[]) => fields.some((f) => brief.inferred.includes(f));
   return (
     <div className="mt-3 rounded-xl border border-foreground/20 p-4">
       <div className="text-xs uppercase tracking-wide text-foreground/50">
-        Goal brief · {domain?.label ?? brief.domain}
+        Goal brief · {brief.subject}
       </div>
       <div className="mt-1 text-lg font-medium">{brief.restatedGoal}</div>
       <div className="mt-1 text-sm text-foreground/60">&ldquo;{brief.goalInTheirWords}&rdquo;</div>
       <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
         {rows
           .filter(([, v]) => v)
-          .map(([k, v]) => (
+          .map(([k, v, fields]) => (
             <div key={k} className="contents">
               <dt className="text-foreground/50">{k}</dt>
-              <dd>{v}</dd>
+              <dd>
+                {v}
+                {guessed(fields) && (
+                  <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                    my guess
+                  </span>
+                )}
+              </dd>
             </div>
           ))}
       </dl>
@@ -257,71 +243,15 @@ function BriefCard({
             onClick={onConfirm}
             className="rounded-lg bg-foreground px-4 py-2 text-sm text-background"
           >
-            Looks right. Build my plan
+            Looks right
           </button>
-          <span className="text-sm text-foreground/50">Or tell me what to change below.</span>
+          <span className="text-sm text-foreground/50">
+            Or tell me what to change below{brief.inferred.length > 0 && ", especially anything marked \"my guess\""}.
+          </span>
         </div>
       )}
       {confirmed && <div className="mt-4 text-sm text-foreground/60">✓ Confirmed</div>}
     </div>
-  );
-}
-
-function RoadmapView({ roadmap, trace }: { roadmap: Roadmap; trace: CallTrace }) {
-  return (
-    <section className="rounded-xl border border-foreground/20 p-5">
-      <div className="text-xs uppercase tracking-wide text-foreground/50">Your roadmap</div>
-      <h2 className="mt-1 text-xl font-semibold">{roadmap.title}</h2>
-      <p className="mt-2 text-foreground/80">{roadmap.summary}</p>
-      <div className="mt-3 flex flex-wrap gap-4 text-sm text-foreground/60">
-        <span>About {roadmap.estimatedWeeks} weeks</span>
-        <span>{roadmap.weeklyHours} h/week</span>
-        <span>{roadmap.milestones.length} milestones</span>
-      </div>
-
-      <div className="mt-5 rounded-lg bg-foreground/5 p-4">
-        <div className="text-xs uppercase tracking-wide text-foreground/50">
-          Recommended next step
-        </div>
-        <div className="mt-1 font-medium">
-          {roadmap.firstSession.title} · {roadmap.firstSession.minutes} min
-        </div>
-        <p className="mt-1 text-sm">{roadmap.firstSession.whatYouWillDo}</p>
-        <p className="mt-1 text-sm text-foreground/60">You&apos;ll come away with: {roadmap.firstSession.outcome}</p>
-      </div>
-
-      <ol className="mt-5 flex flex-col gap-4">
-        {roadmap.milestones.map((ms, i) => (
-          <li key={i} className="border-l-2 border-foreground/15 pl-4">
-            <div className="font-medium">
-              {i + 1}. {ms.title}{" "}
-              <span className="text-sm font-normal text-foreground/50">· {ms.weeks} wk</span>
-            </div>
-            <div className="text-sm text-foreground/70">{ms.whyItMatters}</div>
-            <div className="mt-1 text-sm text-foreground/60">{ms.topics.join(" · ")}</div>
-            <div className="mt-1 text-sm">Win: {ms.visibleWin}</div>
-          </li>
-        ))}
-      </ol>
-
-      {roadmap.skippedAsKnown.length > 0 && (
-        <div className="mt-5 text-sm">
-          <span className="text-foreground/50">Skipped: already known: </span>
-          {roadmap.skippedAsKnown.join(", ")}
-        </div>
-      )}
-      {roadmap.assumptions.length > 0 && (
-        <div className="mt-3 text-sm">
-          <div className="text-foreground/50">Assumptions to check</div>
-          <ul className="mt-1 list-disc pl-5">
-            {roadmap.assumptions.map((a, i) => (
-              <li key={i}>{a}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <TraceChip trace={trace} />
-    </section>
   );
 }
 
@@ -392,9 +322,8 @@ function findLatestBriefPartId(messages: DiscoveryMessage[]): string | null {
   return null;
 }
 
-function collectTraces(messages: DiscoveryMessage[], planTrace?: CallTrace): CallTrace[] {
-  const traces = messages
+function collectTraces(messages: DiscoveryMessage[]): CallTrace[] {
+  return messages
     .filter((m) => m.role === "assistant" && m.metadata?.latencyMs != null)
     .map((m) => m.metadata!);
-  return planTrace ? [...traces, planTrace] : traces;
 }

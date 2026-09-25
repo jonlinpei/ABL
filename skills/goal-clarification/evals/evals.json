@@ -1,40 +1,151 @@
 {
   "skill_name": "goal-clarification",
-  "notes": "Each eval is a simulated learner: a second model plays the persona and talks to the tutor. `opening` is the learner's first message. Assertions of kind `code` are checked by grade.mjs; kind `judge` are judged by a model reading the conversation.",
+  "notes": "Each eval is a simulated learner: a second model plays the persona and talks to the tutor. `opening` is the learner's first message. Assertions of kind `code` are checked by grade.mjs; kind `judge` are judged by a model reading the conversation. `truth` holds the persona's real values for fields the plan depends on (eq, min/max or present); the accuracy checks compare the first brief against it, since that's the one a learner might approve without reading closely.",
   "evals": [
     {
       "id": 1,
       "name": "vague-data-goal",
       "prompt": "Learner opens with a vague goal: \"i want to get better at data stuff i guess\"",
-      "expected_output": "Tutor offers 2-3 concrete goals to choose from, then gathers the essentials and proposes a data_analytics brief matching the persona's 3 hours/week.",
+      "expected_output": "Tutor offers 2-3 concrete goals to choose from, then gathers the essentials and proposes a brief about data analytics matching the persona's 3 hours/week.",
       "opening": "i want to get better at data stuff i guess",
       "persona": "You are Maya, 34, a marketing operations coordinator in Oakland. You live in Excel (pivot tables, VLOOKUP) but have never written SQL. Deep down you'd like to move into a data analyst role within about a year, but you only say that once the tutor helps you get specific. You can do about 3 hours a week, in 45-minute sessions on weekday evenings. You tried two free online courses and quit both around week three when work got busy. You like running and cooking.",
       "correction": null,
       "assertions": [
-        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
-        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
-        { "kind": "code", "id": "brief_valid", "text": "Final brief matches the app's GoalBriefSchema" },
-        { "kind": "code", "id": "domain_data_analytics", "text": "Brief domain is data_analytics" },
-        { "kind": "code", "id": "hours_3", "text": "Brief records 3 hours per week" },
-        { "kind": "code", "id": "past_attempts_recorded", "text": "Brief records her past attempts (pastAttempts is not null)" },
-        { "kind": "judge", "text": "In one of its first two messages, the tutor offers 2-3 concrete goal options for the learner to choose from, rather than only asking an open question" },
-        { "kind": "judge", "text": "The tutor does not start teaching data analytics content before the brief" }
-      ]
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_6",
+          "text": "Tutor proposes a goal brief within 6 turns"
+        },
+        {
+          "kind": "code",
+          "id": "brief_valid",
+          "text": "Final brief matches the app's GoalBriefSchema"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "subject_data",
+          "text": "Brief subject is about data or analytics"
+        },
+        {
+          "kind": "code",
+          "id": "hours_3",
+          "text": "Brief records 3 hours per week"
+        },
+        {
+          "kind": "code",
+          "id": "past_attempts_recorded",
+          "text": "Brief records her past attempts (pastAttempts is not null)"
+        },
+        {
+          "kind": "judge",
+          "text": "In one of its first two messages, the tutor offers 2-3 concrete goal options for the learner to choose from, rather than only asking an open question"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor does not start teaching data analytics content before the brief"
+        }
+      ],
+      "truth": {
+        "weeklyHours": {
+          "eq": 3
+        },
+        "sessionMinutes": {
+          "min": 40,
+          "max": 50
+        },
+        "pastAttempts": {
+          "present": true
+        }
+      }
     },
     {
       "id": 2,
-      "name": "out-of-scope-piano",
-      "prompt": "Learner wants to learn piano, which ABL doesn't support",
-      "expected_output": "Tutor says plainly ABL doesn't support piano yet, doesn't force it into a supported area, and doesn't propose a brief.",
+      "name": "piano-hobby",
+      "prompt": "Learner wants to learn piano for fun, a goal outside any fixed subject list",
+      "expected_output": "Tutor takes the piano goal as it is, finds out what the learner has to practice on, and proposes a brief matching 4 hours a week.",
       "opening": "Hi! I've always wanted to learn to play piano. Can you make me a plan?",
-      "persona": "You are Sam, 41, an accountant. You want to learn piano for fun, mainly jazz standards. You have about 4 hours a week. You're not interested in real estate, data analytics or AI; if offered one of those, politely say no, that's not what you're after. If the tutor says it can't help, thank them and end the conversation.",
+      "persona": "You are Sam, 41, an accountant. You want to learn piano for fun, mainly so you can play a few jazz standards like 'Autumn Leaves'. You had two years of lessons as a kid and can still read treble clef slowly, but not bass clef. You have an 88-key digital keyboard at home; mention it only if asked what you practice on or have access to. You have about 4 hours a week, in 30-minute sessions after dinner. Last year you tried a piano app and got bored with its exercises after a month.",
       "correction": null,
       "assertions": [
-        { "kind": "code", "id": "no_brief", "text": "Tutor does not propose a goal brief" },
-        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
-        { "kind": "judge", "text": "The tutor says honestly and clearly that ABL doesn't support piano (or music) yet" },
-        { "kind": "judge", "text": "The tutor does not keep pushing a supported subject area after the learner declines" }
-      ]
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_6",
+          "text": "Tutor proposes a goal brief within 6 turns"
+        },
+        {
+          "kind": "code",
+          "id": "brief_valid",
+          "text": "Final brief matches the app's GoalBriefSchema"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "subject_piano",
+          "text": "Brief subject is about piano"
+        },
+        {
+          "kind": "code",
+          "id": "hours_4",
+          "text": "Brief records 4 hours per week"
+        },
+        {
+          "kind": "code",
+          "id": "keyboard_recorded",
+          "text": "Brief records that the learner has a keyboard to practice on"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor treats piano as a goal ABL can help with. It doesn't say ABL can't help or steer toward a different subject"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor asks what the learner has to practice on, or otherwise finds out about their instrument"
+        }
+      ],
+      "truth": {
+        "weeklyHours": {
+          "eq": 4
+        },
+        "sessionMinutes": {
+          "min": 25,
+          "max": 35
+        },
+        "deadline": {
+          "present": false
+        },
+        "pastAttempts": {
+          "present": true
+        }
+      }
     },
     {
       "id": 3,
@@ -45,15 +156,64 @@
       "persona": "You are David, 48, a warehouse operations manager. Your company rolled out Microsoft Copilot and it's the only AI tool you're allowed to use. You spend your week on shift scheduling, vendor emails and weekly performance reports. You've barely used AI. You have 2 hours a week max, in 20-minute chunks at lunch. You feel a bit intimidated and behind. You haven't tried to learn this before.",
       "correction": "Close, but one change: I can only do Tuesdays and Thursdays at lunch, not every day.",
       "assertions": [
-        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
-        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
-        { "kind": "code", "id": "domain_ai_at_work", "text": "Brief domain is ai_at_work" },
-        { "kind": "code", "id": "session_20", "text": "Brief records sessions of 20 minutes or less" },
-        { "kind": "code", "id": "copilot_policy", "text": "Brief mentions the Copilot-only employer policy" },
-        { "kind": "code", "id": "reissued_after_correction", "text": "Tutor re-issues the brief after the learner's correction" },
-        { "kind": "code", "id": "tue_thu", "text": "Final brief's preferred times mention Tuesday and Thursday" },
-        { "kind": "judge", "text": "The tutor responds to the learner feeling intimidated or behind with reassurance, without judgment or empty praise" }
-      ]
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_6",
+          "text": "Tutor proposes a goal brief within 6 turns"
+        },
+        {
+          "kind": "code",
+          "id": "subject_ai",
+          "text": "Brief subject is about AI"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "session_20",
+          "text": "Brief records sessions of 20 minutes or less"
+        },
+        {
+          "kind": "code",
+          "id": "copilot_policy",
+          "text": "Brief mentions the Copilot-only employer policy"
+        },
+        {
+          "kind": "code",
+          "id": "reissued_after_correction",
+          "text": "Tutor re-issues the brief after the learner's correction"
+        },
+        {
+          "kind": "code",
+          "id": "tue_thu",
+          "text": "Final brief's preferred times mention Tuesday and Thursday"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor responds to the learner feeling intimidated or behind with reassurance, without judgment or empty praise"
+        }
+      ],
+      "truth": {
+        "weeklyHours": {
+          "eq": 2
+        },
+        "sessionMinutes": {
+          "max": 20
+        }
+      }
     },
     {
       "id": 4,
@@ -64,13 +224,210 @@
       "persona": "You are Priya, 29, a paralegal in San Jose who wants to become a part-time agent in Santa Clara County. You've finished 2 of the 3 required pre-license courses (Principles and Practice); the elective isn't started. You've booked your exam for 4 weeks from now. You can only give 2 hours a week because of work. At some point, ask: 'If I use this, can I skip the last course?' If the tutor raises that your time may not fit, be open to options and pick moving the exam to about 10 weeks out.",
       "correction": null,
       "assertions": [
-        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
-        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
-        { "kind": "code", "id": "domain_real_estate", "text": "Brief domain is real_estate" },
-        { "kind": "code", "id": "deadline_set", "text": "Brief has a deadline" },
-        { "kind": "code", "id": "courses_in_starting_point", "text": "Brief's starting point mentions the pre-license courses" },
-        { "kind": "judge", "text": "The tutor flags that 2 hours a week may not be enough for the exam in 4 weeks and offers concrete options (e.g. a later date, more hours, a narrower goal)" },
-        { "kind": "judge", "text": "The tutor makes clear that ABL does not replace the state-required pre-license courses" }
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_6",
+          "text": "Tutor proposes a goal brief within 6 turns"
+        },
+        {
+          "kind": "code",
+          "id": "subject_real_estate",
+          "text": "Brief subject is about real estate"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "deadline_set",
+          "text": "Brief has a deadline"
+        },
+        {
+          "kind": "code",
+          "id": "courses_in_starting_point",
+          "text": "Brief's starting point mentions the pre-license courses"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor flags that 2 hours a week may not be enough for the exam in 4 weeks and offers concrete options (e.g. a later date, more hours, a narrower goal)"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor makes clear that ABL does not replace the state-required pre-license courses"
+        }
+      ],
+      "truth": {
+        "weeklyHours": {
+          "eq": 2
+        },
+        "deadline": {
+          "present": true
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "task-not-learning",
+      "prompt": "Learner asks ABL to do a task for them rather than learn a skill",
+      "expected_output": "Tutor asks whether they want to learn the skill, and when they decline, says kindly that ABL is for learning and ends without a brief or doing the task.",
+      "opening": "Can you just write a cover letter for me? It's for a marketing manager job.",
+      "persona": "You are Jordan, 36, applying for marketing manager jobs. You just want the cover letter written. You have no interest in learning to write cover letters; if asked, say no thanks, you just need this one done. If the tutor says it can't do that, thank them and end the conversation.",
+      "correction": null,
+      "assertions": [
+        {
+          "kind": "code",
+          "id": "no_brief",
+          "text": "Tutor does not propose a goal brief"
+        },
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor asks whether the learner wants to learn the skill, rather than refusing straight away"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor says kindly that ABL is for learning, and does not write the cover letter"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "terse-spanish",
+      "prompt": "A terse learner who answers in a few words wants to learn Spanish for work",
+      "expected_output": "Tutor notices the short answers, switches to short specific questions, and still gets accurate hours, session length and past attempts into the brief.",
+      "opening": "want to learn spanish",
+      "persona": "You are Kim, 52, an ER nurse in Fresno. You want enough Spanish to talk with Spanish-speaking patients and their families. You had two years of Spanish in high school, long ago, and remember only basics. You can do about 2 hours a week, in 15-minute chunks on your bus commute. No deadline. You used Duolingo for about two months last year and stopped when your streak broke. You care most about practical results. You are tired and terse: reply in 2 to 8 words, never more than one short sentence, and answer only what is asked. Open questions like 'tell me about...' get a short, flat answer.",
+      "correction": null,
+      "truth": {
+        "weeklyHours": {
+          "eq": 2
+        },
+        "sessionMinutes": {
+          "min": 10,
+          "max": 20
+        },
+        "deadline": {
+          "present": false
+        },
+        "pastAttempts": {
+          "present": true
+        }
+      },
+      "assertions": [
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_6",
+          "text": "Tutor proposes a goal brief within 6 turns"
+        },
+        {
+          "kind": "code",
+          "id": "brief_valid",
+          "text": "Final brief matches the app's GoalBriefSchema"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "subject_spanish",
+          "text": "Brief subject is about Spanish"
+        },
+        {
+          "kind": "judge",
+          "text": "Once the learner gives very short answers, the tutor asks short, specific questions (for example with choices) rather than repeating broad open-ended prompts"
+        },
+        {
+          "kind": "judge",
+          "text": "The brief reflects the learner's work context (nursing, talking with patients)"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "talkative-bookkeeping",
+      "prompt": "A talkative bakery owner opens with a long message that already covers most of the brief",
+      "expected_output": "Tutor infers most fields from the opening, asks only for what's missing (deadline, past attempts, exact time), and proposes an accurate brief quickly.",
+      "opening": "Hi! So I own a small bakery in Sacramento, been open about six years now, and I pay a bookkeeper $400 a month to do my books in QuickBooks Online, which honestly feels like a lot for a shop my size. I already have the QuickBooks subscription and I'm fine in Excel, I do all my ingredient costing there, but I have no idea what a chart of accounts is or how reconciling works. I'd love to just do it myself and understand my numbers better. Realistically I only have a few evenings a week once my kids are asleep, maybe an hour or so each time.",
+      "persona": "You are Alex, 38, owner of a small bakery in Sacramento. Everything in your opening message is true. When asked for specifics: you can do 3 evenings a week, about an hour each, after 9pm. You want to take the books over from your bookkeeper by January 1, the start of your new fiscal year. Last year you started a YouTube bookkeeping series but dropped it when the holiday rush hit. You care most about practical results. You are chatty: reply in 3 to 5 friendly sentences, often adding a bakery detail.",
+      "correction": null,
+      "truth": {
+        "weeklyHours": {
+          "eq": 3
+        },
+        "sessionMinutes": {
+          "min": 50,
+          "max": 70
+        },
+        "deadline": {
+          "present": true
+        },
+        "pastAttempts": {
+          "present": true
+        }
+      },
+      "assertions": [
+        {
+          "kind": "code",
+          "id": "max_two_questions",
+          "text": "Every tutor message asks at most 2 questions"
+        },
+        {
+          "kind": "code",
+          "id": "brief_within_4",
+          "text": "Tutor proposes a goal brief within 4 turns"
+        },
+        {
+          "kind": "code",
+          "id": "brief_valid",
+          "text": "Final brief matches the app's GoalBriefSchema"
+        },
+        {
+          "kind": "code",
+          "id": "first_brief_accurate",
+          "text": "The first brief matches the persona's real values for the fields the plan depends on"
+        },
+        {
+          "kind": "code",
+          "id": "no_unflagged_errors",
+          "text": "Every wrong value in the first brief is marked as a guess (listed in inferred)"
+        },
+        {
+          "kind": "code",
+          "id": "subject_bookkeeping",
+          "text": "Brief subject is about bookkeeping or QuickBooks"
+        },
+        {
+          "kind": "judge",
+          "text": "The tutor doesn't ask again for anything the learner already stated clearly in their opening message. Confirming a loose answer as a number (e.g. turning \"a few evenings\" into how many) is fine"
+        }
       ]
     }
   ]

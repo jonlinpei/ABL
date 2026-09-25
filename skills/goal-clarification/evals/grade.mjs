@@ -35,6 +35,10 @@ const CODE_CHECKS = {
     r.briefTurn != null && r.briefTurn <= 6,
     r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
   ],
+  brief_within_4: (r) => [
+    r.briefTurn != null && r.briefTurn <= 4,
+    r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
+  ],
   brief_valid: (r) => {
     if (!r.finalBrief) return [false, "No brief proposed"];
     const p = GoalBriefSchema.safeParse(r.finalBrief);
@@ -45,10 +49,35 @@ const CODE_CHECKS = {
     ];
   },
   no_brief: (r) => [r.briefs.length === 0 && !(r.invalidBriefs?.length), `Briefs proposed: ${r.briefs.length}`],
-  domain_data_analytics: (r) => domainIs(r, "data_analytics"),
-  domain_ai_at_work: (r) => domainIs(r, "ai_at_work"),
-  domain_real_estate: (r) => domainIs(r, "real_estate"),
+  subject_data: (r) => subjectMatches(r, /data|analy|sql/i),
+  subject_piano: (r) => subjectMatches(r, /piano/i),
+  subject_ai: (r) => subjectMatches(r, /\bAI\b|copilot|artificial intelligence/i),
+  subject_spanish: (r) => subjectMatches(r, /spanish/i),
+  subject_bookkeeping: (r) => subjectMatches(r, /bookkeep|quickbooks|accounting/i),
+  first_brief_accurate: (r, ev) => {
+    const wrong = truthErrors(r.briefs[0], ev.truth);
+    if (!wrong) return [false, "No brief proposed"];
+    return [wrong.length === 0, wrong.length ? `Wrong: ${wrong.map((w) => w.detail).join("; ")}` : "All match"];
+  },
+  no_unflagged_errors: (r, ev) => {
+    const wrong = truthErrors(r.briefs[0], ev.truth);
+    if (!wrong) return [false, "No brief proposed"];
+    const unflagged = wrong.filter((w) => !r.briefs[0].inferred?.includes(w.field));
+    return [
+      unflagged.length === 0,
+      wrong.length
+        ? `Wrong: ${wrong.map((w) => w.detail).join("; ")}. Inferred: ${JSON.stringify(r.briefs[0].inferred)}`
+        : "No wrong values",
+    ];
+  },
+  subject_real_estate: (r) => subjectMatches(r, /real estate|salesperson/i),
   hours_3: (r) => field(r, "weeklyHours", (v) => v === 3),
+  hours_4: (r) => field(r, "weeklyHours", (v) => v === 4),
+  keyboard_recorded: (r) => {
+    if (!r.finalBrief) return [false, "No brief proposed"];
+    const hit = JSON.stringify(r.finalBrief).match(/[^"]*keyboard[^"]*/i);
+    return [!!hit, hit ? `Found: "${hit[0]}"` : "No mention of a keyboard in the brief"];
+  },
   past_attempts_recorded: (r) => field(r, "pastAttempts", (v) => !!v && v.trim().length > 0),
   session_20: (r) => field(r, "sessionMinutes", (v) => v <= 20),
   copilot_policy: (r) => {
@@ -63,8 +92,32 @@ const CODE_CHECKS = {
     field(r, "startingPoint", (v) => /course|principles|practice|elective/i.test(v ?? "")),
 };
 
-function domainIs(r, domain) {
-  return field(r, "domain", (v) => v === domain);
+/** Fields of `brief` that contradict the persona's `truth`, or null if there's no brief. */
+function truthErrors(brief, truth = {}) {
+  if (!brief) return null;
+  const wrong = [];
+  for (const [field, t] of Object.entries(truth)) {
+    const v = brief[field];
+    const ok =
+      "present" in t
+        ? t.present === hasValue(v)
+        : (t.eq === undefined || v === t.eq) &&
+          (t.min === undefined || v >= t.min) &&
+          (t.max === undefined || v <= t.max);
+    if (!ok) wrong.push({ field, detail: `${field} = ${JSON.stringify(v)}, expected ${JSON.stringify(t)}` });
+  }
+  return wrong;
+}
+
+/** Treats "none", "nothing tried yet" and the like as no value, as a reader would. */
+function hasValue(v) {
+  if (v == null) return false;
+  const text = String(v).trim();
+  return text !== "" && !/^(none|nothing|n\/a|first time|no\b|hasn't|has not|never)/i.test(text);
+}
+
+function subjectMatches(r, pattern) {
+  return field(r, "subject", (v) => pattern.test(v ?? ""));
 }
 
 function field(r, name, ok) {
@@ -123,7 +176,7 @@ async function gradeRun(ev, runDir) {
   const codeResults = ev.assertions
     .filter((a) => a.kind === "code")
     .map((a) => {
-      const [passed, evidence] = CODE_CHECKS[a.id](r);
+      const [passed, evidence] = CODE_CHECKS[a.id](r, ev);
       return { text: a.text, passed, evidence };
     });
   const judgeResults = await judge(conversation, ev.assertions.filter((a) => a.kind === "judge"));

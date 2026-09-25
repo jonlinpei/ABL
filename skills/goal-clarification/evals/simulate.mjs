@@ -66,6 +66,7 @@ for (const ev of evals) {
     ),
   );
   for (const [config, instructions] of Object.entries(CONFIGS)) {
+    if (args["skill-only"] && config !== "with_skill") continue;
     for (let run = 1; run <= runs; run++) {
       const runDir = path.join(evalDir, config, `run-${run}`);
       jobs.push(
@@ -123,7 +124,7 @@ async function runConversation(ev, instructions) {
       briefTurn ??= turn;
       learnerMessages.push({
         role: "user",
-        content: `${text}\n\n[The app shows you this goal brief card]\n${renderBrief(brief)}\n[Button: "Looks right. Build my plan". Or type what to change.]`,
+        content: `${text}\n\n[The app shows you this goal brief card]\n${renderBrief(brief)}\n[Button: "Looks right". Or type what to change.]`,
       });
       if (ev.correction && !correctionSent) {
         correctionSent = true;
@@ -133,7 +134,7 @@ async function runConversation(ev, instructions) {
       const reply = await learnerReply(ev, learnerMessages);
       learnerTokens += reply.tokens;
       if (/^\s*looks right/i.test(reply.text)) {
-        log.push({ role: "learner", text: '[clicks "Looks right. Build my plan"]' });
+        log.push({ role: "learner", text: '[clicks "Looks right"]' });
         break;
       }
       say(reply.text);
@@ -190,17 +191,18 @@ How to reply:
 }
 
 function renderBrief(b) {
+  const g = (...fields) => (fields.some((f) => b.inferred?.includes(f)) ? " (my guess)" : "");
   return [
-    `Goal brief (${b.domain})`,
+    `Goal brief: ${b.subject}`,
     `Goal: ${b.restatedGoal}`,
     `In your words: "${b.goalInTheirWords}"`,
-    `Why: ${b.motivation}`,
-    `Success looks like: ${b.successLooksLike}`,
-    `Deadline: ${b.deadline ?? "None set"}`,
-    `Starting point: ${b.startingPoint}`,
-    `Time: ${b.weeklyHours} h/week, ${b.sessionMinutes}-min sessions${b.preferredTimes ? `, ${b.preferredTimes}` : ""}`,
-    `Tried before: ${b.pastAttempts ?? "First time"}`,
-    `Priority: ${b.priority}`,
+    `Why: ${b.motivation}${g("motivation")}`,
+    `Success looks like: ${b.successLooksLike}${g("successLooksLike")}`,
+    `Deadline: ${b.deadline ?? "None set"}${g("deadline")}`,
+    `Starting point: ${b.startingPoint}${g("startingPoint")}`,
+    `Time: ${b.weeklyHours} h/week, ${b.sessionMinutes}-min sessions${b.preferredTimes ? `, ${b.preferredTimes}` : ""}${g("weeklyHours", "sessionMinutes", "preferredTimes")}`,
+    `Tried before: ${b.pastAttempts ?? "First time"}${g("pastAttempts")}`,
+    `Priority: ${b.priority}${g("priority")}`,
     `Interests & context: ${b.interests.length ? b.interests.join(", ") : "None yet"}`,
   ].join("\n");
 }
@@ -255,7 +257,9 @@ function save(runDir, ev, config, result) {
 function parseArgs(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith("--")) out[argv[i].slice(2)] = argv[i + 1]?.startsWith("--") ? true : argv[++i];
+    if (!argv[i].startsWith("--")) continue;
+    const next = argv[i + 1];
+    out[argv[i].slice(2)] = next === undefined || next.startsWith("--") ? true : argv[++i];
   }
   return out;
 }

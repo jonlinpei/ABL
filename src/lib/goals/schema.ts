@@ -1,33 +1,27 @@
 import { z } from "zod";
 
-/** Launch subject areas (docs/content.md). */
-export const DOMAINS = [
-  {
-    id: "real_estate",
-    label: "California real estate",
-    blurb: "Pass the CA salesperson exam, then build Bay Area residential expertise.",
-  },
-  {
-    id: "data_analytics",
-    label: "Data analytics",
-    blurb: "Spreadsheets, SQL, statistics and visualization, from first steps to job-ready.",
-  },
-  {
-    id: "ai_at_work",
-    label: "AI at work",
-    blurb: "Understand AI, machine learning and LLMs, and use them well in your job.",
-  },
-] as const;
-
-export const DomainId = z.enum(["real_estate", "data_analytics", "ai_at_work"]);
-export type DomainId = z.infer<typeof DomainId>;
+/** Brief fields the tutor may fill in by inference; the card flags them. */
+export const InferableField = z.enum([
+  "motivation",
+  "successLooksLike",
+  "deadline",
+  "startingPoint",
+  "weeklyHours",
+  "sessionMinutes",
+  "preferredTimes",
+  "pastAttempts",
+  "priority",
+]);
+export type InferableField = z.infer<typeof InferableField>;
 
 /**
  * The goal brief: the output of goal discovery, confirmed by the learner
  * before any assessment or plan (docs/content.md, "Goal discovery").
  */
 export const GoalBriefSchema = z.object({
-  domain: DomainId.describe("Which launch subject area this goal belongs to."),
+  subject: z
+    .string()
+    .describe('A short name for what they are learning, 2 to 5 words, e.g. "Jazz piano".'),
   goalInTheirWords: z.string().describe("The learner's goal, close to how they said it."),
   restatedGoal: z
     .string()
@@ -55,6 +49,9 @@ export const GoalBriefSchema = z.object({
   interests: z
     .array(z.string())
     .describe("Interests and work context useful for analogies and examples."),
+  inferred: z
+    .array(InferableField)
+    .describe("Fields filled in from inference rather than the learner's own words, for them to check."),
 });
 export type GoalBrief = z.infer<typeof GoalBriefSchema>;
 
