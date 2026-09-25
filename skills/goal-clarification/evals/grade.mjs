@@ -73,6 +73,7 @@ const CODE_CHECKS = {
     ];
   },
   subject_real_estate: (r) => subjectMatches(r, /real estate|salesperson/i),
+  subject_security: (r) => subjectMatches(r, /security|penetration|pen ?test|hacking/i),
   hours_3: (r) => field(r, "weeklyHours", (v) => v === 3),
   hours_4: (r) => field(r, "weeklyHours", (v) => v === 4),
   keyboard_recorded: (r) => {
@@ -131,8 +132,26 @@ const JudgeSchema = z.object({
   ),
 });
 
+/**
+ * Judge with one retry. A judge that returns nothing (e.g. a refusal on a
+ * harmful-goal transcript) fails those assertions visibly instead of
+ * crashing the whole grading run.
+ */
 async function judge(conversation, assertions) {
   if (assertions.length === 0) return [];
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await judgeOnce(conversation, assertions);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  const reason = lastError instanceof Error ? lastError.name : String(lastError);
+  return assertions.map((a) => ({ text: a.text, passed: false, evidence: `Judge failed: ${reason}` }));
+}
+
+async function judgeOnce(conversation, assertions) {
   const { output } = await generateText({
     model: anthropic(JUDGE_MODEL),
     instructions:
