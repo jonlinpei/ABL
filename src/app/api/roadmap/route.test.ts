@@ -1,3 +1,4 @@
+import { NoObjectGeneratedError } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GoalBrief } from "@/lib/goals/schema";
@@ -97,6 +98,33 @@ describe("POST /api/roadmap usage capture", () => {
     expect(failedTrace.inputTokens).toBeUndefined();
     expect(okErr).toBeUndefined();
     expect(okTrace.failedOver).toEqual([failedTrace.model]);
+    // Both attempts belong to one request, so they share a trace id.
+    const [first, second] = captureAiGeneration.mock.calls.map((c) => c[3]);
+    expect(first).toMatch(/^[0-9a-f-]{36}$/);
+    expect(second).toBe(first);
+  });
+
+  it("records the billed usage of a response that failed schema parsing", async () => {
+    generateText
+      .mockRejectedValueOnce(
+        new NoObjectGeneratedError({
+          message: "No object generated: response did not match schema.",
+          response: { id: "r1", timestamp: new Date(), modelId: "m" },
+          usage: {
+            inputTokens: 2000,
+            outputTokens: 3000,
+          } as ConstructorParameters<typeof NoObjectGeneratedError>[0]["usage"],
+          finishReason: "stop",
+        }),
+      )
+      .mockResolvedValueOnce({ output: { title: "Plan" }, totalUsage: {} });
+
+    await POST(request({ brief }));
+    await runAfter();
+
+    const [, failedTrace, err] = captureAiGeneration.mock.calls[0];
+    expect(NoObjectGeneratedError.isInstance(err)).toBe(true);
+    expect(failedTrace).toMatchObject({ inputTokens: 2000, outputTokens: 3000 });
   });
 
   it("captures every failed attempt when all models fail", async () => {

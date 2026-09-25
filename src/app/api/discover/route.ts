@@ -12,7 +12,7 @@ import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
-import { finishTrace, startTrace, type CallTrace } from "@/lib/ai/trace";
+import { finishTrace, startTrace, sumUsage, type CallTrace, type TokenUsage } from "@/lib/ai/trace";
 import { captureAiGeneration } from "@/lib/ai/usage-events";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
@@ -38,7 +38,13 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const { messages }: { messages: DiscoveryMessage[] } = await req.json();
+  const { id: chatId, messages }: { id?: unknown; messages: DiscoveryMessage[] } =
+    await req.json();
+  // One PostHog trace per conversation. The client sends the chat id, so bound it.
+  const traceId =
+    typeof chatId === "string" && chatId.length > 0 && chatId.length <= 100
+      ? chatId
+      : crypto.randomUUID();
 
   let resolution;
   try {
@@ -60,13 +66,14 @@ export async function POST(req: Request) {
   const today = new Date().toISOString().slice(0, 10);
   let finished: CallTrace | undefined;
   let streamError: unknown;
+  let abortedUsage: TokenUsage | undefined;
 
-  // Runs once the stream has closed, so the finish trace (or error) is set.
+  // Runs once the response has closed. Every call is recorded: finished,
+  // failed, or cut off by the client (with the usage of any finished steps).
   after(() => {
-    if (finished) return captureAiGeneration(userId, finished);
-    if (streamError !== undefined) {
-      return captureAiGeneration(userId, { ...trace, latencyMs: Date.now() - startedAt }, streamError);
-    }
+    if (finished) return captureAiGeneration(userId, finished, streamError, traceId);
+    const partial = finishTrace(trace, routed.model, abortedUsage, startedAt);
+    return captureAiGeneration(userId, partial, streamError ?? "aborted", traceId);
   });
 
   const result = streamText({
@@ -75,6 +82,11 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: hasToolCall("propose_goal_brief"),
+    // Stop generating (and paying) when the client disconnects.
+    abortSignal: req.signal,
+    onAbort: ({ steps }) => {
+      abortedUsage = sumUsage(steps.map((step) => step.usage));
+    },
   });
 
   return createUIMessageStreamResponse({

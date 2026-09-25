@@ -7,7 +7,12 @@ type StreamOptions = {
   messageMetadata: (arg: { part: { type: string; totalUsage?: unknown } }) => unknown;
   onError: (error: unknown) => string;
 };
+type StreamTextOptions = {
+  abortSignal?: AbortSignal;
+  onAbort: (event: { steps: { usage: { inputTokens?: number; outputTokens?: number } }[] }) => void;
+};
 let streamOptions: StreamOptions | undefined;
+let streamTextOptions: StreamTextOptions | undefined;
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth() }));
 vi.mock("next/server", () => ({
@@ -19,7 +24,10 @@ vi.mock("next/server", () => ({
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
   convertToModelMessages: async () => [],
-  streamText: () => ({ stream: {} }),
+  streamText: (options: StreamTextOptions) => {
+    streamTextOptions = options;
+    return { stream: {} };
+  },
   toUIMessageStream: (options: StreamOptions) => {
     streamOptions = options;
     return {};
@@ -36,10 +44,10 @@ vi.mock("@/lib/ai/usage-events", () => ({
 
 const { POST } = await import("./route");
 
-const request = () =>
+const request = (body: Record<string, unknown> = {}) =>
   new Request("http://test/api/discover", {
     method: "POST",
-    body: JSON.stringify({ messages: [] }),
+    body: JSON.stringify({ messages: [], ...body }),
   });
 
 async function runAfter() {
@@ -51,6 +59,7 @@ beforeEach(() => {
   captureAiGeneration.mockReset().mockResolvedValue(undefined);
   afterCallbacks.length = 0;
   streamOptions = undefined;
+  streamTextOptions = undefined;
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -85,10 +94,55 @@ describe("POST /api/discover usage capture", () => {
     expect(trace.inputTokens).toBeUndefined();
   });
 
-  it("captures nothing when the stream neither finished nor errored (e.g. aborted)", async () => {
+  it("records a client abort with the usage of steps that finished", async () => {
+    const req = request();
+    await POST(req);
+    expect(streamTextOptions!.abortSignal).toBe(req.signal);
+    streamTextOptions!.onAbort({
+      steps: [
+        { usage: { inputTokens: 500, outputTokens: 40 } },
+        { usage: { inputTokens: 600, outputTokens: 10 } },
+      ],
+    });
+
+    await runAfter();
+    expect(captureAiGeneration).toHaveBeenCalledTimes(1);
+    const [, trace, error] = captureAiGeneration.mock.calls[0];
+    expect(error).toBe("aborted");
+    expect(trace).toMatchObject({ inputTokens: 1100, outputTokens: 50 });
+    expect(trace.latencyMs).toEqual(expect.any(Number));
+  });
+
+  it("records an abort before any step finished, with no tokens", async () => {
     await POST(request());
     await runAfter();
-    expect(captureAiGeneration).not.toHaveBeenCalled();
+    const [, trace, error] = captureAiGeneration.mock.calls[0];
+    expect(error).toBe("aborted");
+    expect(trace.inputTokens).toBeUndefined();
+  });
+
+  it("keeps an error that happened in a stream that still finished", async () => {
+    await POST(request());
+    const failure = new Error("tool failed");
+    streamOptions!.onError(failure);
+    const finished = streamOptions!.messageMetadata({ part: { type: "finish", totalUsage: {} } });
+
+    await runAfter();
+    const [, trace, error] = captureAiGeneration.mock.calls[0];
+    expect(trace).toBe(finished);
+    expect(error).toBe(failure);
+  });
+
+  it("uses the chat id as the trace id, and a fresh id when it is missing or too long", async () => {
+    await POST(request({ id: "chat_abc" }));
+    await POST(request({ id: "x".repeat(101) }));
+    await POST(request());
+    await runAfter();
+    const ids = captureAiGeneration.mock.calls.map((c) => c[3]);
+    expect(ids[0]).toBe("chat_abc");
+    expect(ids[1]).not.toBe("x".repeat(101));
+    expect(ids[1]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(ids[2]).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it("captures nothing and skips after() for unauthenticated requests", async () => {

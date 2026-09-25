@@ -7,15 +7,18 @@ import type { CallTrace } from "./trace";
 /**
  * Send one finished (or failed) call. Never throws: analytics must not break
  * the request. Call it inside `after()` so it doesn't delay the response.
+ * Calls that share a `traceId` (one conversation, or one request's failovers)
+ * group into a single trace in PostHog.
  */
 export async function captureAiGeneration(
   userId: string,
   trace: CallTrace,
   error?: unknown,
+  traceId: string = crypto.randomUUID(),
 ): Promise<void> {
   try {
     await captureServerEvent(userId, "$ai_generation", {
-      $ai_trace_id: crypto.randomUUID(),
+      $ai_trace_id: traceId,
       $ai_span_name: trace.task,
       $ai_model: trace.model,
       $ai_provider: trace.provider,

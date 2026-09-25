@@ -25,20 +25,20 @@ const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 /** Questions in a tutor message, ignoring anything inside a brief. */
 const countQuestions = (text) => (text.match(/\?/g) ?? []).length;
 
+/** Passes when the first brief came by tutor turn `n`. */
+const briefWithin = (n) => (r) => [
+  r.briefTurn != null && r.briefTurn <= n,
+  r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
+];
+
 const CODE_CHECKS = {
   max_two_questions: (r) => {
     const counts = r.log.filter((l) => l.role === "tutor").map((l) => countQuestions(l.text));
     const max = Math.max(0, ...counts);
     return [max <= 2, `Question marks per tutor message: [${counts.join(", ")}]`];
   },
-  brief_within_6: (r) => [
-    r.briefTurn != null && r.briefTurn <= 6,
-    r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
-  ],
-  brief_within_4: (r) => [
-    r.briefTurn != null && r.briefTurn <= 4,
-    r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
-  ],
+  brief_within_6: briefWithin(6),
+  brief_within_4: briefWithin(4),
   brief_valid: (r) => {
     if (!r.finalBrief) return [false, "No brief proposed"];
     const p = GoalBriefSchema.safeParse(r.finalBrief);

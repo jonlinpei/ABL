@@ -154,7 +154,7 @@ export function GoalDiscoveryDemo() {
             e.preventDefault();
             send(input);
           }}
-          className="sticky bottom-4 flex gap-2 rounded-xl border border-foreground/15 bg-background p-2 shadow-sm"
+          className="sticky bottom-4 flex gap-2 rounded-xl border border-foreground/15 bg-background p-2 shadow-sm focus-within:border-foreground/40 focus-within:ring-2 focus-within:ring-foreground/20"
         >
           <input
             value={input}

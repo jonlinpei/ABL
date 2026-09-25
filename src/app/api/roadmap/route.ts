@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { generateText, Output } from "ai";
+import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
@@ -39,6 +39,8 @@ export async function POST(req: Request) {
   const { primary, fallbacks } = resolveModel("roadmap_generate", { allowedProviders: providers });
   const today = new Date().toISOString().slice(0, 10);
   const failedOver: string[] = [];
+  // One PostHog trace for this request, so failovers group together.
+  const traceId = crypto.randomUUID();
 
   // Try the primary model, then each fallback, as the router ordered them.
   for (const routed of [primary, ...fallbacks]) {
@@ -52,13 +54,15 @@ export async function POST(req: Request) {
         output: Output.object({ schema: RoadmapSchema }),
       });
       const finished = finishTrace(trace, routed.model, result.totalUsage, startedAt);
-      after(() => captureAiGeneration(userId, finished));
+      after(() => captureAiGeneration(userId, finished, undefined, traceId));
       const response: RoadmapResponse = { roadmap: result.output, trace: finished };
       return Response.json(response);
     } catch (err) {
       console.error(`[roadmap_generate] ${routed.model.id} failed`, err);
-      const failed = { ...trace, latencyMs: Date.now() - startedAt };
-      after(() => captureAiGeneration(userId, failed, err));
+      // A response that fails schema parsing was still generated and billed.
+      const usage = NoObjectGeneratedError.isInstance(err) ? err.usage : undefined;
+      const failed = finishTrace(trace, routed.model, usage, startedAt);
+      after(() => captureAiGeneration(userId, failed, err, traceId));
       failedOver.push(routed.model.id);
     }
   }
