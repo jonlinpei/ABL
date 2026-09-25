@@ -1,0 +1,63 @@
+{
+  "name": "abl",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "predev": "node scripts/sync-skills.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/sync-skills.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "skills:sync": "node scripts/sync-skills.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.63",
+    "@ai-sdk/google": "^4.0.80",
+    "@ai-sdk/openai": "^4.0.75",
+    "@ai-sdk/react": "^4.0.117",
+    "@clerk/nextjs": "^7.9.6",
+    "@neondatabase/serverless": "^1.1.0",
+    "ai": "^7.0.114",
+    "drizzle-orm": "^0.45.3",
+    "next": "16.3.6",
+    "posthog-js": "^1.434.12",
+    "posthog-node": "^5.53.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.13.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^18.0.3",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.1"
+  },
+  "packageManager": "pnpm@10.4.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "core-js",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

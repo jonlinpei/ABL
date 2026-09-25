@@ -1,0 +1,77 @@
+{
+  "skill_name": "goal-clarification",
+  "notes": "Each eval is a simulated learner: a second model plays the persona and talks to the tutor. `opening` is the learner's first message. Assertions of kind `code` are checked by grade.mjs; kind `judge` are judged by a model reading the conversation.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "vague-data-goal",
+      "prompt": "Learner opens with a vague goal: \"i want to get better at data stuff i guess\"",
+      "expected_output": "Tutor offers 2-3 concrete goals to choose from, then gathers the essentials and proposes a data_analytics brief matching the persona's 3 hours/week.",
+      "opening": "i want to get better at data stuff i guess",
+      "persona": "You are Maya, 34, a marketing operations coordinator in Oakland. You live in Excel (pivot tables, VLOOKUP) but have never written SQL. Deep down you'd like to move into a data analyst role within about a year, but you only say that once the tutor helps you get specific. You can do about 3 hours a week, in 45-minute sessions on weekday evenings. You tried two free online courses and quit both around week three when work got busy. You like running and cooking.",
+      "correction": null,
+      "assertions": [
+        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
+        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
+        { "kind": "code", "id": "brief_valid", "text": "Final brief matches the app's GoalBriefSchema" },
+        { "kind": "code", "id": "domain_data_analytics", "text": "Brief domain is data_analytics" },
+        { "kind": "code", "id": "hours_3", "text": "Brief records 3 hours per week" },
+        { "kind": "code", "id": "past_attempts_recorded", "text": "Brief records her past attempts (pastAttempts is not null)" },
+        { "kind": "judge", "text": "In one of its first two messages, the tutor offers 2-3 concrete goal options for the learner to choose from, rather than only asking an open question" },
+        { "kind": "judge", "text": "The tutor does not start teaching data analytics content before the brief" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "out-of-scope-piano",
+      "prompt": "Learner wants to learn piano, which ABL doesn't support",
+      "expected_output": "Tutor says plainly ABL doesn't support piano yet, doesn't force it into a supported area, and doesn't propose a brief.",
+      "opening": "Hi! I've always wanted to learn to play piano. Can you make me a plan?",
+      "persona": "You are Sam, 41, an accountant. You want to learn piano for fun, mainly jazz standards. You have about 4 hours a week. You're not interested in real estate, data analytics or AI; if offered one of those, politely say no, that's not what you're after. If the tutor says it can't help, thank them and end the conversation.",
+      "correction": null,
+      "assertions": [
+        { "kind": "code", "id": "no_brief", "text": "Tutor does not propose a goal brief" },
+        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
+        { "kind": "judge", "text": "The tutor says honestly and clearly that ABL doesn't support piano (or music) yet" },
+        { "kind": "judge", "text": "The tutor does not keep pushing a supported subject area after the learner declines" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "busy-ai-at-work-correction",
+      "prompt": "Busy operations manager wants to use AI at work, has little time, and corrects the brief once",
+      "expected_output": "Tutor captures short sessions and the employer's Copilot-only policy, proposes a brief, then re-issues the complete brief after the learner's correction.",
+      "opening": "My company keeps telling us to 'use AI more' and honestly I don't know where to start.",
+      "persona": "You are David, 48, a warehouse operations manager. Your company rolled out Microsoft Copilot and it's the only AI tool you're allowed to use. You spend your week on shift scheduling, vendor emails and weekly performance reports. You've barely used AI. You have 2 hours a week max, in 20-minute chunks at lunch. You feel a bit intimidated and behind. You haven't tried to learn this before.",
+      "correction": "Close, but one change: I can only do Tuesdays and Thursdays at lunch, not every day.",
+      "assertions": [
+        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
+        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
+        { "kind": "code", "id": "domain_ai_at_work", "text": "Brief domain is ai_at_work" },
+        { "kind": "code", "id": "session_20", "text": "Brief records sessions of 20 minutes or less" },
+        { "kind": "code", "id": "copilot_policy", "text": "Brief mentions the Copilot-only employer policy" },
+        { "kind": "code", "id": "reissued_after_correction", "text": "Tutor re-issues the brief after the learner's correction" },
+        { "kind": "code", "id": "tue_thu", "text": "Final brief's preferred times mention Tuesday and Thursday" },
+        { "kind": "judge", "text": "The tutor responds to the learner feeling intimidated or behind with reassurance, without judgment or empty praise" }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "real-estate-time-crunch",
+      "prompt": "Real estate learner with an exam in 4 weeks, 2 hours a week, and a pre-license course still unfinished",
+      "expected_output": "Tutor flags that the time available may not fit the deadline and offers options, makes clear ABL doesn't replace the required pre-license courses, and records the course status and deadline.",
+      "opening": "I need to pass the California real estate salesperson exam. Can you help me cram?",
+      "persona": "You are Priya, 29, a paralegal in San Jose who wants to become a part-time agent in Santa Clara County. You've finished 2 of the 3 required pre-license courses (Principles and Practice); the elective isn't started. You've booked your exam for 4 weeks from now. You can only give 2 hours a week because of work. At some point, ask: 'If I use this, can I skip the last course?' If the tutor raises that your time may not fit, be open to options and pick moving the exam to about 10 weeks out.",
+      "correction": null,
+      "assertions": [
+        { "kind": "code", "id": "max_two_questions", "text": "Every tutor message asks at most 2 questions" },
+        { "kind": "code", "id": "brief_within_6", "text": "Tutor proposes a goal brief within 6 turns" },
+        { "kind": "code", "id": "domain_real_estate", "text": "Brief domain is real_estate" },
+        { "kind": "code", "id": "deadline_set", "text": "Brief has a deadline" },
+        { "kind": "code", "id": "courses_in_starting_point", "text": "Brief's starting point mentions the pre-license courses" },
+        { "kind": "judge", "text": "The tutor flags that 2 hours a week may not be enough for the exam in 4 weeks and offers concrete options (e.g. a later date, more hours, a narrower goal)" },
+        { "kind": "judge", "text": "The tutor makes clear that ABL does not replace the state-required pre-license courses" }
+      ]
+    }
+  ]
+}

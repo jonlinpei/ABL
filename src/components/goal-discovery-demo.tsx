@@ -1,0 +1,400 @@
+"use client";
+
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { useEffect, useRef, useState } from "react";
+
+import type { DiscoveryMessage } from "@/app/api/discover/route";
+import type { RoadmapResponse } from "@/app/api/roadmap/route";
+import type { CallTrace } from "@/lib/ai/trace";
+import { DOMAINS, GoalBriefSchema, type GoalBrief, type Roadmap } from "@/lib/goals/schema";
+
+const PRIORITY_LABEL: Record<GoalBrief["priority"], string> = {
+  speed: "Speed",
+  depth: "Depth",
+  practical: "Practical results",
+};
+
+/**
+ * Demo of the first learner-facing flow (docs/content.md, "Goal discovery"):
+ * a discovery conversation, a goal brief the learner confirms, then a first
+ * roadmap. Every AI call shows what the router chose and what it cost.
+ */
+export function GoalDiscoveryDemo() {
+  const [input, setInput] = useState("");
+  const [confirmed, setConfirmed] = useState<GoalBrief | null>(null);
+  const [plan, setPlan] = useState<RoadmapResponse | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  const { messages, sendMessage, status, error, clearError, setMessages } =
+    useChat<DiscoveryMessage>({
+      transport: new DefaultChatTransport({ api: "/api/discover" }),
+    });
+
+  const busy = status === "submitted" || status === "streaming";
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, status, confirmed, plan]);
+
+  const latestBriefId = findLatestBriefPartId(messages);
+  const traces = collectTraces(messages, plan?.trace);
+
+  function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    clearError();
+    sendMessage({ text: trimmed });
+    setInput("");
+  }
+
+  async function confirmBrief(brief: GoalBrief) {
+    setConfirmed(brief);
+    setPlanError(null);
+    try {
+      const res = await fetch("/api/roadmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+      setPlan(data as RoadmapResponse);
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function startOver() {
+    setMessages([]);
+    setConfirmed(null);
+    setPlan(null);
+    setPlanError(null);
+    clearError();
+  }
+
+  const planning = confirmed && !plan && !planError;
+
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+      {messages.length === 0 && (
+        <section>
+          <h1 className="text-2xl font-semibold tracking-tight">What do you want to learn?</h1>
+          <p className="mt-2 text-foreground/70">
+            Pick an area or describe your goal in your own words. I&apos;ll ask a few questions so
+            your plan fits your goal and your week.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {DOMAINS.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => send(`I'd like to work on ${d.label.toLowerCase()}.`)}
+                disabled={busy}
+                className="rounded-lg border border-foreground/15 p-4 text-left transition hover:border-foreground/40 disabled:opacity-50"
+              >
+                <div className="font-medium">{d.label}</div>
+                <div className="mt-1 text-sm text-foreground/60">{d.blurb}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {messages.length > 0 && (
+        <section className="flex flex-col gap-4">
+          {messages.map((m) => (
+            <div key={m.id} className={m.role === "user" ? "self-end max-w-[85%]" : "max-w-full"}>
+              {m.parts.map((part, i) => {
+                if (part.type === "text" && part.text.trim()) {
+                  return (
+                    <div
+                      key={i}
+                      className={
+                        m.role === "user"
+                          ? "whitespace-pre-wrap rounded-2xl bg-foreground px-4 py-2 text-background"
+                          : "whitespace-pre-wrap leading-relaxed"
+                      }
+                    >
+                      {part.text}
+                    </div>
+                  );
+                }
+                if (part.type === "tool-propose_goal_brief") {
+                  if (part.state === "output-error") return null;
+                  if (part.state !== "input-available" && part.state !== "output-available") {
+                    return (
+                      <div key={i} className="text-sm text-foreground/50">
+                        Writing up your goal brief…
+                      </div>
+                    );
+                  }
+                  const brief = GoalBriefSchema.safeParse(part.input);
+                  if (!brief.success) return null;
+                  const isLatest = `${m.id}:${i}` === latestBriefId;
+                  return (
+                    <BriefCard
+                      key={i}
+                      brief={brief.data}
+                      active={isLatest && !confirmed && !busy}
+                      confirmed={isLatest && !!confirmed}
+                      onConfirm={() => confirmBrief(brief.data)}
+                    />
+                  );
+                }
+                return null;
+              })}
+              {m.role === "assistant" && m.metadata && <TraceChip trace={m.metadata} />}
+            </div>
+          ))}
+          {status === "submitted" && <div className="text-sm text-foreground/50">Thinking…</div>}
+          {error && (
+            <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
+              {error.message || "Something went wrong."}
+            </div>
+          )}
+        </section>
+      )}
+
+      {planning && (
+        <div className="rounded-lg border border-dashed border-foreground/20 p-4 text-sm text-foreground/70">
+          Building your roadmap with the deep-tier planner. This can take up to a minute…
+        </div>
+      )}
+      {planError && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
+          Couldn&apos;t build the roadmap: {planError}{" "}
+          <button className="underline" onClick={() => confirmed && confirmBrief(confirmed)}>
+            Try again
+          </button>
+        </div>
+      )}
+      {plan && <RoadmapView roadmap={plan.roadmap} trace={plan.trace} />}
+
+      {!confirmed && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
+          }}
+          className="sticky bottom-4 flex gap-2 rounded-xl border border-foreground/15 bg-background p-2 shadow-sm"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.currentTarget.value)}
+            placeholder={
+              messages.length === 0
+                ? "e.g. I want to switch into a data analyst role within a year"
+                : latestBriefId
+                  ? "Tell me what to change…"
+                  : "Type your answer…"
+            }
+            className="min-w-0 flex-1 bg-transparent px-2 py-1 outline-none"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={busy || !input.trim()}
+            className="rounded-lg bg-foreground px-4 py-1.5 text-sm text-background disabled:opacity-40"
+          >
+            Send
+          </button>
+        </form>
+      )}
+
+      {traces.length > 0 && <TracePanel traces={traces} onStartOver={startOver} />}
+      <div ref={bottomRef} />
+    </div>
+  );
+}
+
+function BriefCard({
+  brief,
+  active,
+  confirmed,
+  onConfirm,
+}: {
+  brief: GoalBrief;
+  active: boolean;
+  confirmed: boolean;
+  onConfirm: () => void;
+}) {
+  const domain = DOMAINS.find((d) => d.id === brief.domain);
+  const rows: [string, string | null][] = [
+    ["Why", brief.motivation],
+    ["Success looks like", brief.successLooksLike],
+    ["Deadline", brief.deadline],
+    ["Starting point", brief.startingPoint],
+    [
+      "Time",
+      `${brief.weeklyHours} h/week · ${brief.sessionMinutes}-min sessions${
+        brief.preferredTimes ? ` · ${brief.preferredTimes}` : ""
+      }`,
+    ],
+    ["Tried before", brief.pastAttempts],
+    ["Priority", PRIORITY_LABEL[brief.priority]],
+    ["Interests & context", brief.interests.length ? brief.interests.join(", ") : null],
+  ];
+  return (
+    <div className="mt-3 rounded-xl border border-foreground/20 p-4">
+      <div className="text-xs uppercase tracking-wide text-foreground/50">
+        Goal brief · {domain?.label ?? brief.domain}
+      </div>
+      <div className="mt-1 text-lg font-medium">{brief.restatedGoal}</div>
+      <div className="mt-1 text-sm text-foreground/60">&ldquo;{brief.goalInTheirWords}&rdquo;</div>
+      <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
+        {rows
+          .filter(([, v]) => v)
+          .map(([k, v]) => (
+            <div key={k} className="contents">
+              <dt className="text-foreground/50">{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+      </dl>
+      {active && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            onClick={onConfirm}
+            className="rounded-lg bg-foreground px-4 py-2 text-sm text-background"
+          >
+            Looks right. Build my plan
+          </button>
+          <span className="text-sm text-foreground/50">Or tell me what to change below.</span>
+        </div>
+      )}
+      {confirmed && <div className="mt-4 text-sm text-foreground/60">✓ Confirmed</div>}
+    </div>
+  );
+}
+
+function RoadmapView({ roadmap, trace }: { roadmap: Roadmap; trace: CallTrace }) {
+  return (
+    <section className="rounded-xl border border-foreground/20 p-5">
+      <div className="text-xs uppercase tracking-wide text-foreground/50">Your roadmap</div>
+      <h2 className="mt-1 text-xl font-semibold">{roadmap.title}</h2>
+      <p className="mt-2 text-foreground/80">{roadmap.summary}</p>
+      <div className="mt-3 flex flex-wrap gap-4 text-sm text-foreground/60">
+        <span>About {roadmap.estimatedWeeks} weeks</span>
+        <span>{roadmap.weeklyHours} h/week</span>
+        <span>{roadmap.milestones.length} milestones</span>
+      </div>
+
+      <div className="mt-5 rounded-lg bg-foreground/5 p-4">
+        <div className="text-xs uppercase tracking-wide text-foreground/50">
+          Recommended next step
+        </div>
+        <div className="mt-1 font-medium">
+          {roadmap.firstSession.title} · {roadmap.firstSession.minutes} min
+        </div>
+        <p className="mt-1 text-sm">{roadmap.firstSession.whatYouWillDo}</p>
+        <p className="mt-1 text-sm text-foreground/60">You&apos;ll come away with: {roadmap.firstSession.outcome}</p>
+      </div>
+
+      <ol className="mt-5 flex flex-col gap-4">
+        {roadmap.milestones.map((ms, i) => (
+          <li key={i} className="border-l-2 border-foreground/15 pl-4">
+            <div className="font-medium">
+              {i + 1}. {ms.title}{" "}
+              <span className="text-sm font-normal text-foreground/50">· {ms.weeks} wk</span>
+            </div>
+            <div className="text-sm text-foreground/70">{ms.whyItMatters}</div>
+            <div className="mt-1 text-sm text-foreground/60">{ms.topics.join(" · ")}</div>
+            <div className="mt-1 text-sm">Win: {ms.visibleWin}</div>
+          </li>
+        ))}
+      </ol>
+
+      {roadmap.skippedAsKnown.length > 0 && (
+        <div className="mt-5 text-sm">
+          <span className="text-foreground/50">Skipped: already known: </span>
+          {roadmap.skippedAsKnown.join(", ")}
+        </div>
+      )}
+      {roadmap.assumptions.length > 0 && (
+        <div className="mt-3 text-sm">
+          <div className="text-foreground/50">Assumptions to check</div>
+          <ul className="mt-1 list-disc pl-5">
+            {roadmap.assumptions.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <TraceChip trace={trace} />
+    </section>
+  );
+}
+
+function TraceChip({ trace }: { trace: CallTrace }) {
+  return (
+    <div className="mt-2 font-mono text-[11px] text-foreground/40">{formatTrace(trace)}</div>
+  );
+}
+
+function TracePanel({ traces, onStartOver }: { traces: CallTrace[]; onStartOver: () => void }) {
+  const total = traces.reduce((sum, t) => sum + (t.costUsd ?? 0), 0);
+  return (
+    <details className="rounded-lg border border-foreground/10 p-3 text-sm">
+      <summary className="cursor-pointer text-foreground/60">
+        Router trace: {traces.length} AI call{traces.length === 1 ? "" : "s"} · ${total.toFixed(4)}
+      </summary>
+      <table className="mt-3 w-full font-mono text-[11px]">
+        <thead className="text-left text-foreground/50">
+          <tr>
+            <th className="pr-3 font-normal">task</th>
+            <th className="pr-3 font-normal">model</th>
+            <th className="pr-3 font-normal">tier</th>
+            <th className="pr-3 font-normal">tokens in/out</th>
+            <th className="pr-3 font-normal">cost</th>
+            <th className="font-normal">time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {traces.map((t, i) => (
+            <tr key={i}>
+              <td className="pr-3">{t.task}</td>
+              <td className="pr-3">
+                {t.model}
+                {t.failedOver.length > 0 && ` (after ${t.failedOver.join(", ")})`}
+              </td>
+              <td className="pr-3">{t.tier}</td>
+              <td className="pr-3">
+                {t.inputTokens ?? "?"}/{t.outputTokens ?? "?"}
+              </td>
+              <td className="pr-3">{t.costUsd != null ? `$${t.costUsd.toFixed(4)}` : "?"}</td>
+              <td>{t.latencyMs != null ? `${(t.latencyMs / 1000).toFixed(1)}s` : "?"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button onClick={onStartOver} className="mt-3 text-foreground/60 underline">
+        Start over
+      </button>
+    </details>
+  );
+}
+
+function formatTrace(t: CallTrace): string {
+  const parts = [`${t.model} · ${t.tier}`];
+  if (t.inputTokens != null) parts.push(`${t.inputTokens} in / ${t.outputTokens ?? 0} out`);
+  if (t.costUsd != null) parts.push(`$${t.costUsd.toFixed(4)}`);
+  if (t.latencyMs != null) parts.push(`${(t.latencyMs / 1000).toFixed(1)}s`);
+  return parts.join(" · ");
+}
+
+function findLatestBriefPartId(messages: DiscoveryMessage[]): string | null {
+  for (let m = messages.length - 1; m >= 0; m--) {
+    const parts = messages[m]!.parts;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i]!.type === "tool-propose_goal_brief") return `${messages[m]!.id}:${i}`;
+    }
+  }
+  return null;
+}
+
+function collectTraces(messages: DiscoveryMessage[], planTrace?: CallTrace): CallTrace[] {
+  const traces = messages
+    .filter((m) => m.role === "assistant" && m.metadata?.latencyMs != null)
+    .map((m) => m.metadata!);
+  return planTrace ? [...traces, planTrace] : traces;
+}
