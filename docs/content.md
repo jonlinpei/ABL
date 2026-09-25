@@ -9,7 +9,7 @@ This file answers PRD Open Questions 5 (launch subject areas) and 7 (where conte
 | Area | Decision |
 |---|---|
 | Content model | **Hybrid, entirely in the app.** Each subject area has a reviewed skill map. Lessons are written by AI and grounded in a source library we store. The core of each lesson is cached and shared across learners; only a thin layer is personalized. No external links on the main learning path. |
-| Launch subject areas | (1) California real estate salesperson exam and Bay Area residential real estate, (2) data analytics, (3) AI at work. |
+| Launch subject areas | (1) California real estate salesperson exam and Bay Area residential real estate, (2) data analytics, (3) AI at work. Goal discovery accepts any goal; only reviewed skill maps and source libraries are limited to these areas. |
 | Review | **AI reviewer agents do the ongoing review. People review by exception.** A person approves each skill-map version, handles escalations, and checks a random sample to keep the AI reviewers honest. |
 | Observability | Everything that is generated, reviewed, approved or served can be traced from what a learner sees back to its sources, prompts, models, reviewers and human decisions. |
 | Region | English, US-focused in v1. Real estate is specific to California; data analytics and AI at work are not tied to a region. |

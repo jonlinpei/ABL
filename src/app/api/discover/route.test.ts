@@ -39,6 +39,7 @@ vi.mock("@/lib/ai/providers", () => ({
   toLanguageModel: () => ({}),
 }));
 vi.mock("@/lib/ai/usage-events", () => ({
+  ABORTED: "aborted",
   captureAiGeneration: (...args: unknown[]) => captureAiGeneration(...args),
 }));
 

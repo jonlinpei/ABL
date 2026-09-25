@@ -13,6 +13,8 @@ import { z } from "zod";
 
 import { GoalBriefSchema } from "../../../src/lib/goals/schema.ts";
 
+import { hasValue } from "./checks.mjs";
+
 const SKILL_DIR = path.resolve(import.meta.dirname, "..");
 const WORKSPACE = path.resolve(SKILL_DIR, "..", "goal-clarification-workspace");
 const JUDGE_MODEL = "claude-opus-5-5";
@@ -107,13 +109,6 @@ function truthErrors(brief, truth = {}) {
     if (!ok) wrong.push({ field, detail: `${field} = ${JSON.stringify(v)}, expected ${JSON.stringify(t)}` });
   }
   return wrong;
-}
-
-/** Treats "none", "nothing tried yet" and the like as no value, as a reader would. */
-function hasValue(v) {
-  if (v == null) return false;
-  const text = String(v).trim();
-  return text !== "" && !/^(none|nothing|n\/a|first time|no\b|hasn't|has not|never)/i.test(text);
 }
 
 function subjectMatches(r, pattern) {

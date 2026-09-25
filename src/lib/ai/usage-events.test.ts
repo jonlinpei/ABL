@@ -1,3 +1,4 @@
+import { APICallError } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CallTrace } from "./trace";
@@ -7,7 +8,7 @@ vi.mock("@/lib/posthog-server", () => ({
   captureServerEvent: (...args: unknown[]) => captureServerEvent(...args),
 }));
 
-const { captureAiGeneration } = await import("./usage-events");
+const { ABORTED, captureAiGeneration } = await import("./usage-events");
 
 function trace(overrides: Partial<CallTrace> = {}): CallTrace {
   return {
@@ -99,32 +100,42 @@ describe("captureAiGeneration", () => {
     expect(missing.$ai_latency).toBeUndefined();
   });
 
-  it("marks failed calls with the Error message", async () => {
+  it("marks failed calls with the error type, not its message", async () => {
     await captureAiGeneration(
       "u",
       trace({ inputTokens: undefined, outputTokens: undefined, costUsd: undefined }),
-      new Error("rate limited"),
+      new TypeError("Incorrect API key provided: sk-proj-****abcd"),
     );
     const { props } = captured();
     expect(props.$ai_is_error).toBe(true);
-    expect(props.$ai_error).toBe("rate limited");
+    expect(props.$ai_error).toBe("TypeError");
+    expect(JSON.stringify(props)).not.toContain("sk-proj");
     expect(props.$ai_input_tokens).toBeUndefined();
   });
 
-  it("stringifies non-Error failures", async () => {
-    await captureAiGeneration("u", trace(), "socket hang up");
-    await captureAiGeneration("u", trace(), { code: 529 });
-    const [str, obj] = captureServerEvent.mock.calls.map((c) => c[2]);
-    expect(str.$ai_is_error).toBe(true);
-    expect(str.$ai_error).toBe("socket hang up");
-    expect(obj.$ai_error).toBe("[object Object]");
+  it("adds the HTTP status for provider API errors", async () => {
+    const apiError = new APICallError({
+      message: "Overloaded: learner said 'my diagnosis is…'",
+      url: "https://api.example.com",
+      requestBodyValues: {},
+      statusCode: 529,
+    });
+    await captureAiGeneration("u", trace(), apiError);
+    const { props } = captured();
+    expect(props.$ai_error).toBe("AI_APICallError 529");
+    expect(JSON.stringify(props)).not.toContain("diagnosis");
   });
 
-  it("treats a null error as an error (only undefined means success)", async () => {
+  it("keeps the aborted marker and describes non-Error failures by type only", async () => {
+    await captureAiGeneration("u", trace(), ABORTED);
+    await captureAiGeneration("u", trace(), "socket hang up");
     await captureAiGeneration("u", trace(), null);
-    const { props } = captured();
-    expect(props.$ai_is_error).toBe(true);
-    expect(props.$ai_error).toBe("null");
+    const [aborted, str, nul] = captureServerEvent.mock.calls.map((c) => c[2]);
+    expect(aborted.$ai_error).toBe("aborted");
+    expect(str.$ai_is_error).toBe(true);
+    expect(str.$ai_error).toBe("non-Error (string)");
+    expect(nul.$ai_is_error).toBe(true);
+    expect(nul.$ai_error).toBe("non-Error (null)");
   });
 
   it("never throws when capture rejects, and logs instead", async () => {

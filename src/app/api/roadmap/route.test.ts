@@ -150,4 +150,14 @@ describe("POST /api/roadmap usage capture", () => {
     expect(generateText).not.toHaveBeenCalled();
     expect(captureAiGeneration).not.toHaveBeenCalled();
   });
+
+  it("rejects oversized or malformed bodies without calling a model", async () => {
+    const big = { ...brief, motivation: "x".repeat(20_000) };
+    expect((await POST(request({ brief: big }))).status).toBe(413);
+
+    const malformed = new Request("http://test/api/roadmap", { method: "POST", body: "{not json" });
+    expect((await POST(malformed)).status).toBe(400);
+
+    expect(generateText).not.toHaveBeenCalled();
+  });
 });

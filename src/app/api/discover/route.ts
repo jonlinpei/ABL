@@ -13,7 +13,7 @@ import { after } from "next/server";
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
 import { finishTrace, startTrace, sumUsage, type CallTrace, type TokenUsage } from "@/lib/ai/trace";
-import { captureAiGeneration } from "@/lib/ai/usage-events";
+import { ABORTED, captureAiGeneration } from "@/lib/ai/usage-events";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   after(() => {
     if (finished) return captureAiGeneration(userId, finished, streamError, traceId);
     const partial = finishTrace(trace, routed.model, abortedUsage, startedAt);
-    return captureAiGeneration(userId, partial, streamError ?? "aborted", traceId);
+    return captureAiGeneration(userId, partial, streamError ?? ABORTED, traceId);
   });
 
   const result = streamText({

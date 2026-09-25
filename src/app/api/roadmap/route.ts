@@ -9,8 +9,14 @@ import { captureAiGeneration } from "@/lib/ai/usage-events";
 import { ROADMAP_SYSTEM_PROMPT, roadmapPrompt } from "@/lib/goals/prompts";
 import { GoalBriefSchema, RoadmapSchema, type Roadmap } from "@/lib/goals/schema";
 
+// No UI calls this yet: it waits for the post-assessment step, which will
+// send the confirmed brief. Keep it guarded because it runs deep-tier models.
+
 // Deep-tier planning can take a while.
 export const maxDuration = 300;
+
+/** A real brief is a few KB; anything larger is not one. */
+const MAX_BODY_BYTES = 16 * 1024;
 
 export interface RoadmapResponse {
   roadmap: Roadmap;
@@ -21,7 +27,16 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.text();
+  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
+    return Response.json({ error: "Request too large" }, { status: 413 });
+  }
+  let body: { brief?: unknown } | undefined;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = undefined;
+  }
   const parsed = GoalBriefSchema.safeParse(body?.brief);
   if (!parsed.success) {
     return Response.json({ error: "Invalid goal brief", issues: parsed.error.issues }, { status: 400 });
