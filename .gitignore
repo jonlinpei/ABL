@@ -38,3 +38,4 @@ next-env.d.ts
 
 # Skill eval runs (generated)
 skills/*-workspace/
+.gstack/
