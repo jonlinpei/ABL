@@ -1,9 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { generateText, Output } from "ai";
+import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
 import { finishTrace, startTrace, type CallTrace } from "@/lib/ai/trace";
+import { captureAiGeneration } from "@/lib/ai/usage-events";
 import { ROADMAP_SYSTEM_PROMPT, roadmapPrompt } from "@/lib/goals/prompts";
 import { GoalBriefSchema, RoadmapSchema, type Roadmap } from "@/lib/goals/schema";
 
@@ -49,13 +51,14 @@ export async function POST(req: Request) {
         prompt: roadmapPrompt(brief, today),
         output: Output.object({ schema: RoadmapSchema }),
       });
-      const response: RoadmapResponse = {
-        roadmap: result.output,
-        trace: finishTrace(trace, routed.model, result.totalUsage, startedAt),
-      };
+      const finished = finishTrace(trace, routed.model, result.totalUsage, startedAt);
+      after(() => captureAiGeneration(userId, finished));
+      const response: RoadmapResponse = { roadmap: result.output, trace: finished };
       return Response.json(response);
     } catch (err) {
       console.error(`[roadmap_generate] ${routed.model.id} failed`, err);
+      const failed = { ...trace, latencyMs: Date.now() - startedAt };
+      after(() => captureAiGeneration(userId, failed, err));
       failedOver.push(routed.model.id);
     }
   }

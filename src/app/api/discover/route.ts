@@ -8,10 +8,12 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
+import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
 import { finishTrace, startTrace, type CallTrace } from "@/lib/ai/trace";
+import { captureAiGeneration } from "@/lib/ai/usage-events";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
@@ -56,6 +58,16 @@ export async function POST(req: Request) {
   const trace = startTrace("goal_discover", routed);
   const startedAt = Date.now();
   const today = new Date().toISOString().slice(0, 10);
+  let finished: CallTrace | undefined;
+  let streamError: unknown;
+
+  // Runs once the stream has closed, so the finish trace (or error) is set.
+  after(() => {
+    if (finished) return captureAiGeneration(userId, finished);
+    if (streamError !== undefined) {
+      return captureAiGeneration(userId, { ...trace, latencyMs: Date.now() - startedAt }, streamError);
+    }
+  });
 
   const result = streamText({
     model: toLanguageModel(routed),
@@ -72,10 +84,12 @@ export async function POST(req: Request) {
       messageMetadata: ({ part }) => {
         if (part.type === "start") return trace;
         if (part.type === "finish") {
-          return finishTrace(trace, routed.model, part.totalUsage, startedAt);
+          finished = finishTrace(trace, routed.model, part.totalUsage, startedAt);
+          return finished;
         }
       },
       onError: (error) => {
+        streamError = error;
         console.error("[goal_discover]", error);
         return error instanceof Error ? error.message : "The tutor hit an error.";
       },
