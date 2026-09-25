@@ -8,10 +8,12 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
+import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
-import { finishTrace, startTrace, type CallTrace } from "@/lib/ai/trace";
+import { finishTrace, startTrace, sumUsage, type CallTrace, type TokenUsage } from "@/lib/ai/trace";
+import { ABORTED, captureAiGeneration } from "@/lib/ai/usage-events";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
@@ -36,7 +38,13 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const { messages }: { messages: DiscoveryMessage[] } = await req.json();
+  const { id: chatId, messages }: { id?: unknown; messages: DiscoveryMessage[] } =
+    await req.json();
+  // One PostHog trace per conversation. The client sends the chat id, so bound it.
+  const traceId =
+    typeof chatId === "string" && chatId.length > 0 && chatId.length <= 100
+      ? chatId
+      : crypto.randomUUID();
 
   let resolution;
   try {
@@ -56,6 +64,17 @@ export async function POST(req: Request) {
   const trace = startTrace("goal_discover", routed);
   const startedAt = Date.now();
   const today = new Date().toISOString().slice(0, 10);
+  let finished: CallTrace | undefined;
+  let streamError: unknown;
+  let abortedUsage: TokenUsage | undefined;
+
+  // Runs once the response has closed. Every call is recorded: finished,
+  // failed, or cut off by the client (with the usage of any finished steps).
+  after(() => {
+    if (finished) return captureAiGeneration(userId, finished, streamError, traceId);
+    const partial = finishTrace(trace, routed.model, abortedUsage, startedAt);
+    return captureAiGeneration(userId, partial, streamError ?? ABORTED, traceId);
+  });
 
   const result = streamText({
     model: toLanguageModel(routed),
@@ -63,6 +82,11 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: hasToolCall("propose_goal_brief"),
+    // Stop generating (and paying) when the client disconnects.
+    abortSignal: req.signal,
+    onAbort: ({ steps }) => {
+      abortedUsage = sumUsage(steps.map((step) => step.usage));
+    },
   });
 
   return createUIMessageStreamResponse({
@@ -72,10 +96,12 @@ export async function POST(req: Request) {
       messageMetadata: ({ part }) => {
         if (part.type === "start") return trace;
         if (part.type === "finish") {
-          return finishTrace(trace, routed.model, part.totalUsage, startedAt);
+          finished = finishTrace(trace, routed.model, part.totalUsage, startedAt);
+          return finished;
         }
       },
       onError: (error) => {
+        streamError = error;
         console.error("[goal_discover]", error);
         return error instanceof Error ? error.message : "The tutor hit an error.";
       },

@@ -13,6 +13,8 @@ import { z } from "zod";
 
 import { GoalBriefSchema } from "../../../src/lib/goals/schema.ts";
 
+import { hasValue } from "./checks.mjs";
+
 const SKILL_DIR = path.resolve(import.meta.dirname, "..");
 const WORKSPACE = path.resolve(SKILL_DIR, "..", "goal-clarification-workspace");
 const JUDGE_MODEL = "claude-opus-5-5";
@@ -25,16 +27,20 @@ const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 /** Questions in a tutor message, ignoring anything inside a brief. */
 const countQuestions = (text) => (text.match(/\?/g) ?? []).length;
 
+/** Passes when the first brief came by tutor turn `n`. */
+const briefWithin = (n) => (r) => [
+  r.briefTurn != null && r.briefTurn <= n,
+  r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
+];
+
 const CODE_CHECKS = {
   max_two_questions: (r) => {
     const counts = r.log.filter((l) => l.role === "tutor").map((l) => countQuestions(l.text));
     const max = Math.max(0, ...counts);
     return [max <= 2, `Question marks per tutor message: [${counts.join(", ")}]`];
   },
-  brief_within_6: (r) => [
-    r.briefTurn != null && r.briefTurn <= 6,
-    r.briefTurn != null ? `First brief at tutor turn ${r.briefTurn}` : "No brief proposed",
-  ],
+  brief_within_6: briefWithin(6),
+  brief_within_4: briefWithin(4),
   brief_valid: (r) => {
     if (!r.finalBrief) return [false, "No brief proposed"];
     const p = GoalBriefSchema.safeParse(r.finalBrief);
@@ -45,10 +51,36 @@ const CODE_CHECKS = {
     ];
   },
   no_brief: (r) => [r.briefs.length === 0 && !(r.invalidBriefs?.length), `Briefs proposed: ${r.briefs.length}`],
-  domain_data_analytics: (r) => domainIs(r, "data_analytics"),
-  domain_ai_at_work: (r) => domainIs(r, "ai_at_work"),
-  domain_real_estate: (r) => domainIs(r, "real_estate"),
+  subject_data: (r) => subjectMatches(r, /data|analy|sql/i),
+  subject_piano: (r) => subjectMatches(r, /piano/i),
+  subject_ai: (r) => subjectMatches(r, /\bAI\b|copilot|artificial intelligence/i),
+  subject_spanish: (r) => subjectMatches(r, /spanish/i),
+  subject_bookkeeping: (r) => subjectMatches(r, /bookkeep|quickbooks|accounting/i),
+  first_brief_accurate: (r, ev) => {
+    const wrong = truthErrors(r.briefs[0], ev.truth);
+    if (!wrong) return [false, "No brief proposed"];
+    return [wrong.length === 0, wrong.length ? `Wrong: ${wrong.map((w) => w.detail).join("; ")}` : "All match"];
+  },
+  no_unflagged_errors: (r, ev) => {
+    const wrong = truthErrors(r.briefs[0], ev.truth);
+    if (!wrong) return [false, "No brief proposed"];
+    const unflagged = wrong.filter((w) => !r.briefs[0].inferred?.includes(w.field));
+    return [
+      unflagged.length === 0,
+      wrong.length
+        ? `Wrong: ${wrong.map((w) => w.detail).join("; ")}. Inferred: ${JSON.stringify(r.briefs[0].inferred)}`
+        : "No wrong values",
+    ];
+  },
+  subject_real_estate: (r) => subjectMatches(r, /real estate|salesperson/i),
+  subject_security: (r) => subjectMatches(r, /security|penetration|pen ?test|hacking/i),
   hours_3: (r) => field(r, "weeklyHours", (v) => v === 3),
+  hours_4: (r) => field(r, "weeklyHours", (v) => v === 4),
+  keyboard_recorded: (r) => {
+    if (!r.finalBrief) return [false, "No brief proposed"];
+    const hit = JSON.stringify(r.finalBrief).match(/[^"]*keyboard[^"]*/i);
+    return [!!hit, hit ? `Found: "${hit[0]}"` : "No mention of a keyboard in the brief"];
+  },
   past_attempts_recorded: (r) => field(r, "pastAttempts", (v) => !!v && v.trim().length > 0),
   session_20: (r) => field(r, "sessionMinutes", (v) => v <= 20),
   copilot_policy: (r) => {
@@ -63,8 +95,25 @@ const CODE_CHECKS = {
     field(r, "startingPoint", (v) => /course|principles|practice|elective/i.test(v ?? "")),
 };
 
-function domainIs(r, domain) {
-  return field(r, "domain", (v) => v === domain);
+/** Fields of `brief` that contradict the persona's `truth`, or null if there's no brief. */
+function truthErrors(brief, truth = {}) {
+  if (!brief) return null;
+  const wrong = [];
+  for (const [field, t] of Object.entries(truth)) {
+    const v = brief[field];
+    const ok =
+      "present" in t
+        ? t.present === hasValue(v)
+        : (t.eq === undefined || v === t.eq) &&
+          (t.min === undefined || v >= t.min) &&
+          (t.max === undefined || v <= t.max);
+    if (!ok) wrong.push({ field, detail: `${field} = ${JSON.stringify(v)}, expected ${JSON.stringify(t)}` });
+  }
+  return wrong;
+}
+
+function subjectMatches(r, pattern) {
+  return field(r, "subject", (v) => pattern.test(v ?? ""));
 }
 
 function field(r, name, ok) {
@@ -83,8 +132,26 @@ const JudgeSchema = z.object({
   ),
 });
 
+/**
+ * Judge with one retry. A judge that returns nothing (e.g. a refusal on a
+ * harmful-goal transcript) fails those assertions visibly instead of
+ * crashing the whole grading run.
+ */
 async function judge(conversation, assertions) {
   if (assertions.length === 0) return [];
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await judgeOnce(conversation, assertions);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  const reason = lastError instanceof Error ? lastError.name : String(lastError);
+  return assertions.map((a) => ({ text: a.text, passed: false, evidence: `Judge failed: ${reason}` }));
+}
+
+async function judgeOnce(conversation, assertions) {
   const { output } = await generateText({
     model: anthropic(JUDGE_MODEL),
     instructions:
@@ -123,7 +190,7 @@ async function gradeRun(ev, runDir) {
   const codeResults = ev.assertions
     .filter((a) => a.kind === "code")
     .map((a) => {
-      const [passed, evidence] = CODE_CHECKS[a.id](r);
+      const [passed, evidence] = CODE_CHECKS[a.id](r, ev);
       return { text: a.text, passed, evidence };
     });
   const judgeResults = await judge(conversation, ev.assertions.filter((a) => a.kind === "judge"));

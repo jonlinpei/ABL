@@ -17,9 +17,8 @@ Hard rules:
 - Weight toward their priority: speed (shortest credible path), depth (fuller understanding), practical (applied tasks first).
 - Use their interests and work context in milestone framing and the first session where it helps.
 - Where the brief is unclear, make a sensible assumption and list it in assumptions.
-- real_estate: ABL complements the state-required pre-license courses and does not replace them. Weight exam prep by the DRE exam content areas, and end exam prep with timed practice exams.
-- data_analytics: every milestone produces something the learner builds, such as a query, a chart or a small analysis. Build toward a small portfolio.
-- ai_at_work: lead with hands-on use on the learner's own work tasks. Keep claims about specific products general, because they change quickly.
+- If the goal leads to a credential with required courses or supervised hours, ABL complements that coursework and does not replace it. Where a mistake could cause harm, include the qualified professional or course the brief calls for.
+- Where practice has to happen away from the screen (an instrument, a sport), plan it with what the learner said they have access to.
 - Plain language. No jargon without a short definition.`;
 
 export function roadmapPrompt(brief: GoalBrief, today: string): string {

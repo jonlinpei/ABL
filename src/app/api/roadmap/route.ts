@@ -1,14 +1,22 @@
 import { auth } from "@clerk/nextjs/server";
-import { generateText, Output } from "ai";
+import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
 import { finishTrace, startTrace, type CallTrace } from "@/lib/ai/trace";
+import { captureAiGeneration } from "@/lib/ai/usage-events";
 import { ROADMAP_SYSTEM_PROMPT, roadmapPrompt } from "@/lib/goals/prompts";
 import { GoalBriefSchema, RoadmapSchema, type Roadmap } from "@/lib/goals/schema";
 
+// No UI calls this yet: it waits for the post-assessment step, which will
+// send the confirmed brief. Keep it guarded because it runs deep-tier models.
+
 // Deep-tier planning can take a while.
 export const maxDuration = 300;
+
+/** A real brief is a few KB; anything larger is not one. */
+const MAX_BODY_BYTES = 16 * 1024;
 
 export interface RoadmapResponse {
   roadmap: Roadmap;
@@ -19,7 +27,16 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.text();
+  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
+    return Response.json({ error: "Request too large" }, { status: 413 });
+  }
+  let body: { brief?: unknown } | undefined;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = undefined;
+  }
   const parsed = GoalBriefSchema.safeParse(body?.brief);
   if (!parsed.success) {
     return Response.json({ error: "Invalid goal brief", issues: parsed.error.issues }, { status: 400 });
@@ -37,6 +54,8 @@ export async function POST(req: Request) {
   const { primary, fallbacks } = resolveModel("roadmap_generate", { allowedProviders: providers });
   const today = new Date().toISOString().slice(0, 10);
   const failedOver: string[] = [];
+  // One PostHog trace for this request, so failovers group together.
+  const traceId = crypto.randomUUID();
 
   // Try the primary model, then each fallback, as the router ordered them.
   for (const routed of [primary, ...fallbacks]) {
@@ -49,13 +68,16 @@ export async function POST(req: Request) {
         prompt: roadmapPrompt(brief, today),
         output: Output.object({ schema: RoadmapSchema }),
       });
-      const response: RoadmapResponse = {
-        roadmap: result.output,
-        trace: finishTrace(trace, routed.model, result.totalUsage, startedAt),
-      };
+      const finished = finishTrace(trace, routed.model, result.totalUsage, startedAt);
+      after(() => captureAiGeneration(userId, finished, undefined, traceId));
+      const response: RoadmapResponse = { roadmap: result.output, trace: finished };
       return Response.json(response);
     } catch (err) {
       console.error(`[roadmap_generate] ${routed.model.id} failed`, err);
+      // A response that fails schema parsing was still generated and billed.
+      const usage = NoObjectGeneratedError.isInstance(err) ? err.usage : undefined;
+      const failed = finishTrace(trace, routed.model, usage, startedAt);
+      after(() => captureAiGeneration(userId, failed, err, traceId));
       failedOver.push(routed.model.id);
     }
   }
