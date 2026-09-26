@@ -14,6 +14,7 @@ import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
 import { finishTrace, startTrace, sumUsage, type CallTrace, type TokenUsage } from "@/lib/ai/trace";
 import { ABORTED, captureAiGeneration } from "@/lib/ai/usage-events";
+import { invalidAttachments } from "@/lib/goals/attachments";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
@@ -46,6 +47,9 @@ export async function POST(req: Request) {
       ? chatId
       : crypto.randomUUID();
 
+  const attachmentError = invalidAttachments(messages);
+  if (attachmentError) return Response.json({ error: attachmentError }, { status: 400 });
+
   let resolution;
   try {
     // Demo: route only to providers that have a platform key configured.
@@ -76,10 +80,16 @@ export async function POST(req: Request) {
     return captureAiGeneration(userId, partial, streamError ?? ABORTED, traceId);
   });
 
+  const modelMessages = await convertToModelMessages(messages);
+  // A resume is resent on every turn. A cache breakpoint on the newest message
+  // lets the next turn read the whole prefix, resume included, from cache.
+  const last = modelMessages.at(-1);
+  if (last) last.providerOptions = { anthropic: { cacheControl: { type: "ephemeral" } } };
+
   const result = streamText({
     model: toLanguageModel(routed),
     instructions: `${DISCOVERY_SYSTEM_PROMPT}\n\nToday is ${today}.`,
-    messages: await convertToModelMessages(messages),
+    messages: modelMessages,
     tools,
     stopWhen: hasToolCall("propose_goal_brief"),
     // Stop generating (and paying) when the client disconnects.

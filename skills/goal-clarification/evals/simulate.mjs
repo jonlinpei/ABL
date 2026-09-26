@@ -97,13 +97,37 @@ async function runConversation(ev, instructions) {
     tutorMessages.push({ role: "user", content: text });
     learnerMessages.push({ role: "assistant", content: text });
   };
-  say(ev.opening);
+  if (ev.attachment) {
+    // Sent the way the app sends an uploaded resume: text plus an inline PDF.
+    const name = path.basename(ev.attachment);
+    log.push({ role: "learner", text: `${ev.opening}\n\n[Attached: ${name}]` });
+    tutorMessages.push({
+      role: "user",
+      content: [
+        { type: "text", text: ev.opening },
+        {
+          type: "file",
+          data: readFileSync(path.join(SKILL_DIR, "evals", ev.attachment)),
+          mediaType: "application/pdf",
+          filename: name,
+        },
+      ],
+    });
+    learnerMessages.push({ role: "assistant", content: `${ev.opening}\n\n[You attached your resume: ${name}]` });
+  } else {
+    say(ev.opening);
+  }
 
   for (let turn = 1; turn <= MAX_TUTOR_TURNS; turn++) {
     const r = await generateText({
       model: anthropic(TUTOR_MODEL),
       instructions,
-      messages: tutorMessages,
+      // Same cache breakpoint as the app route, so a resume isn't billed in full every turn.
+      messages: tutorMessages.map((m, i) =>
+        i === tutorMessages.length - 1
+          ? { ...m, providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } }
+          : m,
+      ),
       tools,
       stopWhen: hasToolCall("propose_goal_brief"),
     });
@@ -192,10 +216,19 @@ How to reply:
 
 function renderBrief(b) {
   const g = (...fields) => (fields.some((f) => b.inferred?.includes(f)) ? " (my guess)" : "");
+  const side = (k) => b[k];
+  const changing = b.changes.length ? b.changes.join(", ") : "nothing (growing in current career)";
   return [
-    `Goal brief: ${b.subject}`,
+    `Career brief: ${b.headline}`,
     `Goal: ${b.restatedGoal}`,
     `In your words: "${b.goalInTheirWords}"`,
+    `Role now: ${side("current").role}: ${side("current").work}${g("current.role", "current.work")}`,
+    `Role going to: ${side("target").role}: ${side("target").work}${g("target.role", "target.work")}`,
+    `Market now: ${side("current").market}${g("current.market")} | going to: ${side("target").market}${g("target.market")}`,
+    `Industry now: ${side("current").industry}${g("current.industry")} | going to: ${side("target").industry}${g("target.industry")}`,
+    `Changing: ${changing}`,
+    `Experience: ${b.current.experience}${g("current.experience")}`,
+    `What carries over: ${b.current.strengths.join(", ") || "None listed"}`,
     `Why: ${b.motivation}${g("motivation")}`,
     `Success looks like: ${b.successLooksLike}${g("successLooksLike")}`,
     `Deadline: ${b.deadline ?? "None set"}${g("deadline")}`,
@@ -203,7 +236,6 @@ function renderBrief(b) {
     `Time: ${b.weeklyHours} h/week, ${b.sessionMinutes}-min sessions${b.preferredTimes ? `, ${b.preferredTimes}` : ""}${g("weeklyHours", "sessionMinutes", "preferredTimes")}`,
     `Tried before: ${b.pastAttempts ?? "First time"}${g("pastAttempts")}`,
     `Priority: ${b.priority}${g("priority")}`,
-    `Interests & context: ${b.interests.length ? b.interests.join(", ") : "None yet"}`,
   ].join("\n");
 }
 

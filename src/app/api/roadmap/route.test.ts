@@ -2,6 +2,7 @@ import { NoObjectGeneratedError } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GoalBrief } from "@/lib/goals/schema";
+import { sampleBrief } from "@/lib/goals/test-fixtures";
 
 const auth = vi.fn();
 const generateText = vi.fn();
@@ -28,22 +29,7 @@ vi.mock("@/lib/ai/usage-events", () => ({
 
 const { POST } = await import("./route");
 
-const brief: GoalBrief = {
-  subject: "Japanese",
-  goalInTheirWords: "Hold a basic conversation before my trip",
-  restatedGoal: "Order food and ask directions in Japanese by June.",
-  motivation: "Trip to Osaka.",
-  successLooksLike: "Order a meal without English.",
-  deadline: "2027-06-01",
-  startingPoint: "Knows hiragana.",
-  weeklyHours: 3,
-  sessionMinutes: 20,
-  preferredTimes: null,
-  pastAttempts: null,
-  priority: "practical",
-  interests: [],
-  inferred: ["weeklyHours"],
-};
+const brief = sampleBrief;
 
 const request = (body: unknown) =>
   new Request("http://test/api/roadmap", { method: "POST", body: JSON.stringify(body) });
@@ -142,9 +128,9 @@ describe("POST /api/roadmap usage capture", () => {
     auth.mockResolvedValueOnce({ userId: null });
     expect((await POST(request({ brief }))).status).toBe(401);
 
-    const noSubject: Partial<GoalBrief> = { ...brief };
-    delete noSubject.subject;
-    expect((await POST(request({ brief: noSubject }))).status).toBe(400);
+    const noHeadline: Partial<GoalBrief> = { ...brief };
+    delete noHeadline.headline;
+    expect((await POST(request({ brief: noHeadline }))).status).toBe(400);
 
     await runAfter();
     expect(generateText).not.toHaveBeenCalled();

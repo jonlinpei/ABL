@@ -1,7 +1,7 @@
 // Pure helpers for grade.mjs, kept separate so they can be unit-tested.
 
 const NO_VALUE_CLAUSE =
-  /^(none|nothing|n\/a|no|not|nope|never|first time|hasn't|has not|haven't|have not|this is (my|the) first)\b/i;
+  /^(none|nothing|n\/a|no|not|nope|never|first (real |actual |serious )?(time|attempt|try)|hasn't|has not|haven't|have not|this is (my|the|their|his|her) first)\b/i;
 const CLAUSE_BREAK = /[,;]|\s+[—–-]\s+|\s+(?:but|though|although|except|however)\s+/i;
 
 /**

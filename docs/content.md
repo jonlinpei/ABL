@@ -51,36 +51,61 @@ Real estate and AI at work are the founder's own goals, so the founder is the fi
 
 ## Goal discovery (the first step)
 
-Before any assessment or plan, the tutor finds out **what the learner wants, and why**, and agrees the goal with them. Everything after this depends on it:
+ABL is focused on **career growth**: people switching careers, and people building skills for the career they have. Discovery uses a three-part framework:
 
-- the assessment tests what matters for this goal;
+1. **Where they are now:** the work they do today and the experience they bring.
+2. **Where they want to go:** the work they want to be doing.
+3. **How to get there:** the roadmap, learning plan and action plan. This comes after discovery and is built on its brief.
+
+Before any assessment or plan, the tutor works out the first two parts and agrees them with the learner. Everything after this depends on it:
+
+- the assessment tests what matters for this move;
 - the plan is built toward it;
 - personalization uses its context;
 - the Plan reviewer checks the plan against it.
 
 A plan built on a misunderstood goal wastes the learner's scarce time, the exact failure ABL exists to prevent.
 
+### Describing a career move
+
+Both ends of the move are described in three dimensions, and the brief records which of them change:
+
+| Dimension | What it means | Example change |
+|---|---|---|
+| **Role** | The job done: responsibilities and work, not just the title, since titles vary between companies | Teacher to instructional designer |
+| **Market** | Geography and customer type | Mexico City to Toronto; small businesses to enterprise |
+| **Industry** | The sector | Payments to climate tech |
+
+A new sector counts as an industry change only, unless the geography or kind of customer also changes. Changing one dimension is the most direct move; changing two or three is a bigger leap, and the tutor says so kindly and may suggest a bridge step. No change means growing in the current career, which is also in scope.
+
+### Where the picture of their work comes from
+
+Learners start in whichever way is easiest: upload a resume (PDF), share their LinkedIn profile (pasted text, or the PDF from LinkedIn's "Save to PDF"), or describe their work in conversation. ABL doesn't fetch LinkedIn URLs, since LinkedIn blocks automated access. The tutor reads the document for the work done, plays back a short summary, and doesn't ask for anything it already answers. Contact details stay out of the conversation and the brief.
+
+Attachments are PDF only, up to 3 MB each and 5 MB per conversation. They go to the AI provider to read during the conversation and aren't stored by ABL.
+
 ### What discovery captures
 
-The result is a structured **goal brief**:
+The result is a structured **career brief**:
 
 | Field | Examples |
 |---|---|
-| Goal, in their words and restated | "Pass the CA salesperson exam", restated as a checkable outcome |
-| Why: the motivation | Career change, side income, buying a home, a boss's request |
-| What success looks like | A passed exam; filing their own return confidently; saving 5 hours a week at work |
-| Deadline or key dates | Exam date, filing deadline, a performance review |
-| Starting point, as they describe it | Pre-license courses done? Written SQL before? Uses ChatGPT daily? |
-| Constraints | Weekly hours, preferred session length and time of day, energy |
+| Now: role and work, market, industry, experience | "Marketing ops coordinator: campaign reporting and CRM clean-up · Bay Area B2B software · 6 years" |
+| What carries over | Transferable strengths from their current work |
+| Where they're going: role and work, market, industry | "Data analyst: answers business questions with SQL and dashboards" |
+| What's changing | Role, market and/or industry, or none |
+| Goal, in their words and restated | "Land a junior data analyst role at a B2B software company by next September" |
+| Why: the motivation | Better pay, a layoff, burnout, a relocation, a boss's request |
+| What success looks like | An offer in the target role; a portfolio; a promotion |
+| Deadline or key dates | Job search start, end of a contract, a move date, a review |
+| Starting point toward the target | Courses taken, side projects, overlap in their current job |
+| Constraints | Weekly hours, preferred session length and time of day |
 | Past attempts | What they tried and why it stopped, which feeds the Keep-Going Engine |
 | Speed, depth or practical results | PRD story 10 |
-| Interests and work context | Material for analogies and examples (F5) |
 
-### Any goal is welcome
+Fields the tutor inferred rather than heard are flagged on the card as "my guess" so the learner checks them. The goal-clarification skill ([skills/goal-clarification/SKILL.md](../skills/goal-clarification/SKILL.md)) holds the full playbook, including credentials, non-career goals (a kind "not yet"), requests to do a task rather than learn it, and harmful goals.
 
-Discovery accepts any learning goal, not only the launch subject areas. The tutor asks only what's missing and infers the rest. Which questions matter depends on the goal: an exam date and required courses for a credential, role and employer policy for a work goal, equipment for a skill practiced away from the screen. The goal-clarification skill ([skills/goal-clarification/SKILL.md](../skills/goal-clarification/SKILL.md)) holds the full playbook, including how to handle credentials, goals where a mistake could cause harm, and requests to do a task rather than learn it.
-
-`[NEEDS INPUT]` What happens after discovery for goals outside the launch areas, which have no reviewed skill map or source library yet, is still open.
+`[NEEDS INPUT]` What happens after discovery for career moves outside the launch subject areas, which have no reviewed skill map or source library yet, is still open.
 
 ### How it works
 
