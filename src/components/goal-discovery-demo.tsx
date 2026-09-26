@@ -1,12 +1,18 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type FileUIPart } from "ai";
 import { useEffect, useRef, useState } from "react";
 
 import type { DiscoveryMessage } from "@/app/api/discover/route";
 import type { CallTrace } from "@/lib/ai/trace";
-import { GoalBriefSchema, type GoalBrief, type InferableField } from "@/lib/goals/schema";
+import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
+import {
+  GoalBriefSchema,
+  type CareerDimension,
+  type GoalBrief,
+  type InferableField,
+} from "@/lib/goals/schema";
 
 const PRIORITY_LABEL: Record<GoalBrief["priority"], string> = {
   speed: "Speed",
@@ -14,22 +20,42 @@ const PRIORITY_LABEL: Record<GoalBrief["priority"], string> = {
   practical: "Practical results",
 };
 
-/** Starting points to click. Any goal works; these only show the range. */
-const EXAMPLE_GOALS = [
-  "I want to pass the California real estate salesperson exam",
-  "I'd like to move into a data analyst role within a year",
-  "I want to play a few jazz standards on piano",
-  "I want to hold a basic conversation in Japanese before my trip",
+const DIMENSION_LABEL: Record<CareerDimension, string> = {
+  role: "Role",
+  market: "Market",
+  industry: "Industry",
+};
+
+const SOURCE_LABEL: Record<GoalBrief["profileSources"][number], string> = {
+  resume: "your resume",
+  linkedin: "your LinkedIn profile",
+  conversation: "our conversation",
+};
+
+/** Starting points to click. They only show the range of career moves. */
+const EXAMPLE_MOVES = [
+  "I'm a teacher and want to move into instructional design",
+  "I want to switch from marketing ops into data analytics",
+  "I'm a nurse and curious about working in health tech",
+  "I'm moving from Mexico City to Toronto and want to keep working in sales",
 ];
+
+type Mode = "resume" | "linkedin" | "talk" | null;
 
 /**
  * Demo of the first learner-facing flow (docs/content.md, "Goal discovery"):
- * a discovery conversation that ends in a goal brief the learner confirms.
- * Every AI call shows what the router chose and what it cost.
+ * a discovery conversation, often starting from a resume or LinkedIn profile,
+ * that ends in a career brief the learner confirms. Every AI call shows what
+ * the router chose and what it cost.
  */
 export function GoalDiscoveryDemo() {
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<Mode>(null);
+  const [pending, setPending] = useState<{ part: FileUIPart; size: number }[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<GoalBrief | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
   const { messages, sendMessage, status, error, clearError, setMessages } =
     useChat<DiscoveryMessage>({
@@ -47,54 +73,131 @@ export function GoalDiscoveryDemo() {
 
   function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    if ((!trimmed && pending.length === 0) || busy) return;
     clearError();
-    sendMessage({ text: trimmed });
+    sendMessage({
+      text: trimmed || "Here's my background.",
+      files: pending.map((p) => p.part),
+    });
     setInput("");
+    setPending([]);
+    setAttachError(null);
+  }
+
+  async function attach(files: FileList | null) {
+    const file = files?.[0];
+    if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+    const already = attachedBytes(messages) + pending.reduce((n, p) => n + p.size, 0);
+    const problem = attachmentProblem(file, already);
+    setAttachError(problem);
+    if (problem) return;
+    const url = await readAsDataUrl(file);
+    setPending((p) => [
+      ...p,
+      { part: { type: "file", mediaType: file.type, filename: file.name, url }, size: file.size },
+    ]);
+    textRef.current?.focus();
+  }
+
+  function choose(next: Mode) {
+    setMode(next);
+    if (next === "resume") fileRef.current?.click();
+    else textRef.current?.focus();
   }
 
   function startOver() {
     setMessages([]);
     setConfirmed(null);
+    setPending([]);
+    setMode(null);
+    setAttachError(null);
     clearError();
   }
+
+  const placeholder =
+    messages.length > 0
+      ? latestBriefId
+        ? "Tell me what to change…"
+        : "Type your answer…"
+      : mode === "linkedin"
+        ? "Paste your LinkedIn profile text here…"
+        : mode === "resume"
+          ? "Anything to add? Where do you want to go next?"
+          : "e.g. I've been a high school science teacher for 8 years and want to get into UX research";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       {messages.length === 0 && (
         <section>
-          <h1 className="text-2xl font-semibold tracking-tight">What do you want to learn?</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Where are you now, and where do you want to go?
+          </h1>
           <p className="mt-2 text-foreground/70">
-            Describe your goal in your own words, whatever it is. I&apos;ll ask a few questions so
-            your plan fits your goal and your week.
+            ABL builds a learning plan for your next career move. Start with where you are today.
+            Choose whichever is easiest.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {EXAMPLE_GOALS.map((goal) => (
-              <button
-                key={goal}
-                onClick={() => send(goal)}
-                disabled={busy}
-                className="rounded-full border border-foreground/15 px-3 py-1.5 text-left text-sm text-foreground/70 transition hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
-              >
-                {goal}
-              </button>
-            ))}
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <StartOption
+              title="Upload your resume"
+              detail="A PDF, up to 3 MB"
+              selected={mode === "resume"}
+              onClick={() => choose("resume")}
+            />
+            <StartOption
+              title="Share your LinkedIn"
+              detail="Paste your profile, or attach its PDF"
+              selected={mode === "linkedin"}
+              onClick={() => choose("linkedin")}
+            />
+            <StartOption
+              title="Just tell me"
+              detail="Describe your work in your own words"
+              selected={mode === "talk"}
+              onClick={() => choose("talk")}
+            />
           </div>
+          {mode === "linkedin" && (
+            <p className="mt-3 text-sm text-foreground/60">
+              On your LinkedIn profile, choose <span className="font-medium">More → Save to PDF</span>{" "}
+              and attach the file, or copy your About and Experience sections and paste them below.
+            </p>
+          )}
+          {mode === null && (
+            <div className="mt-6 flex flex-wrap gap-2">
+              {EXAMPLE_MOVES.map((move) => (
+                <button
+                  key={move}
+                  onClick={() => send(move)}
+                  disabled={busy}
+                  className="rounded-full border border-foreground/15 px-3 py-1.5 text-left text-sm text-foreground/70 transition hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
+                >
+                  {move}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
       {messages.length > 0 && (
         <section className="flex flex-col gap-4">
           {messages.map((m) => (
-            <div key={m.id} className={m.role === "user" ? "self-end max-w-[85%]" : "max-w-full"}>
+            <div
+              key={m.id}
+              className={m.role === "user" ? "flex max-w-[85%] flex-col items-end gap-2 self-end" : "max-w-full"}
+            >
               {m.parts.map((part, i) => {
+                if (part.type === "file") {
+                  return <FileChip key={i} name={part.filename ?? "Attachment"} />;
+                }
                 if (part.type === "text" && part.text.trim()) {
                   return (
                     <div
                       key={i}
                       className={
                         m.role === "user"
-                          ? "whitespace-pre-wrap rounded-2xl bg-foreground px-4 py-2 text-background"
+                          ? "max-h-72 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-foreground px-4 py-2 text-background"
                           : "whitespace-pre-wrap leading-relaxed"
                       }
                     >
@@ -107,7 +210,7 @@ export function GoalDiscoveryDemo() {
                   if (part.state !== "input-available" && part.state !== "output-available") {
                     return (
                       <div key={i} className="text-sm text-foreground/50">
-                        Writing up your goal brief…
+                        Writing up your career brief…
                       </div>
                     );
                   }
@@ -149,39 +252,124 @@ export function GoalDiscoveryDemo() {
       )}
 
       {!confirmed && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(input);
-          }}
-          className="sticky bottom-4 flex gap-2 rounded-xl border border-foreground/15 bg-background p-2 shadow-sm focus-within:border-foreground/40 focus-within:ring-2 focus-within:ring-foreground/20"
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.currentTarget.value)}
-            placeholder={
-              messages.length === 0
-                ? "e.g. I want to switch into a data analyst role within a year"
-                : latestBriefId
-                  ? "Tell me what to change…"
-                  : "Type your answer…"
-            }
-            className="min-w-0 flex-1 bg-transparent px-2 py-1 outline-none"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            className="rounded-lg bg-foreground px-4 py-1.5 text-sm text-background disabled:opacity-40"
+        <div className="sticky bottom-4 flex flex-col gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(input);
+            }}
+            className="flex flex-col gap-2 rounded-xl border border-foreground/15 bg-background p-2 shadow-sm focus-within:border-foreground/40 focus-within:ring-2 focus-within:ring-foreground/20"
           >
-            Send
-          </button>
-        </form>
+            {pending.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-1 pt-1">
+                {pending.map((p, i) => (
+                  <FileChip
+                    key={i}
+                    name={p.part.filename ?? "Attachment"}
+                    onRemove={() => setPending((all) => all.filter((_, j) => j !== i))}
+                  />
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => attach(e.currentTarget.files)}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy}
+                aria-label="Attach a PDF resume or LinkedIn profile"
+                title="Attach a PDF resume or LinkedIn profile"
+                className="rounded-lg p-1.5 text-foreground/50 transition hover:bg-foreground/5 hover:text-foreground disabled:opacity-40"
+              >
+                <PaperclipIcon />
+              </button>
+              <textarea
+                ref={textRef}
+                value={input}
+                rows={1}
+                onChange={(e) => setInput(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    send(input);
+                  }
+                }}
+                placeholder={placeholder}
+                className="field-sizing-content max-h-48 min-h-8 min-w-0 flex-1 resize-none bg-transparent px-1 py-1 outline-none"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={busy || (!input.trim() && pending.length === 0)}
+                className="rounded-lg bg-foreground px-4 py-1.5 text-sm text-background disabled:opacity-40"
+              >
+                Send
+              </button>
+            </div>
+          </form>
+          {attachError && <p className="px-1 text-sm text-red-600 dark:text-red-400">{attachError}</p>}
+          {(pending.length > 0 || mode === "resume" || mode === "linkedin") && (
+            <p className="px-1 text-xs text-foreground/50">
+              Your file goes to our AI provider to read during this conversation. ABL doesn&apos;t
+              store it. You can remove your phone number or address first if you&apos;d like.
+            </p>
+          )}
+        </div>
       )}
 
       {traces.length > 0 && <TracePanel traces={traces} onStartOver={startOver} />}
       <div ref={bottomRef} />
     </div>
+  );
+}
+
+function StartOption({
+  title,
+  detail,
+  selected,
+  onClick,
+}: {
+  title: string;
+  detail: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`rounded-lg border p-4 text-left transition hover:border-foreground/40 ${
+        selected ? "border-foreground/60 bg-foreground/5" : "border-foreground/15"
+      }`}
+    >
+      <div className="font-medium">{title}</div>
+      <div className="mt-1 text-sm text-foreground/60">{detail}</div>
+    </button>
+  );
+}
+
+function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-foreground/15 bg-background px-2.5 py-1 text-sm text-foreground/80">
+      <DocumentIcon />
+      <span className="truncate">{name}</span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${name}`}
+          className="ml-1 text-foreground/40 hover:text-foreground"
+        >
+          ×
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -196,7 +384,14 @@ function BriefCard({
   confirmed: boolean;
   onConfirm: () => void;
 }) {
+  const guessed = (fields: InferableField[]) => fields.some((f) => brief.inferred.includes(f));
   const rows: [string, string | null, InferableField[]][] = [
+    ["Experience", brief.current.experience, ["current.experience"]],
+    [
+      "What carries over",
+      brief.current.strengths.length ? brief.current.strengths.join(", ") : null,
+      [],
+    ],
     ["Why", brief.motivation, ["motivation"]],
     ["Success looks like", brief.successLooksLike, ["successLooksLike"]],
     ["Deadline", brief.deadline ?? "None set", ["deadline"]],
@@ -210,16 +405,51 @@ function BriefCard({
     ],
     ["Tried before", brief.pastAttempts ?? "First time", ["pastAttempts"]],
     ["Priority", PRIORITY_LABEL[brief.priority], ["priority"]],
-    ["Interests & context", brief.interests.length ? brief.interests.join(", ") : null, []],
+    ["Interests", brief.interests.length ? brief.interests.join(", ") : null, []],
   ];
-  const guessed = (fields: InferableField[]) => fields.some((f) => brief.inferred.includes(f));
+  const sources = brief.profileSources.map((s) => SOURCE_LABEL[s]);
   return (
     <div className="mt-3 rounded-xl border border-foreground/20 p-4">
       <div className="text-xs uppercase tracking-wide text-foreground/50">
-        Goal brief · {brief.subject}
+        Career brief · {brief.headline}
       </div>
       <div className="mt-1 text-lg font-medium">{brief.restatedGoal}</div>
       <div className="mt-1 text-sm text-foreground/60">&ldquo;{brief.goalInTheirWords}&rdquo;</div>
+
+      <div className="mt-4 rounded-lg border border-foreground/10">
+        <div className="hidden grid-cols-[6rem_1fr_1fr] gap-x-4 border-b border-foreground/10 px-3 py-2 text-xs uppercase tracking-wide text-foreground/50 sm:grid">
+          <span />
+          <span>Now</span>
+          <span>Where you&apos;re going</span>
+        </div>
+        {(["role", "market", "industry"] as const).map((dim) => {
+          const changing = brief.changes.includes(dim);
+          return (
+            <div
+              key={dim}
+              className="grid gap-x-4 gap-y-1 border-b border-foreground/10 px-3 py-2.5 text-sm last:border-b-0 sm:grid-cols-[6rem_1fr_1fr]"
+            >
+              <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-1">
+                <span className="text-foreground/50">{DIMENSION_LABEL[dim]}</span>
+                {changing && (
+                  <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-xs text-sky-700 dark:text-sky-300">
+                    changing
+                  </span>
+                )}
+              </div>
+              <Position brief={brief} side="current" dim={dim} guessed={guessed} />
+              <Position brief={brief} side="target" dim={dim} guessed={guessed} unchanged={!changing} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 text-xs text-foreground/50">
+        {brief.changes.length === 0
+          ? "Growing in your current career"
+          : `Changing ${listJoin(brief.changes.map((d) => DIMENSION_LABEL[d].toLowerCase()))}`}
+        {sources.length > 0 && ` · Based on ${listJoin(sources)}`}
+      </div>
+
       <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
         {rows
           .filter(([, v]) => v)
@@ -228,11 +458,7 @@ function BriefCard({
               <dt className="text-foreground/50">{k}</dt>
               <dd>
                 {v}
-                {guessed(fields) && (
-                  <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-300">
-                    my guess
-                  </span>
-                )}
+                {guessed(fields) && <GuessTag />}
               </dd>
             </div>
           ))}
@@ -246,13 +472,88 @@ function BriefCard({
             Looks right
           </button>
           <span className="text-sm text-foreground/50">
-            Or tell me what to change below{brief.inferred.length > 0 && ", especially anything marked \"my guess\""}.
+            Or tell me what to change below
+            {brief.inferred.length > 0 && ", especially anything marked \"my guess\""}.
           </span>
         </div>
       )}
       {confirmed && <div className="mt-4 text-sm text-foreground/60">✓ Confirmed</div>}
     </div>
   );
+}
+
+/** One cell of the now / where-you're-going comparison. */
+function Position({
+  brief,
+  side,
+  dim,
+  guessed,
+  unchanged = false,
+}: {
+  brief: GoalBrief;
+  side: "current" | "target";
+  dim: CareerDimension;
+  guessed: (fields: InferableField[]) => boolean;
+  /** Mutes the target cell when this dimension isn't changing. */
+  unchanged?: boolean;
+}) {
+  const pos = brief[side];
+  const label = side === "current" ? "Now" : "Going to";
+  const fields: InferableField[] =
+    dim === "role" ? [`${side}.role`, `${side}.work`] : [`${side}.${dim}`];
+  return (
+    <div className={unchanged ? "text-foreground/60" : undefined}>
+      <span className="mr-1.5 text-xs text-foreground/40 sm:hidden">{label}:</span>
+      {dim === "role" ? (
+        <>
+          <span className="font-medium">{pos.role}</span>
+          <span className="block text-foreground/60">{pos.work}</span>
+        </>
+      ) : (
+        pos[dim]
+      )}
+      {guessed(fields) && <GuessTag />}
+    </div>
+  );
+}
+
+function GuessTag() {
+  return (
+    <span className="ml-2 inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+      my guess
+    </span>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
+  );
+}
+
+function listJoin(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function TraceChip({ trace }: { trace: CallTrace }) {

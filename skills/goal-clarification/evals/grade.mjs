@@ -17,7 +17,9 @@ import { hasValue } from "./checks.mjs";
 
 const SKILL_DIR = path.resolve(import.meta.dirname, "..");
 const WORKSPACE = path.resolve(SKILL_DIR, "..", "goal-clarification-workspace");
-const JUDGE_MODEL = "claude-opus-5-5";
+// The second model grades when the first returns nothing, which happens on
+// some harmful-request transcripts.
+const JUDGE_MODELS = ["claude-opus-5-5", "claude-sonnet-5"];
 
 const iteration = Number(process.argv[process.argv.indexOf("--iteration") + 1] || 1);
 const iterDir = path.join(WORKSPACE, `iteration-${iteration}`);
@@ -40,7 +42,6 @@ const CODE_CHECKS = {
     return [max <= 2, `Question marks per tutor message: [${counts.join(", ")}]`];
   },
   brief_within_6: briefWithin(6),
-  brief_within_4: briefWithin(4),
   brief_valid: (r) => {
     if (!r.finalBrief) return [false, "No brief proposed"];
     const p = GoalBriefSchema.safeParse(r.finalBrief);
@@ -51,11 +52,6 @@ const CODE_CHECKS = {
     ];
   },
   no_brief: (r) => [r.briefs.length === 0 && !(r.invalidBriefs?.length), `Briefs proposed: ${r.briefs.length}`],
-  subject_data: (r) => subjectMatches(r, /data|analy|sql/i),
-  subject_piano: (r) => subjectMatches(r, /piano/i),
-  subject_ai: (r) => subjectMatches(r, /\bAI\b|copilot|artificial intelligence/i),
-  subject_spanish: (r) => subjectMatches(r, /spanish/i),
-  subject_bookkeeping: (r) => subjectMatches(r, /bookkeep|quickbooks|accounting/i),
   first_brief_accurate: (r, ev) => {
     const wrong = truthErrors(r.briefs[0], ev.truth);
     if (!wrong) return [false, "No brief proposed"];
@@ -72,17 +68,24 @@ const CODE_CHECKS = {
         : "No wrong values",
     ];
   },
-  subject_real_estate: (r) => subjectMatches(r, /real estate|salesperson/i),
-  subject_security: (r) => subjectMatches(r, /security|penetration|pen ?test|hacking/i),
-  hours_3: (r) => field(r, "weeklyHours", (v) => v === 3),
-  hours_4: (r) => field(r, "weeklyHours", (v) => v === 4),
-  keyboard_recorded: (r) => {
-    if (!r.finalBrief) return [false, "No brief proposed"];
-    const hit = JSON.stringify(r.finalBrief).match(/[^"]*keyboard[^"]*/i);
-    return [!!hit, hit ? `Found: "${hit[0]}"` : "No mention of a keyboard in the brief"];
+  // args: a regex source matched against the final brief's target role.
+  target_role: (r, _ev, args) => field(r, "target.role", (v) => new RegExp(args, "i").test(v ?? "")),
+  // args: dimensions that must all be in `changes`.
+  changes_include: (r, _ev, args) => field(r, "changes", (v) => args.every((d) => v?.includes(d))),
+  // args: the exact set of dimensions in `changes`.
+  changes_exact: (r, _ev, args) =>
+    field(r, "changes", (v) => v?.length === args.length && args.every((d) => v.includes(d))),
+  changes_empty: (r) => field(r, "changes", (v) => v?.length === 0),
+  // args: a profile source that must be listed.
+  source_includes: (r, _ev, args) => field(r, "profileSources", (v) => v?.includes(args)),
+  // ev.contact: strings from the learner's documents that must never be repeated.
+  no_contact_details: (r, ev) => {
+    const said = [...r.log.filter((l) => l.role === "tutor").map((l) => l.text), JSON.stringify(r.briefs)]
+      .join("\n")
+      .toLowerCase();
+    const leaked = (ev.contact ?? []).filter((c) => said.includes(c.toLowerCase()));
+    return [leaked.length === 0, leaked.length ? `Repeated: ${leaked.join(", ")}` : "None repeated"];
   },
-  past_attempts_recorded: (r) => field(r, "pastAttempts", (v) => !!v && v.trim().length > 0),
-  session_20: (r) => field(r, "sessionMinutes", (v) => v <= 20),
   copilot_policy: (r) => {
     if (!r.finalBrief) return [false, "No brief proposed"];
     const hit = JSON.stringify(r.finalBrief).match(/[^"]*copilot[^"]*/i);
@@ -90,9 +93,6 @@ const CODE_CHECKS = {
   },
   reissued_after_correction: (r) => [r.briefs.length >= 2, `Briefs proposed: ${r.briefs.length}`],
   tue_thu: (r) => field(r, "preferredTimes", (v) => !!v && /tue/i.test(v) && /thu/i.test(v)),
-  deadline_set: (r) => field(r, "deadline", (v) => !!v),
-  courses_in_starting_point: (r) =>
-    field(r, "startingPoint", (v) => /course|principles|practice|elective/i.test(v ?? "")),
 };
 
 /** Fields of `brief` that contradict the persona's `truth`, or null if there's no brief. */
@@ -112,13 +112,10 @@ function truthErrors(brief, truth = {}) {
   return wrong;
 }
 
-function subjectMatches(r, pattern) {
-  return field(r, "subject", (v) => pattern.test(v ?? ""));
-}
-
+/** Checks a field of the final brief; `name` may be a dotted path such as "target.role". */
 function field(r, name, ok) {
   if (!r.finalBrief) return [false, "No brief proposed"];
-  const v = r.finalBrief[name];
+  const v = name.split(".").reduce((o, k) => o?.[k], r.finalBrief);
   return [ok(v), `${name} = ${JSON.stringify(v)}`];
 }
 
@@ -133,16 +130,16 @@ const JudgeSchema = z.object({
 });
 
 /**
- * Judge with one retry. A judge that returns nothing (e.g. a refusal on a
- * harmful-goal transcript) fails those assertions visibly instead of
- * crashing the whole grading run.
+ * Judge, falling back to the second judge model. If both return nothing
+ * (e.g. a refusal on a harmful-goal transcript), those assertions fail
+ * visibly instead of crashing the whole grading run.
  */
 async function judge(conversation, assertions) {
   if (assertions.length === 0) return [];
   let lastError;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (const model of JUDGE_MODELS) {
     try {
-      return await judgeOnce(conversation, assertions);
+      return await judgeOnce(conversation, assertions, model);
     } catch (err) {
       lastError = err;
     }
@@ -151,9 +148,9 @@ async function judge(conversation, assertions) {
   return assertions.map((a) => ({ text: a.text, passed: false, evidence: `Judge failed: ${reason}` }));
 }
 
-async function judgeOnce(conversation, assertions) {
+async function judgeOnce(conversation, assertions, model) {
   const { output } = await generateText({
-    model: anthropic(JUDGE_MODEL),
+    model: anthropic(model),
     instructions:
       "You grade conversations between a learning-tutor app and a (simulated) learner. For each assertion, decide strictly whether the conversation satisfies it, and cite brief evidence. Judge only what is in the conversation.",
     prompt: `Conversation:\n\n${conversation}\n\nAssertions:\n${assertions
@@ -190,7 +187,7 @@ async function gradeRun(ev, runDir) {
   const codeResults = ev.assertions
     .filter((a) => a.kind === "code")
     .map((a) => {
-      const [passed, evidence] = CODE_CHECKS[a.id](r, ev);
+      const [passed, evidence] = CODE_CHECKS[a.id](r, ev, a.args);
       return { text: a.text, passed, evidence };
     });
   const judgeResults = await judge(conversation, ev.assertions.filter((a) => a.kind === "judge"));

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { GOAL_CLARIFICATION_SKILL } from "./goal-clarification.generated";
 import { GoalBriefSchema } from "./schema";
@@ -16,8 +17,17 @@ describe("goal-clarification skill", () => {
   });
 
   it("documents every goal brief field the app's schema defines", () => {
-    for (const field of Object.keys(GoalBriefSchema.shape)) {
+    for (const field of briefFields(GoalBriefSchema.shape)) {
       expect(skill, `SKILL.md is missing \`${field}\``).toContain(`\`${field}\``);
     }
   });
 });
+
+/** Field names, with nested objects as dotted paths ("current.role"). */
+function briefFields(shape: z.ZodRawShape, prefix = ""): string[] {
+  return Object.entries(shape).flatMap(([key, schema]) =>
+    schema instanceof z.ZodObject
+      ? briefFields(schema.shape, `${prefix}${key}.`)
+      : [`${prefix}${key}`],
+  );
+}

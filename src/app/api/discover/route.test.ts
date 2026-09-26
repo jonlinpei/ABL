@@ -9,6 +9,7 @@ type StreamOptions = {
 };
 type StreamTextOptions = {
   abortSignal?: AbortSignal;
+  messages: { role: string; providerOptions?: unknown }[];
   onAbort: (event: { steps: { usage: { inputTokens?: number; outputTokens?: number } }[] }) => void;
 };
 let streamOptions: StreamOptions | undefined;
@@ -23,7 +24,8 @@ vi.mock("next/server", () => ({
 // Stub the streaming pipeline so the test can drive the metadata/error hooks.
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
-  convertToModelMessages: async () => [],
+  convertToModelMessages: async (messages: { role: string }[]) =>
+    messages.map((m) => ({ role: m.role, content: [] })),
   streamText: (options: StreamTextOptions) => {
     streamTextOptions = options;
     return { stream: {} };
@@ -150,5 +152,58 @@ describe("POST /api/discover usage capture", () => {
     auth.mockResolvedValueOnce({ userId: null });
     expect((await POST(request())).status).toBe(401);
     expect(afterCallbacks).toHaveLength(0);
+  });
+});
+
+const pdf = (bytes: number) =>
+  `data:application/pdf;base64,${Buffer.alloc(bytes).toString("base64")}`;
+const withFile = (file: Record<string, unknown>, role = "user") => ({
+  messages: [
+    {
+      id: "m1",
+      role,
+      parts: [{ type: "text", text: "Here's my resume." }, { type: "file", ...file }],
+    },
+  ],
+});
+
+describe("POST /api/discover attachments", () => {
+  it("accepts an inline PDF resume", async () => {
+    const res = await POST(
+      request(withFile({ mediaType: "application/pdf", filename: "cv.pdf", url: pdf(1000) })),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects files that aren't inline PDFs within the caps, before calling a model", async () => {
+    const bad = [
+      withFile({ mediaType: "image/png", url: "data:image/png;base64,AAAA" }),
+      withFile({ mediaType: "application/pdf", url: "https://example.com/cv.pdf" }),
+      withFile({ mediaType: "application/pdf", url: pdf(4 * 1024 * 1024) }),
+      withFile({ mediaType: "application/pdf", url: pdf(1000) }, "assistant"),
+    ];
+    for (const body of bad) {
+      const res = await POST(request(body));
+      expect(res.status).toBe(400);
+    }
+    expect(streamTextOptions).toBeUndefined();
+    expect(afterCallbacks).toHaveLength(0);
+  });
+
+  it("puts a cache breakpoint on the newest message so a resume isn't billed in full every turn", async () => {
+    await POST(
+      request({
+        messages: [
+          { id: "m1", role: "user", parts: [{ type: "text", text: "hi" }] },
+          { id: "m2", role: "assistant", parts: [{ type: "text", text: "hello" }] },
+          { id: "m3", role: "user", parts: [{ type: "text", text: "more" }] },
+        ],
+      }),
+    );
+    const sent = streamTextOptions!.messages;
+    expect(sent.at(-1)!.providerOptions).toEqual({
+      anthropic: { cacheControl: { type: "ephemeral" } },
+    });
+    expect(sent.slice(0, -1).every((m) => m.providerOptions === undefined)).toBe(true);
   });
 });

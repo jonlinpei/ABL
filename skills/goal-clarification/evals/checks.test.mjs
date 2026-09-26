@@ -16,6 +16,8 @@ describe("hasValue", () => {
     ["First time learning this", false],
     ["Never tried before", false],
     ["None, first time", false],
+    ["First real attempt at making this switch.", false],
+    ["None - this is their first time preparing for this move.", false],
     ["", false],
     [null, false],
   ])("hasValue(%j) is %s", (value, expected) => {
