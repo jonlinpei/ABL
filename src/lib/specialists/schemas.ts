@@ -118,3 +118,63 @@ export const AssessedSkill = z.object({
   evidence: z.string().describe("What in their answer supports the level, in one sentence."),
 });
 export type AssessedSkill = z.infer<typeof AssessedSkill>;
+
+/** A learning plan built from the assessed gap: how to get there. */
+export const PlanSchema = z.object({
+  title: z.string(),
+  summary: z.string().describe("Two or three sentences on the path and why it fits this learner."),
+  weeklyHours: z.number().describe("Planned hours a week. Must not exceed the learner's."),
+  sessionMinutes: z.number().describe("Planned session length. Must not exceed the learner's."),
+  milestones: z
+    .array(
+      z.object({
+        title: z.string(),
+        weeks: z.number().describe("Weeks this milestone takes at the planned weekly hours."),
+        whyItMatters: z.string().describe("One sentence tying it to the learner's goal."),
+        skills: z
+          .array(
+            z.object({
+              skillId: z.string().describe("A skill id from the gap."),
+              toLevel: z.number().describe("The level this milestone brings the skill to, 1 to 4."),
+            }),
+          )
+          .describe("The gap skills this milestone closes."),
+        topics: z.array(z.string()).describe("What they'll learn, in plain words."),
+        project: z
+          .string()
+          .nullable()
+          .describe("Something they build that employers will see, or null."),
+        visibleWin: z.string().describe("A small, concrete thing they can do at the end."),
+      }),
+    )
+    .describe("3 to 8 milestones, in order."),
+  firstSession: z.object({
+    title: z.string(),
+    minutes: z.number().describe("Must not exceed the learner's session length."),
+    whatYouWillDo: z.string(),
+    outcome: z.string(),
+  }),
+  notCovered: z
+    .array(z.object({ skillId: z.string(), reason: z.string() }))
+    .describe("Gap skills the plan deliberately leaves out, and why."),
+  deadlineFit: z
+    .string()
+    .describe("Whether the plan reaches the goal by the deadline, honestly, in one or two sentences."),
+  assumptions: z.array(z.string()).describe("Assumptions to confirm with the learner."),
+});
+export type Plan = z.infer<typeof PlanSchema>;
+
+/** A reviewer's verdict on a plan. */
+export const PlanReviewSchema = z.object({
+  verdict: z.enum(["approve", "revise"]),
+  issues: z
+    .array(
+      z.object({
+        severity: z.enum(["must_fix", "should_fix"]),
+        issue: z.string(),
+        fix: z.string().describe("What the planner should change."),
+      }),
+    )
+    .describe("Empty when approving."),
+});
+export type PlanReview = z.infer<typeof PlanReviewSchema>;

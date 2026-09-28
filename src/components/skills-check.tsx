@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AssessMessage } from "@/app/api/assess/route";
 import type { LearnerStatus } from "@/app/api/learner/status/route";
-import type { Gap } from "@/lib/specialists/schemas";
+import type { Gap, Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
@@ -28,6 +28,10 @@ const BASIS_LABEL: Record<Gap["items"][number]["basis"], string> = {
 export function SkillsCheck() {
   const [status, setStatus] = useState<LearnerStatus | { stage: "error"; error: string } | null>(null);
   const [started, setStarted] = useState(false);
+  // Bumped to restart polling, e.g. once the skills check is saved.
+  const [pollKey, setPollKey] = useState(0);
+  // Stable, so the chat's "submitted" effect fires it once, not on every render.
+  const restartPolling = useCallback(() => setPollKey((k) => k + 1), []);
   const chat = useChat<AssessMessage>({
     transport: new DefaultChatTransport({ api: "/api/assess" }),
   });
@@ -51,7 +55,8 @@ export function SkillsCheck() {
     async function loop() {
       while (!cancelled) {
         const s = await poll();
-        if (!s || (s.stage !== "building_gap" && s.stage !== "no_brief")) return;
+        // Keep polling while the lifecycle is working: building the gap, then the plan.
+        if (!s || !["building_gap", "no_brief", "planning"].includes(s.stage)) return;
         await new Promise((r) => setTimeout(r, 3000));
       }
     }
@@ -59,7 +64,7 @@ export function SkillsCheck() {
     return () => {
       cancelled = true;
     };
-  }, [poll]);
+  }, [poll, pollKey]);
 
   if (!status || status.stage === "building_gap" || status.stage === "no_brief") {
     return (
@@ -83,7 +88,32 @@ export function SkillsCheck() {
       </Panel>
     );
   }
-  if (status.stage === "gap_ready") return <GapView gap={status.gap} assessed={status.assessed} />;
+  if (status.stage === "planning") {
+    return (
+      <>
+        <Panel>
+          <p className="text-foreground/70">
+            Building your roadmap from your skills check. The planner drafts it and a reviewer checks it
+            against your week and your deadline. This takes a minute or two…
+          </p>
+        </Panel>
+        <GapView gap={status.gap} assessed={status.assessed} />
+      </>
+    );
+  }
+  if (status.stage === "plan_ready") {
+    return (
+      <>
+        <PlanView plan={status.plan} gap={status.gap} />
+        <details className="rounded-xl border border-foreground/15">
+          <summary className="cursor-pointer p-4 text-sm text-foreground/70">Where you stand, skill by skill</summary>
+          <div className="px-4 pb-4">
+            <GapView gap={status.gap} assessed={status.assessed} embedded />
+          </div>
+        </details>
+      </>
+    );
+  }
 
   if (!started) {
     return (
@@ -114,7 +144,7 @@ export function SkillsCheck() {
       </Panel>
     );
   }
-  return <CheckChat chat={chat} onDone={poll} />;
+  return <CheckChat chat={chat} onDone={restartPolling} />;
 }
 
 function CheckChat({
@@ -218,10 +248,11 @@ function CheckChat({
   );
 }
 
-function GapView({ gap, assessed }: { gap: Gap; assessed: boolean }) {
+function GapView({ gap, assessed, embedded = false }: { gap: Gap; assessed: boolean; embedded?: boolean }) {
+  const Wrapper = embedded ? "div" : Panel;
   return (
-    <Panel>
-      <h2 className="text-lg font-medium">Where you stand</h2>
+    <Wrapper>
+      {!embedded && <h2 className="text-lg font-medium">Where you stand</h2>}
       <p className="mt-1 text-sm text-foreground/60">
         {gap.counts.met} of {gap.items.length} skills already at the level your target role needs ·{" "}
         {gap.counts.partial} partly there · {gap.counts.missing} to learn
@@ -255,10 +286,88 @@ function GapView({ gap, assessed }: { gap: Gap; assessed: boolean }) {
           </ul>
         </div>
       )}
-      <p className="mt-4 text-sm text-foreground/60">
-        Your roadmap is built from this next. That step isn&apos;t in this demo yet.
-      </p>
-    </Panel>
+    </Wrapper>
+  );
+}
+
+function PlanView({ plan, gap }: { plan: Plan; gap: Gap }) {
+  const names = new Map(gap.items.map((i) => [i.skillId, i.name]));
+  const weeks = plan.milestones.reduce((n, m) => n + m.weeks, 0);
+  return (
+    <section className="rounded-xl border border-foreground/20 p-5">
+      <div className="text-xs uppercase tracking-wide text-foreground/50">Your roadmap</div>
+      <h2 className="mt-1 text-xl font-semibold">{plan.title}</h2>
+      <p className="mt-2 text-foreground/80">{plan.summary}</p>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/60">
+        <span>About {weeks} weeks</span>
+        <span>{plan.weeklyHours} h/week</span>
+        <span>{plan.sessionMinutes}-min sessions</span>
+        <span>{plan.milestones.length} milestones</span>
+      </div>
+      <p className="mt-2 text-sm text-foreground/70">{plan.deadlineFit}</p>
+
+      <div className="mt-5 rounded-lg bg-foreground/5 p-4">
+        <div className="text-xs uppercase tracking-wide text-foreground/50">Your first session</div>
+        <div className="mt-1 font-medium">
+          {plan.firstSession.title} · {plan.firstSession.minutes} min
+        </div>
+        <p className="mt-1 text-sm">{plan.firstSession.whatYouWillDo}</p>
+        <p className="mt-1 text-sm text-foreground/60">You&apos;ll come away with: {plan.firstSession.outcome}</p>
+      </div>
+
+      <ol className="mt-5 flex flex-col gap-5">
+        {plan.milestones.map((m, i) => (
+          <li key={i} className="border-l-2 border-foreground/15 pl-4">
+            <div className="font-medium">
+              {i + 1}. {m.title} <span className="text-sm font-normal text-foreground/50">· {m.weeks} wk</span>
+            </div>
+            <div className="text-sm text-foreground/70">{m.whyItMatters}</div>
+            {m.skills.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {m.skills.map((s) => (
+                  <span key={s.skillId} className="rounded-full border border-foreground/15 px-2 py-0.5 text-xs text-foreground/70">
+                    {names.get(s.skillId) ?? s.skillId} → {LEVEL_LABEL[s.toLevel] ?? s.toLevel}
+                  </span>
+                ))}
+              </div>
+            )}
+            {m.project && (
+              <div className="mt-1.5 text-sm">
+                <span className="text-foreground/50">You&apos;ll build: </span>
+                {m.project}
+              </div>
+            )}
+            <div className="mt-1 text-sm">
+              <span className="text-foreground/50">Win: </span>
+              {m.visibleWin}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      {plan.notCovered.length > 0 && (
+        <div className="mt-5 text-sm">
+          <div className="text-foreground/50">Left out for now</div>
+          <ul className="mt-1 list-disc pl-5 text-foreground/70">
+            {plan.notCovered.map((n) => (
+              <li key={n.skillId}>
+                {names.get(n.skillId) ?? n.skillId}: {n.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {plan.assumptions.length > 0 && (
+        <div className="mt-3 text-sm">
+          <div className="text-foreground/50">Assumptions to check</div>
+          <ul className="mt-1 list-disc pl-5 text-foreground/70">
+            {plan.assumptions.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 

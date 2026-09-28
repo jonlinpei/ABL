@@ -4,10 +4,13 @@ import { NonRetriableError } from "inngest";
 import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { computeGap } from "@/lib/specialists/gap";
+import { planWithReview } from "@/lib/specialists/planner";
 import { buildProfile } from "@/lib/specialists/profiler";
 import { buildRequirements, targetKey } from "@/lib/specialists/requirements";
 import {
   findRequirements,
+  loadGap,
+  saveFirstPlan,
   saveGap,
   saveProfile,
   saveRequirements,
@@ -69,13 +72,28 @@ export const learnerLifecycle = inngest.createFunction(
           })
         : null;
 
+    // Planner and reviewer, on the gap as it stands now: assessed levels if
+    // the check happened, estimates if it timed out.
+    const currentGap = await step.run("load-current-gap", () => loadGap(briefId));
+    const { plan, review, revised } = await planWithReview({
+      brief,
+      gap: currentGap,
+      userId,
+      today: new Date().toISOString().slice(0, 10),
+      // Step results come back JSON-serialized; plans and reviews are plain JSON.
+      run: (name, fn) => step.run(name, fn) as never,
+    });
+    const planRow = await step.run("save-plan", () => saveFirstPlan(userId, briefId, plan, review));
+
     return {
       briefId,
       requirementsCached: !!cached,
       gapId: gapRow.id,
-      counts: gap.counts,
       skillsToCheck: toCheck,
       assessed: !!assessed,
+      planId: planRow.id,
+      planRevised: revised,
+      openIssues: review.issues.length,
     };
   },
 );

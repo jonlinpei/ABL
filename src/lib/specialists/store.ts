@@ -2,9 +2,9 @@ import { desc, eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
-import type { AssessedSkill, Gap, LearnerProfile, TargetRequirements } from "./schemas";
+import type { AssessedSkill, Gap, LearnerProfile, Plan, PlanReview, TargetRequirements } from "./schemas";
 
-const { assessments, careerBriefs, targetRequirements, learnerProfiles, gaps, learnerEvents } = schema;
+const { assessments, careerBriefs, targetRequirements, learnerProfiles, gaps, learnerEvents, plans } = schema;
 
 /** Cached requirements for a target, if another learner already needed them. */
 export async function findRequirements(targetKey: string) {
@@ -67,7 +67,8 @@ export async function saveGap(userId: string, briefId: string, profileId: string
 }
 
 /**
- * The learner's newest brief and, once the lifecycle has built it, its gap.
+ * The learner's newest brief and, once the lifecycle has built them, its gap
+ * and newest plan.
  * The skills check always works on the newest brief.
  */
 export async function loadLatestBriefAndGap(userId: string) {
@@ -80,7 +81,13 @@ export async function loadLatestBriefAndGap(userId: string) {
     .limit(1);
   if (!brief) return undefined;
   const [gap] = await db.select().from(gaps).where(eq(gaps.briefId, brief.id));
-  return { brief, gap };
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.briefId, brief.id))
+    .orderBy(desc(plans.version))
+    .limit(1);
+  return { brief, gap, plan };
 }
 
 /**
@@ -110,4 +117,40 @@ export async function saveAssessment(
     }),
   ]);
   return { saved: true };
+}
+
+/** The gap for a brief as it stands now, assessed levels included. */
+export async function loadGap(briefId: string): Promise<Gap> {
+  const [row] = await getDb().select({ gap: gaps.gap }).from(gaps).where(eq(gaps.briefId, briefId));
+  if (!row) throw new Error(`No gap for brief ${briefId}`);
+  return row.gap;
+}
+
+/**
+ * Save the first plan for a brief and log `plan_published`, together. A
+ * retried step finds the plan already saved and returns it.
+ */
+export async function saveFirstPlan(
+  userId: string,
+  briefId: string,
+  plan: Plan,
+  review: PlanReview,
+): Promise<{ id: string }> {
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.briefId, briefId))
+    .limit(1);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  await db.batch([
+    db.insert(plans).values({ id, userId, briefId, version: 1, plan, review }),
+    db.insert(learnerEvents).values({
+      userId,
+      type: "plan_published",
+      payload: { briefId, planId: id, version: 1, openIssues: review.issues.length },
+    }),
+  ]);
+  return { id };
 }

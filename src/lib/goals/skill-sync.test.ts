@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { ASSESSOR_SKILL } from "../specialists/assessor.generated";
+import { PLAN_REVIEWER_SKILL } from "../specialists/plan-reviewer.generated";
+import { PLANNER_SKILL } from "../specialists/planner.generated";
 import { PROFILER_SKILL } from "../specialists/profiler.generated";
 import { REQUIREMENTS_ANALYST_SKILL } from "../specialists/requirements-analyst.generated";
 import { GOAL_CLARIFICATION_SKILL } from "./goal-clarification.generated";
@@ -39,6 +41,8 @@ describe("specialist skills", () => {
     ["requirements-analyst", REQUIREMENTS_ANALYST_SKILL],
     ["profiler", PROFILER_SKILL],
     ["assessor", ASSESSOR_SKILL],
+    ["planner", PLANNER_SKILL],
+    ["plan-reviewer", PLAN_REVIEWER_SKILL],
   ])("generated prompt for %s matches its SKILL.md (run `pnpm skills:sync` if this fails)", (name, generated) => {
     expect(generated).toBe(skillBody(name));
   });

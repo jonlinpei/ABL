@@ -1,4 +1,4 @@
-import type { LearnerProfile, TargetRequirements } from "./schemas";
+import type { LearnerProfile, Plan, TargetRequirements } from "./schemas";
 
 /** A small, complete requirements set for tests. */
 export const sampleRequirements: TargetRequirements = {
@@ -23,4 +23,45 @@ export const sampleProfile: LearnerProfile = {
     { skillId: "stakeholder-communication", level: 2, basis: "work_history", evidence: "Presents at monthly reviews." },
   ],
   otherStrengths: ["CRM data hygiene"],
+};
+
+/** A plan that passes every check against sampleRequirements and sampleProfile. */
+export const samplePlan: Plan = {
+  title: "From marketing reports to SQL analysis",
+  summary: "Short early milestones so a busy week doesn't derail you.",
+  weeklyHours: 3,
+  sessionMinutes: 45,
+  milestones: [
+    {
+      title: "Write your first SQL queries on funnel data",
+      weeks: 4,
+      whyItMatters: "SQL is the first thing analyst interviews test.",
+      skills: [{ skillId: "sql-querying", toLevel: 2 }],
+      topics: ["SELECT, WHERE, GROUP BY"],
+      project: null,
+      visibleWin: "Recreate your weekly campaign report in SQL.",
+    },
+    {
+      title: "Joins and window functions",
+      weeks: 5,
+      whyItMatters: "Real questions span several tables.",
+      skills: [{ skillId: "sql-querying", toLevel: 3 }],
+      topics: ["JOIN", "window functions"],
+      project: "A cohort retention analysis",
+      visibleWin: "Answer a retention question end to end.",
+    },
+    {
+      title: "Present an analysis",
+      weeks: 3,
+      whyItMatters: "Hiring managers want to hear you explain findings.",
+      skills: [{ skillId: "stakeholder-communication", toLevel: 3 }],
+      topics: ["one-page write-ups"],
+      project: "A one-page recommendation",
+      visibleWin: "Walk a friend through your analysis in five minutes.",
+    },
+  ],
+  firstSession: { title: "Your first query", minutes: 30, whatYouWillDo: "Query a sample funnel table.", outcome: "One working query." },
+  notCovered: [],
+  deadlineFit: "12 weeks, well before your deadline.",
+  assumptions: [],
 };

@@ -30,6 +30,16 @@ const SKILLS = [
     target: "src/lib/specialists/assessor.generated.ts",
     exportName: "ASSESSOR_SKILL",
   },
+  {
+    source: "skills/planner/SKILL.md",
+    target: "src/lib/specialists/planner.generated.ts",
+    exportName: "PLANNER_SKILL",
+  },
+  {
+    source: "skills/plan-reviewer/SKILL.md",
+    target: "src/lib/specialists/plan-reviewer.generated.ts",
+    exportName: "PLAN_REVIEWER_SKILL",
+  },
 ];
 
 /** SKILL.md minus its YAML frontmatter. */
