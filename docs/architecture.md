@@ -44,11 +44,14 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
 - `assessments`: what the skills check recorded per skill, one per brief version.
 - `plans`: learning plans per brief, versioned, each saved with its final review. Replans will add versions.
+- `sessions`: tutoring sessions on a plan.
+  - Each row records its milestone, the transcript (so a reload resumes the session) and the tutor's end-of-session report.
+  - A partial unique index allows only one active session per plan.
 
 Tables for plans and mastery arrive with the specialists that write them.
 
@@ -163,8 +166,13 @@ Settled defaults:
   - **The reviewer** judges the rest: honesty about the deadline, pacing, order, proof of skill, and the learner's history.
   - **One revision round** runs if either finds a must-fix problem. Anything still open is saved with the plan instead of looping.
   - This replaced the old brief-only `/api/roadmap`.
+- **Tutor** (`skills/tutor`, task `tutor_session`; routes `/api/session/start` and `/api/session`): teaches one session of the current milestone.
+  - **Session shape:** it follows up on last session's homework, states today's goal, teaches in small steps with the learner's own examples, has them practise and checks understanding. It then sets small homework and calls `end_session`.
+  - **The report:** a summary, topics covered, the level shown per skill (rated for the whole skill, not just that session's slice), homework, and whether the milestone's visible win was reached.
+  - **Progress:** the current milestone is the first one no session has completed.
+  - **Caching:** the tutor's instructions stay identical every turn, and the session clock rides on the newest message instead, so long sessions are served from the prompt cache.
 - **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. They're kept out of `pnpm test` because they call models.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, running out of time, and stopping early. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

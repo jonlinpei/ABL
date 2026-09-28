@@ -1,10 +1,27 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
-import type { AssessedSkill, Gap, LearnerProfile, Plan, PlanReview, TargetRequirements } from "./schemas";
+import type {
+  AssessedSkill,
+  Gap,
+  LearnerProfile,
+  Plan,
+  PlanReview,
+  SessionReport,
+  TargetRequirements,
+} from "./schemas";
 
-const { assessments, careerBriefs, targetRequirements, learnerProfiles, gaps, learnerEvents, plans } = schema;
+const {
+  assessments,
+  careerBriefs,
+  targetRequirements,
+  learnerProfiles,
+  gaps,
+  learnerEvents,
+  plans,
+  sessions,
+} = schema;
 
 /** Cached requirements for a target, if another learner already needed them. */
 export async function findRequirements(targetKey: string) {
@@ -153,4 +170,64 @@ export async function saveFirstPlan(
     }),
   ]);
   return { id };
+}
+
+/** A plan's sessions, oldest first: the ended ones are history, an unended one is active. */
+export async function loadSessions(planId: string) {
+  return getDb().select().from(sessions).where(eq(sessions.planId, planId)).orderBy(sessions.startedAt);
+}
+
+/** Start a session on a milestone, or return the one already active for this plan. */
+export async function startSession(userId: string, planId: string, milestoneIndex: number) {
+  const db = getDb();
+  // The partial unique index allows one active session per plan, so a
+  // concurrent start inserts nothing and both callers get the same session.
+  await db.insert(sessions).values({ userId, planId, milestoneIndex }).onConflictDoNothing();
+  const [active] = await db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.planId, planId), isNull(sessions.endedAt)))
+    .limit(1);
+  return active!;
+}
+
+/** Keep the transcript current, so a reload resumes where the learner was. */
+export async function saveSessionMessages(sessionId: string, userId: string, messages: unknown[]) {
+  await getDb()
+    .update(sessions)
+    .set({ messages })
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId), isNull(sessions.endedAt)));
+}
+
+/**
+ * End a session with the tutor's report and log `session_completed`,
+ * together. Ending twice is a no-op.
+ */
+export async function endSession(
+  sessionId: string,
+  userId: string,
+  report: SessionReport,
+): Promise<{ ended: boolean }> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  if (!row || row.endedAt) return { ended: false };
+  await db.batch([
+    db.update(sessions).set({ report, endedAt: new Date() }).where(eq(sessions.id, sessionId)),
+    db.insert(learnerEvents).values({
+      userId,
+      type: "session_completed",
+      payload: {
+        sessionId,
+        planId: row.planId,
+        milestoneIndex: row.milestoneIndex,
+        milestoneComplete: report.milestoneComplete,
+        endedEarly: report.endedEarly,
+        evidence: report.evidence,
+      },
+    }),
+  ]);
+  return { ended: true };
 }

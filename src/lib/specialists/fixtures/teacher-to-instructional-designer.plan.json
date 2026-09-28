@@ -1,0 +1,197 @@
+{
+  "title": "From biology classroom to remote tech instructional designer by June 2027",
+  "summary": "This path turns your curriculum, video and PD experience into a corporate portfolio: a needs analysis, a design document and storyboard, a Rise module, a Storyline branching scenario, a virtual training kit, one real client project and two case studies, all built around tech-company training problems. Your Coursera course stalled once school started, so every task fits one 60-minute weeknight session, early milestones are 2 to 3 weeks and focus on one or two skills, and each ends with something you can show. In a heavy school week, two sessions still count, and the plan has buffer weeks so you never have to double up to catch up.",
+  "weeklyHours": 5,
+  "sessionMinutes": 60,
+  "milestones": [
+    {
+      "title": "Turn a vague training request into a needs analysis and measurable objectives",
+      "weeks": 2,
+      "whyItMatters": "Hiring managers look for designers who start from a business problem, not a lesson plan, and this becomes the opening of your first case study.",
+      "skills": [
+        {
+          "skillId": "training-needs-analysis",
+          "toLevel": 3
+        }
+      ],
+      "topics": [
+        "How corporate needs analysis differs from planning a school unit: business goal, performance gap, and whether training is even the fix",
+        "Writing objectives people can observe and measure, using the ABCD format (audience, behavior, condition, degree)",
+        "A 20-minute practice interview by video call with someone who works at a tech company, to gather needs",
+        "Common kinds of tech-company training: onboarding, software rollouts, sales enablement and compliance"
+      ],
+      "project": "Case study part 1: a needs analysis and objectives for a fictional SaaS (software sold as a subscription) company whose new customer-support hires take too long to learn its ticketing tool",
+      "visibleWin": "A two-page needs analysis with 3 to 5 measurable objectives that you can walk through in an interview."
+    },
+    {
+      "title": "Write a design document for your support-onboarding course",
+      "weeks": 3,
+      "whyItMatters": "Corporate teams expect a design document before any build, and knowing ADDIE and SAM lets you speak their process language in interviews.",
+      "skills": [
+        {
+          "skillId": "instructional-design-models",
+          "toLevel": 3
+        },
+        {
+          "skillId": "storyboarding",
+          "toLevel": 2
+        }
+      ],
+      "topics": [
+        "ADDIE (analyze, design, develop, implement, evaluate) compared with SAM (quick prototype-and-revise cycles), and when tech teams prefer each",
+        "Mapping the backward design you already use as a teacher onto a corporate design document",
+        "Writing a design document: audience, objectives, course structure, assessment strategy and evaluation plan",
+        "Starting a free Asana board to track your own tasks, a habit you'll build on in the client project"
+      ],
+      "project": "A design document for a 10-minute onboarding module and a branching scenario, saved as a PDF for your portfolio",
+      "visibleWin": "A finished design document you could send to a stakeholder for sign-off."
+    },
+    {
+      "title": "Storyboard the module and scenario screen by screen",
+      "weeks": 2,
+      "whyItMatters": "Employers ask for a sample storyboard, and a clear one is what makes the Rise and Storyline builds fast.",
+      "skills": [
+        {
+          "skillId": "storyboarding",
+          "toLevel": 3
+        }
+      ],
+      "topics": [
+        "Storyboard formats corporate teams use (table in Word or Google Docs, or slide-based)",
+        "Writing on-screen text, narration, visuals and interaction notes for each screen",
+        "Mapping a branching scenario as a simple flowchart of choices and consequences",
+        "Getting feedback from one peer and revising"
+      ],
+      "project": "A storyboard for the onboarding module and a branching-scenario flowchart, published as a portfolio PDF",
+      "visibleWin": "A storyboard someone else could build from without asking you questions."
+    },
+    {
+      "title": "Build and publish a microlearning module in Articulate Rise",
+      "weeks": 3,
+      "whyItMatters": "Rise is among the most-listed authoring tools in corporate postings, and a live Review 360 link is often the first thing a recruiter clicks.",
+      "skills": [
+        {
+          "skillId": "elearning-authoring-articulate",
+          "toLevel": 2
+        }
+      ],
+      "topics": [
+        "Rise basics: lessons, blocks, knowledge checks and branding (Rise works much like the Canvas and Google Classroom pages you already build)",
+        "Turning your storyboard into short, scannable microlearning (brief, focused lessons)",
+        "Reusing your video skills with a short captioned screen recording of the ticketing tool, and adding alt text (image descriptions for screen readers)",
+        "Sharing a draft through Review 360 and revising from the comments"
+      ],
+      "project": "A Rise microlearning module titled \"Your first week with the ticketing tool\", hosted as a Review 360 link",
+      "visibleWin": "A public link to a finished Rise course you can send to anyone."
+    },
+    {
+      "title": "Build a branching customer-support scenario in Storyline",
+      "weeks": 6,
+      "whyItMatters": "A branching scenario, where the learner's choices change what happens, proves you can handle the harder tool and write realistic workplace decisions.",
+      "skills": [
+        {
+          "skillId": "elearning-authoring-articulate",
+          "toLevel": 3
+        },
+        {
+          "skillId": "instructional-writing",
+          "toLevel": 3
+        }
+      ],
+      "topics": [
+        "Storyline essentials: slides, layers, states, triggers (if-then rules) and variables (values that track choices), learned on a small practice file first",
+        "Building from your storyboard one decision point at a time, one per week",
+        "Writing concise scenario dialogue with realistic consequences and feedback",
+        "Writing assessment questions that test decisions, not recall",
+        "Publishing and sharing the scenario through Review 360"
+      ],
+      "project": "A Storyline branching scenario where a new support agent handles an escalating customer ticket, hosted on Review 360",
+      "visibleWin": "A working scenario with three decision points and different endings based on the learner's choices."
+    },
+    {
+      "title": "Create a virtual training kit for a tech team",
+      "weeks": 4,
+      "whyItMatters": "Employers specifically ask for a facilitator guide and deck for a virtual session, and your monthly PD experience gives you a head start.",
+      "skills": [
+        {
+          "skillId": "virtual-instructor-led-design",
+          "toLevel": 2
+        },
+        {
+          "skillId": "tech-workplace-learning-context",
+          "toLevel": 2
+        }
+      ],
+      "topics": [
+        "How tech companies run training: onboarding, product and software training, sales enablement and compliance, and who asks for each",
+        "Converting a PD session into a 45-minute Zoom or Teams session for engineers and designers",
+        "Writing a facilitator guide with timings, scripts, breakout instructions and backup plans",
+        "Designing slides for a virtual audience and a one-page job aid (a quick-reference sheet people use on the job)",
+        "Using AI tools to draft facilitator scripts and practice examples, then editing them for accuracy and tone"
+      ],
+      "project": "A virtual instructor-led kit on \"Giving useful feedback in code or design reviews\", with facilitator guide, slide deck and one-page job aid",
+      "visibleWin": "A complete kit someone else could use to run the session tomorrow."
+    },
+    {
+      "title": "Run one real project remotely with a real subject matter expert",
+      "weeks": 5,
+      "whyItMatters": "Tech L&D teams hire people who can manage reviews, deadlines and experts without meeting in person, and a real project gives you a true interview story.",
+      "skills": [
+        {
+          "skillId": "sme-collaboration",
+          "toLevel": 3
+        },
+        {
+          "skillId": "learning-project-management",
+          "toLevel": 3
+        }
+      ],
+      "topics": [
+        "Finding a small volunteer project, such as a nonprofit or a friend's startup that needs a short training or onboarding module",
+        "Running a kickoff and interviewing a subject matter expert (SME, the person who knows the content) with prepared questions",
+        "Setting a timeline with review rounds and tracking it in Asana",
+        "Working asynchronously (not at the same time) with Slack or email for updates and Review 360 for feedback",
+        "Handling conflicting feedback, scope creep and slipping deadlines politely"
+      ],
+      "project": "A short real-world Rise module for a volunteer client, with a project timeline, review log and SME quote",
+      "visibleWin": "A client-approved module and a written testimonial from your SME."
+    },
+    {
+      "title": "Launch your portfolio site and write two case studies",
+      "weeks": 3,
+      "whyItMatters": "The portfolio and case studies are what get you interviews, so this packages everything so a recruiter can see it in two minutes.",
+      "skills": [],
+      "topics": [
+        "Writing case studies that follow each project from business problem through needs analysis, objectives, design decisions, build and evaluation plan",
+        "Building a simple portfolio site (Google Sites, Wix or Notion) with your Review 360 links, video series and PDFs",
+        "Rewriting your resume and LinkedIn in corporate terms, for example \"students\" to \"learners\" and \"PD\" to \"training\""
+      ],
+      "project": "A portfolio website with 5 pieces and 2 written case studies: the support-onboarding course and the volunteer client project",
+      "visibleWin": "A single portfolio URL you can put on every application."
+    }
+  ],
+  "firstSession": {
+    "title": "Turn a vague request into three measurable objectives",
+    "minutes": 60,
+    "whatYouWillDo": "Read a short, realistic stakeholder request: \"Our new support hires take six weeks to get comfortable with our ticketing tool, and we need training.\" Spend 20 minutes writing the questions you would ask to find the real performance gap. Spend 30 minutes writing three measurable objectives in ABCD format, for example: \"Given a live customer ticket, a new support agent will categorize and route it correctly within 3 minutes.\" Spend the last 10 minutes saving it as a one-page doc in a folder called Portfolio.",
+    "outcome": "A one-page draft needs analysis with objectives, the first piece of your first case study, finished in one sitting."
+  },
+  "notCovered": [
+    {
+      "skillId": "elearning-standards-scorm-xapi",
+      "reason": "Rarely screened for at entry level; you'll see basic publishing settings in Storyline and can learn troubleshooting once you're on a team with a real LMS."
+    },
+    {
+      "skillId": "accessibility-wcag",
+      "reason": "You'll practice captions and alt text in the Rise build, but a full WCAG check is left for after your first applications go out to keep the timeline realistic; it's a good week-long add-on if you get ahead."
+    }
+  ],
+  "deadlineFit": "The milestones now total 28 weeks, so at 5 hours a week the full portfolio is done around April 11, 2027, or about early May with 3 buffer weeks for report cards, holidays and busy weeks. That leaves May and June for interviews, which is too tight to count on an offer by June if you wait, so start applying in early February once your storyboard, Rise module and Storyline scenario are live (about week 16 plus buffer); if you need more margin, swap the 5-week volunteer project for a mock project with a peer as the SME, which brings the finish forward to about late March.",
+  "assumptions": [
+    "You can pay for Articulate 360, a few hundred dollars or more a year. Start the free 30-day trial at the Rise milestone so it covers building, not setup; you'll need the paid plan from the Storyline milestone on.",
+    "You have a bachelor's degree, so no extra credential is needed before applying.",
+    "You can find one person in tech for a short practice interview in milestone 1 and one volunteer client for milestone 7. If not, milestone 7 becomes a mock project with a peer playing the SME.",
+    "\"Land a role by June 2027\" means an accepted offer by the end of the school year, with a summer start date.",
+    "Five 60-minute weeknight sessions a week are realistic during the school year. If only 3 are realistic most weeks, the timeline moves out by about 3 months and we should replan."
+  ]
+}

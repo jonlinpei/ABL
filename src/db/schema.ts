@@ -9,6 +9,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { sql } from "drizzle-orm";
+
 import type { GoalBrief } from "@/lib/goals/schema";
 import type {
   AssessedSkill,
@@ -16,6 +18,7 @@ import type {
   LearnerProfile,
   Plan,
   PlanReview,
+  SessionReport,
   TargetRequirements,
 } from "@/lib/specialists/schemas";
 
@@ -66,6 +69,7 @@ export const LEARNER_EVENT_TYPES = [
   "gap_ready",
   "assessment_done",
   "plan_published",
+  "session_completed",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
@@ -175,3 +179,33 @@ export const plans = pgTable(
 );
 
 export type PlanRow = typeof plans.$inferSelect;
+
+/**
+ * Tutoring sessions on a plan. One is active (not ended) at a time. The
+ * transcript is kept so a reload or a closed tab doesn't lose the session;
+ * the report is what the tutor recorded when it ended.
+ */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    milestoneIndex: integer("milestone_index").notNull(),
+    messages: jsonb("messages").$type<unknown[]>().notNull().default([]),
+    report: jsonb("report").$type<SessionReport>(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("sessions_user_started").on(t.userId, t.startedAt),
+    // At most one active session per plan, even if Start is clicked twice.
+    uniqueIndex("sessions_one_active_per_plan").on(t.planId).where(sql`${t.endedAt} is null`),
+  ],
+);
+
+export type SessionRow = typeof sessions.$inferSelect;
