@@ -8,6 +8,9 @@ import type { SaveBriefResponse } from "@/app/api/briefs/route";
 import type { DiscoveryMessage } from "@/app/api/discover/route";
 import type { CallTrace } from "@/lib/ai/trace";
 import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
+
+import { SkillsCheck } from "./skills-check";
+import { TraceChip } from "./trace-chip";
 import {
   GoalBriefSchema,
   type CareerDimension,
@@ -284,14 +287,13 @@ export function GoalDiscoveryDemo() {
             </p>
           )}
           <p className="mt-2">
-            Goal discovery is done. Next comes a short check of what you already know, then your
-            first roadmap. Those steps aren&apos;t in this demo yet.{" "}
             <button className="underline" onClick={startOver}>
               Start over
             </button>
           </p>
         </div>
       )}
+      {save?.state === "saved" && <SkillsCheck />}
 
       {!confirmed && (
         <div className="sticky bottom-4 flex flex-col gap-2">
@@ -598,11 +600,6 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function TraceChip({ trace }: { trace: CallTrace }) {
-  return (
-    <div className="mt-2 font-mono text-[11px] text-foreground/40">{formatTrace(trace)}</div>
-  );
-}
 
 function TracePanel({ traces, onStartOver }: { traces: CallTrace[]; onStartOver: () => void }) {
   const total = traces.reduce((sum, t) => sum + (t.costUsd ?? 0), 0);
@@ -647,13 +644,6 @@ function TracePanel({ traces, onStartOver }: { traces: CallTrace[]; onStartOver:
   );
 }
 
-function formatTrace(t: CallTrace): string {
-  const parts = [`${t.model} · ${t.tier}`];
-  if (t.inputTokens != null) parts.push(`${t.inputTokens} in / ${t.outputTokens ?? 0} out`);
-  if (t.costUsd != null) parts.push(`$${t.costUsd.toFixed(4)}`);
-  if (t.latencyMs != null) parts.push(`${(t.latencyMs / 1000).toFixed(1)}s`);
-  return parts.join(" · ");
-}
 
 function findLatestBriefPartId(messages: DiscoveryMessage[]): string | null {
   for (let m = messages.length - 1; m >= 0; m--) {

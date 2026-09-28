@@ -10,7 +10,12 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { GoalBrief } from "@/lib/goals/schema";
-import type { Gap, LearnerProfile, TargetRequirements } from "@/lib/specialists/schemas";
+import type {
+  AssessedSkill,
+  Gap,
+  LearnerProfile,
+  TargetRequirements,
+} from "@/lib/specialists/schemas";
 
 /**
  * App-side user record. Clerk owns identity (email, name, sessions); this row
@@ -54,7 +59,7 @@ export const careerBriefs = pgTable(
 export type CareerBriefRow = typeof careerBriefs.$inferSelect;
 
 /** Event types on the learner record. Specialists and the orchestrator react to these. */
-export const LEARNER_EVENT_TYPES = ["brief_confirmed", "gap_ready"] as const;
+export const LEARNER_EVENT_TYPES = ["brief_confirmed", "gap_ready", "assessment_done"] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
 /**
@@ -120,5 +125,21 @@ export const gaps = pgTable("gaps", {
     .notNull()
     .references(() => learnerProfiles.id, { onDelete: "cascade" }),
   gap: jsonb("gap").$type<Gap>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Set when the skills check replaced estimates with assessed levels. */
+  assessedAt: timestamp("assessed_at", { withTimezone: true }),
+});
+
+/** A skills check: what the Assessor recorded for each skill it checked. */
+export const assessments = pgTable("assessments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  briefId: uuid("brief_id")
+    .notNull()
+    .unique()
+    .references(() => careerBriefs.id, { onDelete: "cascade" }),
+  results: jsonb("results").$type<AssessedSkill[]>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

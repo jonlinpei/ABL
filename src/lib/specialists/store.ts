@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
-import type { Gap, LearnerProfile, TargetRequirements } from "./schemas";
+import type { AssessedSkill, Gap, LearnerProfile, TargetRequirements } from "./schemas";
 
-const { targetRequirements, learnerProfiles, gaps, learnerEvents } = schema;
+const { assessments, careerBriefs, targetRequirements, learnerProfiles, gaps, learnerEvents } = schema;
 
 /** Cached requirements for a target, if another learner already needed them. */
 export async function findRequirements(targetKey: string) {
@@ -64,4 +64,50 @@ export async function saveGap(userId: string, briefId: string, profileId: string
     }),
   ]);
   return { id };
+}
+
+/**
+ * The learner's newest brief and, once the lifecycle has built it, its gap.
+ * The skills check always works on the newest brief.
+ */
+export async function loadLatestBriefAndGap(userId: string) {
+  const db = getDb();
+  const [brief] = await db
+    .select()
+    .from(careerBriefs)
+    .where(eq(careerBriefs.userId, userId))
+    .orderBy(desc(careerBriefs.version))
+    .limit(1);
+  if (!brief) return undefined;
+  const [gap] = await db.select().from(gaps).where(eq(gaps.briefId, brief.id));
+  return { brief, gap };
+}
+
+/**
+ * Save a skills check: the results, the gap with assessed levels, and an
+ * `assessment_done` event, together. A brief is checked once; a second
+ * submission is ignored and reported as such.
+ */
+export async function saveAssessment(
+  userId: string,
+  briefId: string,
+  results: AssessedSkill[],
+  assessedGap: Gap,
+): Promise<{ saved: boolean }> {
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: assessments.id })
+    .from(assessments)
+    .where(eq(assessments.briefId, briefId));
+  if (existing) return { saved: false };
+  await db.batch([
+    db.insert(assessments).values({ userId, briefId, results }),
+    db.update(gaps).set({ gap: assessedGap, assessedAt: new Date() }).where(eq(gaps.briefId, briefId)),
+    db.insert(learnerEvents).values({
+      userId,
+      type: "assessment_done",
+      payload: { briefId, skills: results.length, ...assessedGap.counts },
+    }),
+  ]);
+  return { saved: true };
 }

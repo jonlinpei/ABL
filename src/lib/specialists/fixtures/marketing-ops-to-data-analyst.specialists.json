@@ -1,0 +1,419 @@
+{
+  "requirements": {
+    "summary": "A Data Analyst at a Bay Area B2B SaaS company writes SQL against a cloud warehouse to answer questions about pipeline, funnel conversion, retention, product usage and revenue, then publishes the results as BI dashboards and short written analyses for go-to-market, product and finance teams. People get hired mainly by passing a live or take-home SQL test (joins, aggregations, window functions) and by showing they can turn messy SaaS data into a clear, correct metric and recommendation. Knowledge of SaaS metrics and CRM/marketing data helps set candidates apart.",
+    "skills": [
+      {
+        "id": "sql-querying",
+        "name": "SQL querying: joins, aggregations, CTEs, subqueries and window functions",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Live SQL screen (CoderPad, HackerRank or shared editor) or timed take-home against a sample schema, often with funnel or retention questions"
+      },
+      {
+        "id": "bi-dashboarding",
+        "name": "BI dashboard building (Tableau, Looker, Power BI, Mode or Sigma)",
+        "category": "tool",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Portfolio dashboard review, or a take-home that asks for a visualization plus a walkthrough in the interview"
+      },
+      {
+        "id": "saas-metrics",
+        "name": "SaaS business metrics: ARR/MRR, churn, net and gross revenue retention, CAC, LTV, pipeline and funnel conversion",
+        "category": "domain",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Case or business-sense interview questions, e.g. 'how would you define and calculate churn for us' or 'why did pipeline drop this quarter'"
+      },
+      {
+        "id": "data-analysis-problem-framing",
+        "name": "Analytical problem framing and metric definition",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Product/business case interview where the candidate turns a vague question into metrics, data sources and an analysis plan"
+      },
+      {
+        "id": "data-cleaning-validation",
+        "name": "Data cleaning and validation: deduplication, null handling, reconciling numbers across sources",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Take-home with deliberately messy data; interview questions about how you QA a number before sharing it"
+      },
+      {
+        "id": "data-storytelling",
+        "name": "Presenting findings to non-technical stakeholders",
+        "category": "professional",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Presentation of the take-home or a past project to a panel; behavioral questions about influencing a decision with data"
+      },
+      {
+        "id": "spreadsheet-modeling",
+        "name": "Advanced spreadsheets: pivots, lookups (XLOOKUP/INDEX-MATCH), quick ad hoc models",
+        "category": "tool",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Usually assumed from experience; sometimes part of a take-home exercise"
+      },
+      {
+        "id": "crm-marketing-data",
+        "name": "CRM and marketing automation data models (Salesforce objects, HubSpot/Marketo), attribution and lead-to-revenue funnel",
+        "category": "domain",
+        "level": 3,
+        "importance": "nice",
+        "howEmployersCheck": "Interview discussion of how leads, contacts, accounts, opportunities and campaigns relate; essential for GTM/revenue analytics roles"
+      },
+      {
+        "id": "cloud-data-warehouse",
+        "name": "Cloud data warehouse familiarity (Snowflake, BigQuery, Redshift or Databricks)",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Resume keywords and interview questions on warehouse concepts, schemas and query cost/performance"
+      },
+      {
+        "id": "python-data-analysis",
+        "name": "Python for analysis (pandas, notebooks) or R",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Listed as preferred in many postings; checked through a GitHub notebook or an optional part of the take-home"
+      },
+      {
+        "id": "data-modeling-dbt",
+        "name": "Data modeling basics and dbt: star schemas, fact/dimension tables, transformation layers",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Interview questions on how you'd structure tables for a dashboard; dbt project in a portfolio. Increasingly expected at modern-data-stack companies"
+      },
+      {
+        "id": "statistics-experimentation",
+        "name": "Descriptive statistics and A/B test basics: significance, confidence intervals, cohort analysis",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Conceptual interview questions; weighted more heavily for product-analytics roles"
+      },
+      {
+        "id": "stakeholder-requirements",
+        "name": "Gathering requirements and prioritizing data requests from business stakeholders",
+        "category": "professional",
+        "level": 3,
+        "importance": "nice",
+        "howEmployersCheck": "Behavioral interview questions about handling ambiguous or competing requests"
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree (any field; quantitative preferred)",
+        "status": "common",
+        "note": "Many postings list it, but demonstrated SQL and BI skill plus relevant experience often outweighs the field of study."
+      },
+      {
+        "name": "Tableau Desktop Specialist / Certified Data Analyst, Microsoft PL-300 (Power BI), or Looker certification",
+        "status": "optional",
+        "note": "Occasionally a resume tiebreaker when a company uses that specific tool; rarely screened for."
+      },
+      {
+        "name": "Google Data Analytics Professional Certificate",
+        "status": "optional",
+        "note": "Can show structured learning for a career changer but carries little weight with Bay Area hiring managers compared with a portfolio and SQL test performance."
+      }
+    ],
+    "proofOfSkill": [
+      "A portfolio of 2-3 end-to-end SaaS-style analyses (e.g. funnel conversion, cohort retention/churn, marketing attribution), each with SQL queries, a published dashboard and a short written recommendation",
+      "A public Tableau Public / Looker Studio / Power BI dashboard built on a realistic B2B dataset, linked from the resume",
+      "A GitHub repo with well-commented SQL (CTEs and window functions), plus optionally a dbt project or Python notebook",
+      "Resume bullets describing past reporting work in terms of the business decision it drove and the metric it changed",
+      "Strong performance on the company's SQL screen and a clear walkthrough presentation of the take-home"
+    ],
+    "caveats": [
+      "The target doesn't state seniority. These requirements assume an entry-to-mid-level (Data Analyst I/II) role a career switcher would realistically target. Senior roles expect level-4 SQL, data modeling and stronger ownership of stakeholder relationships.",
+      "Titles vary widely. 'Marketing Analyst', 'Revenue/GTM Analyst', 'Business Intelligence Analyst' and 'Product Analyst' overlap with this role. GTM-focused roles weight CRM and attribution knowledge heavily, while product analytics roles weight experimentation and Python more.",
+      "The tool stack differs by company: Looker and Tableau are common, but Sigma, Mode, Hex and Power BI all appear. Snowflake/BigQuery with dbt is common but not universal. Check individual postings.",
+      "Bay Area interview loops often include a live SQL round and a case round. Smaller startups may substitute a take-home, and larger companies may add a stats round.",
+      "The 'analytics engineer' role is absorbing some modeling work, and expectations around dbt and AI-assisted querying are shifting quickly, so this snapshot may date."
+    ]
+  },
+  "profile": {
+    "summary": "This learner brings strong hands-on experience in marketing operations reporting, HubSpot data hygiene, and building/presenting attribution dashboards to leadership, giving her a solid foundation in data cleaning, spreadsheet modeling, storytelling, and SaaS marketing metrics. Her main gap is technical query and BI tooling: she has no SQL experience and hasn't used dedicated BI platforms, relying instead on Excel-based workarounds.",
+    "skills": [
+      {
+        "skillId": "sql-querying",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "Brief explicitly states she has no SQL or formal querying experience yet."
+      },
+      {
+        "skillId": "bi-dashboarding",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "She builds attribution dashboards but only using Excel/HubSpot, with no mention of Tableau, Looker, Power BI, Mode or Sigma."
+      },
+      {
+        "skillId": "saas-metrics",
+        "level": 2,
+        "basis": "inferred",
+        "evidence": "5 years in B2B SaaS marketing operations building attribution dashboards implies regular exposure to funnel and pipeline metrics, though CAC/LTV/retention aren't explicitly mentioned."
+      },
+      {
+        "skillId": "data-analysis-problem-framing",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "She builds attribution dashboards and weekly performance reports that require framing what to measure and how, though this has been within a marketing ops context rather than broader analytical scoping."
+      },
+      {
+        "skillId": "data-cleaning-validation",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "She owns HubSpot data hygiene including dedupe, field standards, and lead routing rules."
+      },
+      {
+        "skillId": "data-storytelling",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "She presents attribution dashboards and campaign performance results at monthly marketing reviews to the VP of Marketing."
+      },
+      {
+        "skillId": "spreadsheet-modeling",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "She builds weekly campaign performance reports using pivot tables and XLOOKUP."
+      },
+      {
+        "skillId": "crm-marketing-data",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "She owns HubSpot data hygiene (dedupe, field standards, lead routing rules) and builds attribution dashboards from this CRM/marketing automation data."
+      },
+      {
+        "skillId": "cloud-data-warehouse",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "No mention of any cloud data warehouse tool; her work has been entirely in Excel and HubSpot."
+      },
+      {
+        "skillId": "python-data-analysis",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of Python, pandas, or notebooks anywhere in her background, which is centered on Excel and HubSpot."
+      },
+      {
+        "skillId": "data-modeling-dbt",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No exposure to data warehousing or transformation layers is mentioned; her work has been in spreadsheets and a CRM tool, not modeled databases."
+      },
+      {
+        "skillId": "statistics-experimentation",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Building attribution dashboards implies some comparative analysis, but there's no mention of formal A/B testing, significance testing, or cohort analysis."
+      },
+      {
+        "skillId": "stakeholder-requirements",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "She builds reports and dashboards specifically for the VP of Marketing and presents at monthly reviews, implying she gathers and responds to stakeholder reporting needs."
+      }
+    ],
+    "otherStrengths": [
+      "5 years of domain fluency in B2B SaaS marketing operations at a 400-employee company, which will help her frame relevant analytical questions.",
+      "Experience owning and standardizing data governance processes (field standards, lead routing rules) that translates to disciplined, careful analytical work.",
+      "Demonstrated persistence in a technical, detail-oriented individual contributor role over several years despite it not being a traditional analyst title."
+    ]
+  },
+  "gap": {
+    "items": [
+      {
+        "skillId": "sql-querying",
+        "name": "SQL querying: joins, aggregations, CTEs, subqueries and window functions",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "bi-dashboarding",
+        "name": "BI dashboard building (Tableau, Looker, Power BI, Mode or Sigma)",
+        "category": "tool",
+        "importance": "must",
+        "required": 3,
+        "current": 1,
+        "shortfall": 2,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "saas-metrics",
+        "name": "SaaS business metrics: ARR/MRR, churn, net and gross revenue retention, CAC, LTV, pipeline and funnel conversion",
+        "category": "domain",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "data-analysis-problem-framing",
+        "name": "Analytical problem framing and metric definition",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "data-cleaning-validation",
+        "name": "Data cleaning and validation: deduplication, null handling, reconciling numbers across sources",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "data-storytelling",
+        "name": "Presenting findings to non-technical stakeholders",
+        "category": "professional",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "spreadsheet-modeling",
+        "name": "Advanced spreadsheets: pivots, lookups (XLOOKUP/INDEX-MATCH), quick ad hoc models",
+        "category": "tool",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "cloud-data-warehouse",
+        "name": "Cloud data warehouse familiarity (Snowflake, BigQuery, Redshift or Databricks)",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "python-data-analysis",
+        "name": "Python for analysis (pandas, notebooks) or R",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "data-modeling-dbt",
+        "name": "Data modeling basics and dbt: star schemas, fact/dimension tables, transformation layers",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "statistics-experimentation",
+        "name": "Descriptive statistics and A/B test basics: significance, confidence intervals, cohort analysis",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 1,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "crm-marketing-data",
+        "name": "CRM and marketing automation data models (Salesforce objects, HubSpot/Marketo), attribution and lead-to-revenue funnel",
+        "category": "domain",
+        "importance": "nice",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "stakeholder-requirements",
+        "name": "Gathering requirements and prioritizing data requests from business stakeholders",
+        "category": "professional",
+        "importance": "nice",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree (any field; quantitative preferred)",
+        "status": "common",
+        "note": "Many postings list it, but demonstrated SQL and BI skill plus relevant experience often outweighs the field of study."
+      },
+      {
+        "name": "Tableau Desktop Specialist / Certified Data Analyst, Microsoft PL-300 (Power BI), or Looker certification",
+        "status": "optional",
+        "note": "Occasionally a resume tiebreaker when a company uses that specific tool; rarely screened for."
+      },
+      {
+        "name": "Google Data Analytics Professional Certificate",
+        "status": "optional",
+        "note": "Can show structured learning for a career changer but carries little weight with Bay Area hiring managers compared with a portfolio and SQL test performance."
+      }
+    ],
+    "proofOfSkill": [
+      "A portfolio of 2-3 end-to-end SaaS-style analyses (e.g. funnel conversion, cohort retention/churn, marketing attribution), each with SQL queries, a published dashboard and a short written recommendation",
+      "A public Tableau Public / Looker Studio / Power BI dashboard built on a realistic B2B dataset, linked from the resume",
+      "A GitHub repo with well-commented SQL (CTEs and window functions), plus optionally a dbt project or Python notebook",
+      "Resume bullets describing past reporting work in terms of the business decision it drove and the metric it changed",
+      "Strong performance on the company's SQL screen and a clear walkthrough presentation of the take-home"
+    ],
+    "counts": {
+      "met": 5,
+      "partial": 4,
+      "missing": 4
+    }
+  }
+}

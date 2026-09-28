@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NonRetriableError } from "inngest";
 
 import { getDb, schema } from "@/db";
+import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { computeGap } from "@/lib/specialists/gap";
 import { buildProfile } from "@/lib/specialists/profiler";
 import { buildRequirements, targetKey } from "@/lib/specialists/requirements";
@@ -13,7 +14,7 @@ import {
 } from "@/lib/specialists/store";
 
 import { inngest } from "./client";
-import { briefConfirmed } from "./events";
+import { assessmentDone, briefConfirmed } from "./events";
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -55,11 +56,26 @@ export const learnerLifecycle = inngest.createFunction(
     const gap = computeGap(requirements, profile);
     const gapRow = await step.run("save-gap", () => saveGap(userId, briefId, profileRow.id, gap));
 
+    // Assessor: the learner takes the skills check in the app (/api/assess).
+    // Wait for it before planning, unless there's nothing to check. After two
+    // weeks, plan from the estimates rather than wait forever.
+    const toCheck = selectSkillsToCheck(gap).length;
+    const assessed =
+      toCheck > 0
+        ? await step.waitForEvent("wait-for-skills-check", {
+            event: assessmentDone,
+            timeout: "14d",
+            match: "data.briefId",
+          })
+        : null;
+
     return {
       briefId,
       requirementsCached: !!cached,
       gapId: gapRow.id,
       counts: gap.counts,
+      skillsToCheck: toCheck,
+      assessed: !!assessed,
     };
   },
 );

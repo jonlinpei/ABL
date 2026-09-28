@@ -1,0 +1,462 @@
+{
+  "requirements": {
+    "summary": "Backend engineers in grid and energy-market software build and run systems that ingest, compute and publish power-market and grid data, such as bid/offer submission, market clearing inputs and outputs, shadow settlement and billing, and real-time telemetry pipelines, for ISOs/RTOs, utilities, and the vendors and market participants that serve them. Hiring centers on proven backend engineering (correct, auditable, reliable data-intensive systems in a production cloud or on-prem environment). Candidates stand out when they can show a working grasp of U.S. wholesale market mechanics and time-series energy data, which is usually the gap for people coming from other industries.",
+    "skills": [
+      {
+        "id": "backend-service-development",
+        "name": "Backend service development in a typed language (Java, Go, C#, Kotlin or Python with typing)",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Live coding or take-home exercise, plus code review discussion of past production services"
+      },
+      {
+        "id": "distributed-systems-design",
+        "name": "Distributed and data-intensive system design: idempotency, consistency, retries, exactly-once or at-least-once processing, backfills",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "System design interview, often framed as a market data ingestion, settlement or telemetry pipeline"
+      },
+      {
+        "id": "sql-data-modeling",
+        "name": "SQL and relational data modeling: schema design, joins, window functions, query tuning (PostgreSQL, Oracle, SQL Server)",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "SQL questions in technical screen and schema design during system design interview"
+      },
+      {
+        "id": "time-series-energy-data",
+        "name": "Time-series interval data handling: 5-minute/15-minute/hourly intervals, time zones and DST, market-day boundaries, late and revised data",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions or take-home tasks on aggregating and reconciling interval data; probing edge cases like DST transitions"
+      },
+      {
+        "id": "us-wholesale-power-markets",
+        "name": "U.S. wholesale electricity market fundamentals: ISOs/RTOs (PJM, ERCOT, CAISO, MISO, NYISO, ISO-NE, SPP), day-ahead vs real-time, LMP and nodal pricing, ancillary services, bids/offers",
+        "category": "domain",
+        "level": 2,
+        "importance": "must",
+        "howEmployersCheck": "Conversational domain questions in hiring-manager or team interviews; explaining how a day-ahead market settles"
+      },
+      {
+        "id": "calculation-correctness-auditability",
+        "name": "Testing and auditability for financial or regulated calculations: reproducible runs, versioned inputs, reconciliation, decimal precision",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Behavioral and design questions on how you ensured correctness and traceability in past billing, settlement or financial systems"
+      },
+      {
+        "id": "cloud-infrastructure",
+        "name": "Cloud and deployment infrastructure: AWS or Azure, Docker, Kubernetes, infrastructure as code (Terraform)",
+        "category": "tool",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Discussion of past deployments in system design and experience interviews"
+      },
+      {
+        "id": "production-operations-observability",
+        "name": "Production operations for time-critical systems: monitoring, alerting, on-call, incident response against market deadlines",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Behavioral interview on incidents handled; design questions on handling a missed market submission window"
+      },
+      {
+        "id": "cross-functional-domain-communication",
+        "name": "Working with market analysts, traders, settlement staff and grid operators to turn market rules and tariffs into requirements",
+        "category": "professional",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Behavioral interviews and hiring-manager conversations about translating ambiguous business or regulatory rules into software"
+      },
+      {
+        "id": "streaming-event-pipelines",
+        "name": "Streaming and event pipelines: Kafka or Kinesis, stream processing, schema evolution",
+        "category": "tool",
+        "level": 3,
+        "importance": "nice",
+        "howEmployersCheck": "System design interview for telemetry or real-time market data roles; past project discussion"
+      },
+      {
+        "id": "energy-settlement-concepts",
+        "name": "Energy settlement and billing concepts: charge codes/billing determinants, shadow settlement, resettlements, meter data",
+        "category": "domain",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Domain questions for settlement-focused roles; walk-through of how a settlement statement is validated"
+      },
+      {
+        "id": "grid-telemetry-protocols",
+        "name": "Grid operations and telemetry: SCADA/EMS concepts, ICCP, DNP3, PMU data, historians such as AVEVA PI (formerly OSIsoft PI)",
+        "category": "domain",
+        "level": 1,
+        "importance": "nice",
+        "howEmployersCheck": "Asked mainly for utility and grid-operations roles; conversational questions on data sources and latency"
+      },
+      {
+        "id": "power-market-optimization",
+        "name": "Market clearing and optimization basics: economic dispatch, unit commitment, LP/MIP solvers (Gurobi, CPLEX, HiGHS)",
+        "category": "technical",
+        "level": 1,
+        "importance": "nice",
+        "howEmployersCheck": "Relevant for clearing-engine or dispatch roles; discussion of how solver outputs are consumed and validated"
+      },
+      {
+        "id": "nerc-cip-security-awareness",
+        "name": "Security and compliance awareness for critical infrastructure: NERC CIP, access control, audit logging",
+        "category": "domain",
+        "level": 1,
+        "importance": "nice",
+        "howEmployersCheck": "Questions during utility or ISO interviews; background checks and compliance training after hire"
+      },
+      {
+        "id": "python-data-tooling",
+        "name": "Python data tooling (pandas, Jupyter) for analysis and collaboration with quants and analysts",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Take-home exercises using public market data or discussion of analysis work"
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree in computer science, electrical engineering or related field",
+        "status": "common",
+        "note": "Often listed in postings, especially at utilities and ISOs, but equivalent professional backend experience is usually accepted."
+      },
+      {
+        "name": "Power systems or energy markets coursework (e.g., university short courses or ISO-provided market training)",
+        "status": "optional",
+        "note": "Can help show domain commitment for industry switchers, but rarely screened for on its own."
+      }
+    ],
+    "proofOfSkill": [
+      "Track record of production backend systems where correctness and auditability mattered (settlement, billing, ledgers, trading), described in concrete terms in interviews",
+      "A project using public ISO data (e.g., CAISO OASIS, ERCOT, PJM Data Miner) that ingests LMPs or load data, handles intervals and DST correctly, and computes something like a simplified shadow settlement or revenue for a hypothetical resource",
+      "A streaming or batch pipeline project handling late, revised or out-of-order time-series data, with tests and reconciliation checks",
+      "Ability to explain day-ahead vs real-time markets, LMP components and a settlement flow clearly in a hiring-manager conversation",
+      "Strong system design interview performance on a data-intensive, deadline-driven pipeline"
+    ],
+    "caveats": [
+      "The target does not state seniority; these requirements assume a mid-level backend role where strong general engineering is expected and domain knowledge can be partial and learned on the job. Senior and staff roles raise the design, ownership and domain bars.",
+      "Requirements vary widely by employer type: ISOs/RTOs and utilities often use Java, C# or .NET and on-prem or hybrid systems with NERC CIP controls and slower processes, while startups and market-platform vendors tend toward Python, Go, cloud-native stacks and faster shipping.",
+      "Telemetry and grid-operations roles weight streaming, SCADA/historian and latency skills; settlement and market-platform roles weight calculation correctness, relational modeling and market rules. Read postings to see which side a role sits on.",
+      "Market rules differ by ISO and change often (e.g., ongoing market design changes in CAISO, ERCOT and others), so domain specifics here may be out of date and should be checked against current ISO documentation.",
+      "Some utility and critical-infrastructure employers require background checks or restrict certain system access based on NERC CIP policies; specifics vary by employer and are not assumed here.",
+      "Named tools (solvers, historians, cloud providers) reflect common postings as of recent knowledge and may shift."
+    ]
+  },
+  "profile": {
+    "summary": "This learner is a senior backend engineer with deep expertise in distributed, financial-grade systems—ledger reconciliation, Kafka-based event architectures, and mentoring—that map closely onto energy market settlement and telemetry pipelines. They have no direct exposure yet to energy-specific domains (wholesale markets, time-series interval data, grid telemetry), having only read general climate books without technical or market depth.",
+    "skills": [
+      {
+        "skillId": "backend-service-development",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "Built order/inventory APIs in Python/Django and designs/runs a ledger service reconciling $2B/month in card payments."
+      },
+      {
+        "skillId": "distributed-systems-design",
+        "level": 4,
+        "basis": "work_history",
+        "evidence": "Led a monolith-to-event-driven migration on Kafka and designs/runs high-scale, reliable distributed ledger systems."
+      },
+      {
+        "skillId": "sql-data-modeling",
+        "level": 3,
+        "basis": "inferred",
+        "evidence": "As a senior backend engineer running a ledger reconciliation service, relational data modeling and SQL are routine even though not explicitly mentioned."
+      },
+      {
+        "skillId": "time-series-energy-data",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of interval-based time-series work; this is a domain-specific skill with no evidence of exposure."
+      },
+      {
+        "skillId": "us-wholesale-power-markets",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "They explicitly say they read climate books but never got into the technical or market side of energy."
+      },
+      {
+        "skillId": "calculation-correctness-auditability",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "Runs a ledger service reconciling $2B/month in card payments, which requires rigorous, auditable financial calculation logic."
+      },
+      {
+        "skillId": "cloud-infrastructure",
+        "level": 3,
+        "basis": "inferred",
+        "evidence": "Designing and running high-scale distributed systems at a fintech company implies routine use of cloud infrastructure and containerization, though not explicitly stated."
+      },
+      {
+        "skillId": "production-operations-observability",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "Designs and runs a production ledger service reconciling $2B/month, implying operational ownership of a time-critical system."
+      },
+      {
+        "skillId": "cross-functional-domain-communication",
+        "level": 2,
+        "basis": "inferred",
+        "evidence": "Leading a monolith-to-event-driven migration and mentoring engineers likely required translating business/technical requirements across stakeholders, though not explicitly described with non-engineering roles."
+      },
+      {
+        "skillId": "streaming-event-pipelines",
+        "level": 4,
+        "basis": "work_history",
+        "evidence": "Led a monolith-to-event-driven migration on Kafka, directly building streaming/event pipeline systems."
+      },
+      {
+        "skillId": "energy-settlement-concepts",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No exposure to energy billing or settlement concepts is mentioned; only general ledger/payment settlement experience exists."
+      },
+      {
+        "skillId": "grid-telemetry-protocols",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of SCADA, ICCP, DNP3, PMU, or historian systems; this is an entirely new domain for them."
+      },
+      {
+        "skillId": "power-market-optimization",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No background in optimization, dispatch, or solver-based systems is mentioned."
+      },
+      {
+        "skillId": "nerc-cip-security-awareness",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Experience in regulated financial infrastructure suggests some general security/compliance awareness, though NERC CIP specifically is unmentioned."
+      },
+      {
+        "skillId": "python-data-tooling",
+        "level": 2,
+        "basis": "inferred",
+        "evidence": "Strong Python background from Django API work suggests basic familiarity with Python data tooling, though pandas/Jupyter use isn't explicitly mentioned."
+      }
+    ],
+    "otherStrengths": [
+      "Mentoring and growing engineers, useful for onboarding into a new technical domain and leading others through it",
+      "Experience leading complex system migrations, indicating strong project ownership and change management skills",
+      "Direct experience with reconciliation and settlement logic that closely parallels energy market settlement processes"
+    ]
+  },
+  "gap": {
+    "items": [
+      {
+        "skillId": "time-series-energy-data",
+        "name": "Time-series interval data handling: 5-minute/15-minute/hourly intervals, time zones and DST, market-day boundaries, late and revised data",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "us-wholesale-power-markets",
+        "name": "U.S. wholesale electricity market fundamentals: ISOs/RTOs (PJM, ERCOT, CAISO, MISO, NYISO, ISO-NE, SPP), day-ahead vs real-time, LMP and nodal pricing, ancillary services, bids/offers",
+        "category": "domain",
+        "importance": "must",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "cross-functional-domain-communication",
+        "name": "Working with market analysts, traders, settlement staff and grid operators to turn market rules and tariffs into requirements",
+        "category": "professional",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "backend-service-development",
+        "name": "Backend service development in a typed language (Java, Go, C#, Kotlin or Python with typing)",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "distributed-systems-design",
+        "name": "Distributed and data-intensive system design: idempotency, consistency, retries, exactly-once or at-least-once processing, backfills",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 4,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "sql-data-modeling",
+        "name": "SQL and relational data modeling: schema design, joins, window functions, query tuning (PostgreSQL, Oracle, SQL Server)",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "calculation-correctness-auditability",
+        "name": "Testing and auditability for financial or regulated calculations: reproducible runs, versioned inputs, reconciliation, decimal precision",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "cloud-infrastructure",
+        "name": "Cloud and deployment infrastructure: AWS or Azure, Docker, Kubernetes, infrastructure as code (Terraform)",
+        "category": "tool",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "production-operations-observability",
+        "name": "Production operations for time-critical systems: monitoring, alerting, on-call, incident response against market deadlines",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "energy-settlement-concepts",
+        "name": "Energy settlement and billing concepts: charge codes/billing determinants, shadow settlement, resettlements, meter data",
+        "category": "domain",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "grid-telemetry-protocols",
+        "name": "Grid operations and telemetry: SCADA/EMS concepts, ICCP, DNP3, PMU data, historians such as AVEVA PI (formerly OSIsoft PI)",
+        "category": "domain",
+        "importance": "nice",
+        "required": 1,
+        "current": 0,
+        "shortfall": 1,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "power-market-optimization",
+        "name": "Market clearing and optimization basics: economic dispatch, unit commitment, LP/MIP solvers (Gurobi, CPLEX, HiGHS)",
+        "category": "technical",
+        "importance": "nice",
+        "required": 1,
+        "current": 0,
+        "shortfall": 1,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "streaming-event-pipelines",
+        "name": "Streaming and event pipelines: Kafka or Kinesis, stream processing, schema evolution",
+        "category": "tool",
+        "importance": "nice",
+        "required": 3,
+        "current": 4,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "nerc-cip-security-awareness",
+        "name": "Security and compliance awareness for critical infrastructure: NERC CIP, access control, audit logging",
+        "category": "domain",
+        "importance": "nice",
+        "required": 1,
+        "current": 1,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "python-data-tooling",
+        "name": "Python data tooling (pandas, Jupyter) for analysis and collaboration with quants and analysts",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 2,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree in computer science, electrical engineering or related field",
+        "status": "common",
+        "note": "Often listed in postings, especially at utilities and ISOs, but equivalent professional backend experience is usually accepted."
+      },
+      {
+        "name": "Power systems or energy markets coursework (e.g., university short courses or ISO-provided market training)",
+        "status": "optional",
+        "note": "Can help show domain commitment for industry switchers, but rarely screened for on its own."
+      }
+    ],
+    "proofOfSkill": [
+      "Track record of production backend systems where correctness and auditability mattered (settlement, billing, ledgers, trading), described in concrete terms in interviews",
+      "A project using public ISO data (e.g., CAISO OASIS, ERCOT, PJM Data Miner) that ingests LMPs or load data, handles intervals and DST correctly, and computes something like a simplified shadow settlement or revenue for a hypothetical resource",
+      "A streaming or batch pipeline project handling late, revised or out-of-order time-series data, with tests and reconciliation checks",
+      "Ability to explain day-ahead vs real-time markets, LMP components and a settlement flow clearly in a hiring-manager conversation",
+      "Strong system design interview performance on a data-intensive, deadline-driven pipeline"
+    ],
+    "counts": {
+      "met": 9,
+      "partial": 1,
+      "missing": 5
+    }
+  }
+}

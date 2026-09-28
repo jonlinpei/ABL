@@ -12,3 +12,10 @@ export const briefConfirmed = eventType("learner/brief.confirmed", {
     version: z.number(),
   }),
 });
+
+export const assessmentDone = eventType("learner/assessment.done", {
+  schema: z.object({
+    userId: z.string(),
+    briefId: z.string(),
+  }),
+});

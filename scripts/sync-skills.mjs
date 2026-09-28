@@ -25,6 +25,11 @@ const SKILLS = [
     target: "src/lib/specialists/profiler.generated.ts",
     exportName: "PROFILER_SKILL",
   },
+  {
+    source: "skills/assessor/SKILL.md",
+    target: "src/lib/specialists/assessor.generated.ts",
+    exportName: "ASSESSOR_SKILL",
+  },
 ];
 
 /** SKILL.md minus its YAML frontmatter. */
