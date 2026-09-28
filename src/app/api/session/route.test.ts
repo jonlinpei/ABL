@@ -9,6 +9,7 @@ const loadSessionState = vi.fn();
 const endSession = vi.fn();
 const saveSessionMessages = vi.fn();
 const startSession = vi.fn();
+const send = vi.fn();
 type Tool = { execute: (input: unknown) => Promise<unknown> };
 type ModelMessage = { role: string; content: unknown; providerOptions?: unknown };
 let streamTextOptions: { instructions: string; messages: ModelMessage[]; tools: Record<string, Tool> } | undefined;
@@ -23,6 +24,7 @@ vi.mock("@/lib/specialists/store", () => ({
   saveSessionMessages: (...a: unknown[]) => saveSessionMessages(...a),
   startSession: (...a: unknown[]) => startSession(...a),
 }));
+vi.mock("@/inngest/client", () => ({ inngest: { send: (...a: unknown[]) => send(...a) } }));
 vi.mock("@/lib/ai/providers", () => ({ configuredProviders: () => ["anthropic"], toLanguageModel: () => ({}) }));
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
@@ -54,6 +56,7 @@ const state = (over: Record<string, unknown> = {}) => ({
   history: [],
   active,
   milestoneIndex: 0,
+  dueReviews: [],
   ...over,
 });
 const turn = (id = "s1") =>
@@ -74,6 +77,7 @@ beforeEach(() => {
   endSession.mockReset().mockResolvedValue({ ended: true });
   saveSessionMessages.mockReset().mockResolvedValue(undefined);
   startSession.mockReset().mockResolvedValue({ ...active, id: "s2" });
+  send.mockReset().mockResolvedValue({ ids: ["e1"] });
   streamTextOptions = undefined;
   uiStreamOptions = undefined;
 });
@@ -104,6 +108,17 @@ describe("POST /api/session", () => {
     const out = await streamTextOptions!.tools.end_session!.execute(report);
     expect(endSession).toHaveBeenCalledWith("s1", "user_1", expect.objectContaining({ summary: "s" }));
     expect(out).toEqual({ status: "ended", milestoneComplete: false });
+    expect(send.mock.calls[0]![0]).toMatchObject({
+      name: "learner/session.completed",
+      data: { userId: "user_1", sessionId: "s1" },
+    });
+  });
+
+  it("doesn't start a second mastery update when the session was already ended", async () => {
+    endSession.mockResolvedValueOnce({ ended: false });
+    await POST(turn());
+    await streamTextOptions!.tools.end_session!.execute(report);
+    expect(send).not.toHaveBeenCalled();
   });
 });
 

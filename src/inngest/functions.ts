@@ -4,6 +4,7 @@ import { NonRetriableError } from "inngest";
 import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { computeGap } from "@/lib/specialists/gap";
+import { applySessionEvidence } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
 import { buildProfile } from "@/lib/specialists/profiler";
 import { buildRequirements, targetKey } from "@/lib/specialists/requirements";
@@ -17,7 +18,7 @@ import {
 } from "@/lib/specialists/store";
 
 import { inngest } from "./client";
-import { assessmentDone, briefConfirmed } from "./events";
+import { assessmentDone, briefConfirmed, sessionCompleted } from "./events";
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -98,4 +99,18 @@ export const learnerLifecycle = inngest.createFunction(
   },
 );
 
-export const functions = [learnerLifecycle];
+/**
+ * Mastery keeper: after each session, apply its evidence to the learner's
+ * mastery, review schedule and gap. One at a time per learner, so two
+ * sessions finishing close together don't overwrite each other.
+ */
+export const masteryKeeper = inngest.createFunction(
+  {
+    id: "mastery-keeper",
+    triggers: [sessionCompleted],
+    concurrency: { key: "event.data.userId", limit: 1 },
+  },
+  async ({ event, step }) => step.run("apply-session-evidence", () => applySessionEvidence(event.data.sessionId)),
+);
+
+export const functions = [learnerLifecycle, masteryKeeper];

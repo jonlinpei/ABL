@@ -32,7 +32,11 @@ export function scoreItem(item: Omit<GapItem, "shortfall" | "status" | "verify">
     shortfall,
     status: shortfall === 0 ? "met" : item.current === 0 ? "missing" : "partial",
     // Anything the plan would skip or shorten on the strength of a claim.
-    verify: item.current > 0 && item.basis !== "work_history" && item.basis !== "assessed",
+    verify:
+      item.current > 0 &&
+      item.basis !== "work_history" &&
+      item.basis !== "assessed" &&
+      item.basis !== "practiced",
   };
 }
 

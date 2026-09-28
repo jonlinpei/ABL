@@ -58,9 +58,12 @@ export const TargetRequirementsSchema = z.object({
 });
 export type TargetRequirements = z.infer<typeof TargetRequirementsSchema>;
 
-/** Where a level comes from. The profiler sets the first three; the Assessor sets "assessed". */
-export const SkillBasis = z.enum(["work_history", "self_reported", "inferred", "assessed"]);
-const ProfileBasis = SkillBasis.exclude(["assessed"]);
+/**
+ * Where a level comes from. The profiler sets the first three, the Assessor
+ * sets "assessed", and the mastery keeper sets "practiced" from sessions.
+ */
+export const SkillBasis = z.enum(["work_history", "self_reported", "inferred", "assessed", "practiced"]);
+const ProfileBasis = SkillBasis.exclude(["assessed", "practiced"]);
 
 /** The learner's current level on each required skill, with where that estimate comes from. */
 export const LearnerProfileSchema = z.object({

@@ -19,3 +19,10 @@ export const assessmentDone = eventType("learner/assessment.done", {
     briefId: z.string(),
   }),
 });
+
+export const sessionCompleted = eventType("learner/session.completed", {
+  schema: z.object({
+    userId: z.string(),
+    sessionId: z.string(),
+  }),
+});

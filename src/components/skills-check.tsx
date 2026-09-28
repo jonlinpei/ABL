@@ -16,6 +16,7 @@ const LEVEL_LABEL = ["None", "Aware", "With help", "Independent", "Can lead"];
 
 const BASIS_LABEL: Record<Gap["items"][number]["basis"], string> = {
   assessed: "checked",
+  practiced: "from your sessions",
   work_history: "from your work history",
   self_reported: "you said",
   inferred: "estimate",
