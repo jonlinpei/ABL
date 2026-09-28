@@ -15,7 +15,7 @@ This file records the stack decisions for ABL and the reason for each one. The p
 | Agents | Specialists around a shared learner record, with a bounded "huddle" for replans | Decided; learner record started |
 | Mastery graph | Relational tables in Postgres, no graph database | Decided, not modelled |
 | Semantic search | pgvector in the same Postgres | Later |
-| Spaced review | FSRS | Later |
+| Spaced review | FSRS (`ts-fsrs`) | Installed (per-skill reviews) |
 | Auth | Clerk | Installed |
 | Product analytics | PostHog (`posthog-js` client, `posthog-node` server) | Installed |
 | AI calls | Vercel AI SDK with Anthropic, OpenAI and Google providers, behind a task router | Installed |
@@ -44,14 +44,15 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
 - `assessments`: what the skills check recorded per skill, one per brief version.
 - `plans`: learning plans per brief, versioned, each saved with its final review. Replans will add versions.
 - `sessions`: tutoring sessions on a plan.
   - Each row records its milestone, the transcript (so a reload resumes the session) and the tutor's end-of-session report.
-  - A partial unique index allows only one active session per plan.
+  - A partial unique index allows only one active session per plan. `mastery_applied_at` marks sessions whose evidence has been applied.
+- `skill_mastery`: what the learner knows, per skill and across goals. Each row holds the level, recent evidence and an FSRS review card, and `due` is indexed for "due for review" queries.
 
 Tables for plans and mastery arrive with the specialists that write them.
 
@@ -171,8 +172,15 @@ Settled defaults:
   - **The report:** a summary, topics covered, the level shown per skill (rated for the whole skill, not just that session's slice), homework, and whether the milestone's visible win was reached.
   - **Progress:** the current milestone is the first one no session has completed.
   - **Caching:** the tutor's instructions stay identical every turn, and the session clock rides on the newest message instead, so long sessions are served from the prompt cache.
+- **Mastery keeper** (`src/lib/specialists/mastery.ts`, Inngest function `mastery-keeper` on `learner/session.completed`): turns a session's evidence into mastery. It's deterministic.
+  - **Levels rise to what was shown.** One weaker session doesn't undo earlier evidence; only a drop of two or more levels lowers it, and then by one step.
+  - **FSRS schedules reviews in days,** with short-term steps off because sessions are days apart. Newly practised skills rate Good, which puts the first review about 3 days out. Doing worse than before rates Hard or Again, which brings the review back sooner.
+  - **New levels go into the gap** as `practiced`, so "Where you stand" shows progress.
+  - **Each session is applied once,** via `mastery_applied_at` and one-at-a-time processing per learner.
+  - **Due reviews:** skills due for review outside the current milestone, at most two, go into the Tutor's context, and it opens with one quick review question.
+  - The `mastery_update` task, for LLM topic upkeep, isn't needed until there are topic graphs.
 - **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, running out of time, and stopping early. They're kept out of `pnpm test` because they call models.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, a quick review of a due skill, running out of time, and stopping early. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

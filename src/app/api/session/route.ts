@@ -12,6 +12,8 @@ import {
 } from "ai";
 
 import { isDatabaseConfigured } from "@/db";
+import { inngest } from "@/inngest/client";
+import { sessionCompleted } from "@/inngest/events";
 import { trackChatUsage } from "@/lib/ai/chat-usage";
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
@@ -43,11 +45,13 @@ export async function POST(req: Request) {
   const tools = {
     end_session: tool({
       description: "Record what the learner covered and showed, and end the session. Call once, at the end.",
-      inputSchema: endSessionSchema(milestone.skills.map((s) => s.skillId)),
+      // Evidence can cover the milestone's skills and any skill reviewed this session.
+      inputSchema: endSessionSchema([...new Set([...milestone.skills.map((s) => s.skillId), ...state.dueReviews.map((r) => r.skillId)])]),
       strict: true,
       execute: async (input) => {
         const report = normalizeReport(input);
         const { ended } = await endSession(session.id, userId, report);
+        if (ended) await startMasteryUpdate(userId, session.id);
         return { status: ended ? ("ended" as const) : ("already_ended" as const), milestoneComplete: report.milestoneComplete };
       },
     }),
@@ -85,6 +89,15 @@ export async function POST(req: Request) {
       },
     }),
   });
+}
+
+/** The session's report is the record; if the job runner is down, the evidence can be applied later. */
+async function startMasteryUpdate(userId: string, sessionId: string) {
+  try {
+    await inngest.send(sessionCompleted.create({ userId, sessionId }));
+  } catch (err) {
+    console.error("[session] couldn't start the mastery update", err);
+  }
 }
 
 /** Add the session clock to the newest learner message, as a separate text part. */

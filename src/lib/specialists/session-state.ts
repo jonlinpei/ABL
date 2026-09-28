@@ -1,3 +1,5 @@
+import { dueForReview } from "./mastery";
+import { loadMastery } from "./mastery-store";
 import { loadLatestBriefAndGap, loadSessions } from "./store";
 import { currentMilestone, type PastSession } from "./tutor";
 
@@ -14,12 +16,20 @@ export async function loadSessionState(userId: string) {
     .filter((r) => r.endedAt && r.report)
     .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
   const active = rows.find((r) => !r.endedAt);
+  const milestoneIndex = currentMilestone(state.plan.plan, history);
+  // Reviews worth a quick warm-up: due skills outside the current milestone,
+  // which the session practises anyway. At most two, to keep it quick.
+  const milestoneSkills = new Set(state.plan.plan.milestones[milestoneIndex]?.skills.map((s) => s.skillId));
+  const dueReviews = dueForReview(await loadMastery(userId), new Date())
+    .filter((r) => !milestoneSkills.has(r.skillId))
+    .slice(0, 2);
   return {
     brief: state.brief,
     gap: state.gap.gap,
     plan: state.plan,
     history,
     active,
-    milestoneIndex: currentMilestone(state.plan.plan, history),
+    milestoneIndex,
+    dueReviews,
   };
 }

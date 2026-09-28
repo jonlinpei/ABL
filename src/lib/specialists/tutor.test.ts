@@ -65,6 +65,25 @@ describe("tutorContext", () => {
     expect(ctx).toContain("Session 1 (2026-09-28): Wrote first SELECT queries.");
   });
 
+  it("asks for a quick review of skills that are due", () => {
+    const ctx = tutorContext({
+      ...base,
+      history: [],
+      dueReviews: [
+        {
+          skillId: "spreadsheets",
+          name: "Spreadsheets",
+          level: 3,
+          evidence: [{ level: 3, evidence: "Built a pivot unaided.", source: "session", at: "2026-09-20T00:00:00Z" }],
+          card: {} as never,
+        },
+      ],
+    });
+    expect(ctx).toContain("## Due for a quick review");
+    expect(ctx).toContain("- spreadsheets: Spreadsheets. Last shown at level 3: Built a pivot unaided.");
+    expect(tutorContext({ ...base, history: [] })).not.toContain("Due for a quick review");
+  });
+
   it("stays the same from turn to turn, so it can be cached", () => {
     expect(tutorContext({ ...base, history: [] })).toBe(tutorContext({ ...base, history: [] }));
     expect(tutorContext({ ...base, history: [] })).not.toMatch(/minutes have gone/);

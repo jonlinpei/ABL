@@ -12,6 +12,7 @@ import {
 import { sql } from "drizzle-orm";
 
 import type { GoalBrief } from "@/lib/goals/schema";
+import type { EvidenceEntry, StoredCard } from "@/lib/specialists/mastery";
 import type {
   AssessedSkill,
   Gap,
@@ -70,6 +71,7 @@ export const LEARNER_EVENT_TYPES = [
   "assessment_done",
   "plan_published",
   "session_completed",
+  "mastery_updated",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
@@ -200,6 +202,8 @@ export const sessions = pgTable(
     report: jsonb("report").$type<SessionReport>(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** Set when the mastery keeper applied this session's evidence, so it's applied once. */
+    masteryAppliedAt: timestamp("mastery_applied_at", { withTimezone: true }),
   },
   (t) => [
     index("sessions_user_started").on(t.userId, t.startedAt),
@@ -209,3 +213,34 @@ export const sessions = pgTable(
 );
 
 export type SessionRow = typeof sessions.$inferSelect;
+
+/**
+ * What the learner knows, skill by skill, across goals: the current level,
+ * recent evidence and the FSRS review card. `due` mirrors the card's due
+ * date so "due for review" is a simple indexed query.
+ */
+export const skillMastery = pgTable(
+  "skill_mastery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skillId: text("skill_id").notNull(),
+    name: text("name").notNull(),
+    level: integer("level").notNull(),
+    evidence: jsonb("evidence").$type<EvidenceEntry[]>().notNull(),
+    card: jsonb("card").$type<StoredCard>().notNull(),
+    due: timestamp("due", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex("skill_mastery_user_skill").on(t.userId, t.skillId),
+    index("skill_mastery_user_due").on(t.userId, t.due),
+  ],
+);
+
+export type SkillMasteryRow = typeof skillMastery.$inferSelect;

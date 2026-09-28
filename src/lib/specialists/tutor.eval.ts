@@ -9,6 +9,7 @@ import { z } from "zod";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
 import { GapSchema, PlanSchema, type SessionReport } from "./schemas";
+import type { MasteryRecord } from "./mastery";
 import { endSessionSchema, normalizeReport, sessionClock, tutorContext, type PastSession } from "./tutor";
 import { TUTOR_SKILL } from "./tutor.generated";
 
@@ -39,6 +40,7 @@ interface Scenario {
   fixture: string;
   persona: string;
   history?: PastSession[];
+  dueReviews?: MasteryRecord[];
   /** Minutes already gone when the session is joined. */
   startAt?: number;
   maxTurns: number;
@@ -51,14 +53,15 @@ async function runSession(name: string, s: Scenario) {
   let report: SessionReport | undefined;
   const endSession = tool({
     description: "Record what the learner covered and showed, and end the session. Call once, at the end.",
-    inputSchema: endSessionSchema(milestone.skills.map((sk) => sk.skillId)),
+    // As the route does: evidence for the milestone's skills and any reviewed skill.
+    inputSchema: endSessionSchema([...milestone.skills.map((sk) => sk.skillId), ...(s.dueReviews ?? []).map((r) => r.skillId)]),
     strict: true,
     execute: async (input) => {
       report = normalizeReport(input);
       return { status: "ended" as const, milestoneComplete: report.milestoneComplete };
     },
   });
-  const instructions = `${TUTOR_SKILL}\n\n${tutorContext({ brief, gap, plan, history, milestoneIndex: 0 })}`;
+  const instructions = `${TUTOR_SKILL}\n\n${tutorContext({ brief, gap, plan, history, milestoneIndex: 0, dueReviews: s.dueReviews })}`;
 
   const tutor: ModelMessage[] = [];
   const learner: ModelMessage[] = [];
@@ -194,6 +197,48 @@ describe("tutor sessions", () => {
       await judge(r.log, [
         "The tutor's first message asks how the homework (the interview and pain points) went before starting anything new",
         "The tutor responds to the specific pain points the learner shares and uses them in the session",
+      ]),
+    );
+  }, SESSION_TIMEOUT);
+
+  it("works in a quick review of a due skill, then moves on", async () => {
+    const r = await runSession("due-review", {
+      fixture: "marketing-ops-to-data-analyst",
+      persona:
+        "You are Maya, a marketing ops coordinator learning SQL. Two weeks ago you practised explaining funnel conversion metrics (MQL to SQL rate, stage-to-stage conversion) and you still remember them well. You're new to writing SQL queries. Reply briefly.",
+      history: [
+        {
+          milestoneIndex: 0,
+          endedAt: "2026-09-14T20:00:00.000Z",
+          report: {
+            summary: "Explained funnel conversion metrics from her HubSpot reports; strong. Hasn't written SQL yet.",
+            recap: "You explained your funnel conversion metrics clearly.",
+            covered: ["funnel metrics"],
+            evidence: [],
+            homework: null,
+            milestoneComplete: false,
+            endedEarly: false,
+          },
+        },
+      ],
+      dueReviews: [
+        {
+          skillId: "saas-funnel-metrics",
+          name: "SaaS funnel and pipeline metrics",
+          level: 2,
+          evidence: [{ level: 2, evidence: "Explained MQL-to-SQL conversion from her own reports.", source: "session", at: "2026-09-14T20:00:00.000Z" }],
+          card: {} as never,
+        },
+      ],
+      maxTurns: 14,
+    });
+    expect(r.report).toBeDefined();
+    const reviewed = r.report!.evidence.find((e) => e.skillId === "saas-funnel-metrics");
+    expect(reviewed, "records what the review showed").toBeDefined();
+    expectJudged(
+      await judge(r.log, [
+        "Early in the session, the tutor asks one short question that has the learner use funnel or pipeline metrics, as a quick review",
+        "The review stays brief (about one exchange) and the tutor then moves on to the session's main topic",
       ]),
     );
   }, SESSION_TIMEOUT);

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { GoalBrief } from "@/lib/goals/schema";
 
+import type { MasteryRecord } from "./mastery";
 import { SessionReport, type Gap, type Plan } from "./schemas";
 
 /** One past session, as the tutor needs to see it. */
@@ -28,12 +29,14 @@ export function tutorContext({
   plan,
   history,
   milestoneIndex,
+  dueReviews = [],
 }: {
   brief: GoalBrief;
   gap: Gap;
   plan: Plan;
   history: PastSession[];
   milestoneIndex: number;
+  dueReviews?: MasteryRecord[];
 }): string {
   const m = plan.milestones[milestoneIndex]!;
   const byId = new Map(gap.items.map((i) => [i.skillId, i]));
@@ -69,6 +72,13 @@ ${
     : `Session ${history.length + 1}. Pick up from where the last one ended and move toward the milestone's visible win.`
 }
 ${last?.report.homework ? `\nLast session's homework was: "${last.report.homework.task}" Open by asking how it went.` : ""}
+${
+  dueReviews.length
+    ? `\n## Due for a quick review\n${dueReviews
+        .map((r) => `- ${r.skillId}: ${r.name}. Last shown at level ${r.level}: ${r.evidence.at(-1)?.evidence ?? ""}`)
+        .join("\n")}\nAfter the homework check, ask one short question on one of these (two minutes at most), then move on. Record what it showed in the evidence.`
+    : ""
+}
 ${recent ? `\n## Recent sessions\n${recent}` : ""}
 
 Sessions are ${plan.sessionMinutes} minutes. Each learner message ends with the session clock.`;
