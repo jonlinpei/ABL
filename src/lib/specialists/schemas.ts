@@ -58,7 +58,9 @@ export const TargetRequirementsSchema = z.object({
 });
 export type TargetRequirements = z.infer<typeof TargetRequirementsSchema>;
 
-export const SkillBasis = z.enum(["work_history", "self_reported", "inferred"]);
+/** Where a level comes from. The profiler sets the first three; the Assessor sets "assessed". */
+export const SkillBasis = z.enum(["work_history", "self_reported", "inferred", "assessed"]);
+const ProfileBasis = SkillBasis.exclude(["assessed"]);
 
 /** The learner's current level on each required skill, with where that estimate comes from. */
 export const LearnerProfileSchema = z.object({
@@ -68,7 +70,7 @@ export const LearnerProfileSchema = z.object({
       z.object({
         skillId: z.string().describe("The id of a required skill."),
         level: SkillLevel,
-        basis: SkillBasis.describe(
+        basis: ProfileBasis.describe(
           "work_history: shown by what they did in a role. self_reported: they said so. inferred: an educated guess.",
         ),
         evidence: z.string().describe("The specific fact behind the level, in one sentence."),
@@ -105,3 +107,14 @@ export const GapSchema = z.object({
   counts: z.object({ met: z.number(), partial: z.number(), missing: z.number() }),
 });
 export type Gap = z.infer<typeof GapSchema>;
+
+/** One skill the Assessor checked, and what the learner showed. */
+export const AssessedSkill = z.object({
+  skillId: z.string(),
+  level: SkillLevel.describe("The level their answers showed, on the same 0 to 4 scale."),
+  confidence: z
+    .enum(["high", "medium", "low"])
+    .describe("How sure you are: low if they skipped or the answer was too short to judge."),
+  evidence: z.string().describe("What in their answer supports the level, in one sentence."),
+});
+export type AssessedSkill = z.infer<typeof AssessedSkill>;

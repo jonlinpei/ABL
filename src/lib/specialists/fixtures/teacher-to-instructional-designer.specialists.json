@@ -1,0 +1,473 @@
+{
+  "requirements": {
+    "summary": "A corporate instructional designer on a tech company's L&D team turns business needs into training. Day to day that means analysing what employees need to learn, working with subject matter experts, writing objectives and storyboards, building self-paced eLearning and virtual sessions in authoring tools, publishing to the LMS, and measuring whether the training worked. Hiring decisions rest mostly on a portfolio that shows solid design reasoning and polished interactive work in tools like Articulate 360, plus evidence that the candidate can manage SMEs and deadlines independently in a remote team.",
+    "skills": [
+      {
+        "id": "instructional-design-models",
+        "name": "Instructional design models and process (ADDIE, SAM, backward design)",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions asking the candidate to walk through how they took a project from request to launch, plus the design rationale in portfolio case studies."
+      },
+      {
+        "id": "elearning-authoring-articulate",
+        "name": "eLearning authoring in Articulate 360 (Storyline and Rise)",
+        "category": "tool",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Portfolio pieces built in Storyline (triggers, variables, states, branching) and Rise, sometimes followed by a timed build exercise or take-home."
+      },
+      {
+        "id": "training-needs-analysis",
+        "name": "Needs analysis and measurable learning objectives",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Scenario interview questions such as 'a manager asks for a course; what do you do first?', and whether portfolio case studies show the performance problem and the objectives."
+      },
+      {
+        "id": "storyboarding",
+        "name": "Storyboarding and design documents",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "A sample storyboard or design document in the portfolio, or a take-home that asks for one from provided source content."
+      },
+      {
+        "id": "adult-learning-principles",
+        "name": "Adult learning principles and evidence-based practice (andragogy, cognitive load, spaced practice, scenario-based learning)",
+        "category": "domain",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions about why a design choice was made, and whether portfolio pieces go beyond click-next content into practice and application."
+      },
+      {
+        "id": "instructional-writing",
+        "name": "Instructional writing (concise scripts, scenarios, assessment items, job aids)",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Writing samples in the portfolio and editing or rewriting exercises in take-home assessments."
+      },
+      {
+        "id": "sme-collaboration",
+        "name": "Working with subject matter experts and stakeholders",
+        "category": "professional",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Behavioural interview questions about extracting content from busy SMEs, pushing back on 'just make a course' requests, and handling review feedback."
+      },
+      {
+        "id": "learning-project-management",
+        "name": "Managing multiple learning projects remotely (timelines, reviews, async tools like Asana, Jira, Slack)",
+        "category": "professional",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions about juggling concurrent projects and deadlines, plus references; some employers probe comfort with async remote work."
+      },
+      {
+        "id": "learning-evaluation",
+        "name": "Learning evaluation (Kirkpatrick levels, surveys, LMS completion and assessment data)",
+        "category": "technical",
+        "level": 2,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions on how the candidate would measure a course's impact, and whether portfolio case studies report results or an evaluation plan."
+      },
+      {
+        "id": "lms-administration",
+        "name": "Corporate LMS use and course publishing (e.g. Workday Learning, Docebo, Cornerstone, 360Learning)",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Resume keywords and interview questions about uploading, assigning and tracking courses; the specific platform is usually learned on the job."
+      },
+      {
+        "id": "elearning-standards-scorm-xapi",
+        "name": "eLearning standards (SCORM, xAPI) and troubleshooting published packages",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Interview questions about publishing settings and tracking problems."
+      },
+      {
+        "id": "multimedia-production",
+        "name": "Visual and multimedia production (Canva or Adobe tools, Camtasia or Vyond for video, basic audio)",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Visual polish of portfolio pieces and any short video or animation samples."
+      },
+      {
+        "id": "virtual-instructor-led-design",
+        "name": "Virtual instructor-led training design (facilitator guides, slide decks, breakout activities for Zoom or Teams)",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "A facilitator guide or session plan in the portfolio and interview questions on keeping remote sessions interactive."
+      },
+      {
+        "id": "accessibility-wcag",
+        "name": "Accessible learning design (WCAG basics, captions, alt text, keyboard navigation)",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Interview questions on accessibility practices and checks of portfolio pieces for captions and accessible design."
+      },
+      {
+        "id": "tech-workplace-learning-context",
+        "name": "Tech workplace learning context (onboarding, software and product training, sales enablement, compliance, AI-assisted content creation)",
+        "category": "domain",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Interview discussion of typical tech L&D use cases, and whether portfolio topics match corporate audiences rather than school students."
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree (any field)",
+        "status": "common",
+        "note": "Most corporate postings list one, but the field rarely matters if the portfolio is strong."
+      },
+      {
+        "name": "Master's or graduate certificate in instructional design, learning design or educational technology",
+        "status": "optional",
+        "note": "It can help candidates without corporate experience get past screening, but employers weigh the portfolio more heavily."
+      },
+      {
+        "name": "ATD Associate Professional in Talent Development (APTD) or CPTD",
+        "status": "optional",
+        "note": "It occasionally appears as a preferred qualification and rarely decides hiring for early-career roles."
+      }
+    ],
+    "proofOfSkill": [
+      "An online portfolio (personal website or hosted Review 360 links) with 3 to 5 corporate-relevant pieces, such as a branching scenario in Storyline, a microlearning module in Rise, and a job aid or video.",
+      "One or two written case studies that follow a project from the business problem through needs analysis, objectives, design decisions, build, and evaluation plan or results.",
+      "A sample storyboard or design document for one portfolio piece.",
+      "A facilitator guide and slide deck for a virtual instructor-led session.",
+      "Completion of any take-home design or build exercise the employer sets during the hiring process."
+    ],
+    "caveats": [
+      "The target does not state a seniority level, so these requirements assume an entry-level or early-career instructional designer (titles like Instructional Designer I or Associate). Senior roles expect leading learning strategy, owning programs, and deeper data and evaluation work.",
+      "Authoring tools and LMS platforms vary by employer. Articulate 360 is the most commonly named, but some teams use Adobe Captivate, iSpring, Evolve or tools built into the LMS, and LMS platforms differ widely.",
+      "Job titles overlap. Learning Experience Designer, eLearning Developer, Enablement Specialist and L&D Specialist can mean heavier build work, heavier facilitation or broader program management depending on the company.",
+      "Remote roles open to a wide applicant pool, so employers can raise the portfolio bar. Some remote postings are restricted to certain countries, states or time zones.",
+      "AI tools for drafting content, images, voiceover and video are changing workflows quickly, and expectations for using them may have shifted since this was written.",
+      "Some tech L&D teams focus on specific areas, such as sales enablement, customer education or technical product training. Those roles may expect familiarity with the company's product domain or tools like Salesforce."
+    ]
+  },
+  "profile": {
+    "summary": "This learner brings nine years of curriculum design, LMS course-building, adult training facilitation, and instructional video creation from a public education setting, all of which map closely to core instructional design competencies. She lacks direct experience with corporate authoring tools (Articulate), formal ID frameworks (ADDIE/SAM), SCORM/xAPI, and remote project-management tooling common to corporate L&D roles.",
+    "skills": [
+      {
+        "skillId": "instructional-design-models",
+        "level": 2,
+        "basis": "inferred",
+        "evidence": "Designs curriculum aligned to standards (NGSS), which mirrors backward-design methodology, though she has no stated exposure to ADDIE or SAM and stalled out on a formal instructional design course."
+      },
+      {
+        "skillId": "elearning-authoring-articulate",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "The brief mentions Canvas and Google Classroom for course-building but no use of Articulate 360, Storyline, or Rise."
+      },
+      {
+        "skillId": "training-needs-analysis",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Designs curriculum for 150+ students and uses data-driven assessment design, showing experience identifying learning gaps, though not for adult workplace stakeholders."
+      },
+      {
+        "skillId": "storyboarding",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Created an instructional video series now used across 4 schools, which likely required some script or content planning, but no formal storyboarding or design documents are mentioned."
+      },
+      {
+        "skillId": "adult-learning-principles",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "Runs monthly PD sessions for 6 teachers on formative assessment and edtech tools, directly applying adult learning facilitation."
+      },
+      {
+        "skillId": "instructional-writing",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Builds self-paced review modules and an instructional video series, both requiring written instructional content, though not corporate-style scripts or job aids."
+      },
+      {
+        "skillId": "sme-collaboration",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Leads a 6-teacher department and facilitates PD sessions, requiring ongoing collaboration with colleagues on curriculum and training content."
+      },
+      {
+        "skillId": "learning-project-management",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Manages a department and coordinates monthly PD sessions, but the brief gives no evidence of using async remote tools like Asana, Jira, or Slack."
+      },
+      {
+        "skillId": "learning-evaluation",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Data-driven assessment design is listed as a core strength, indicating experience evaluating whether learning objectives were met, though not via Kirkpatrick-style corporate frameworks."
+      },
+      {
+        "skillId": "lms-administration",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Builds and publishes digital course materials in Canvas and Google Classroom, showing solid LMS course-building skills, though not in a corporate LMS."
+      },
+      {
+        "skillId": "elearning-standards-scorm-xapi",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of SCORM or xAPI packaging or troubleshooting in her Canvas/Google Classroom work."
+      },
+      {
+        "skillId": "multimedia-production",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "Created an instructional video series now used across 4 schools, demonstrating practical video production skills."
+      },
+      {
+        "skillId": "virtual-instructor-led-design",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Facilitates PD sessions for colleagues, but the brief does not indicate these were designed for virtual delivery via Zoom or Teams."
+      },
+      {
+        "skillId": "accessibility-wcag",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of accessibility considerations, captions, or alt text in her curriculum or video work."
+      },
+      {
+        "skillId": "tech-workplace-learning-context",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "Her entire career is in public K-12 education with no exposure to corporate tech workplace learning needs like onboarding or sales enablement."
+      }
+    ],
+    "otherStrengths": [
+      "Leadership experience managing and developing a team of 6 teachers",
+      "Demonstrated content quality and impact, as shown by her video series being adopted across 4 schools",
+      "Self-directed persistence in pursuing career transition, having started an instructional design course independently",
+      "Standards-based curriculum design expertise (NGSS) transferable to structured, objective-driven content design"
+    ]
+  },
+  "gap": {
+    "items": [
+      {
+        "skillId": "elearning-authoring-articulate",
+        "name": "eLearning authoring in Articulate 360 (Storyline and Rise)",
+        "category": "tool",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "storyboarding",
+        "name": "Storyboarding and design documents",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 1,
+        "shortfall": 2,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "learning-project-management",
+        "name": "Managing multiple learning projects remotely (timelines, reviews, async tools like Asana, Jira, Slack)",
+        "category": "professional",
+        "importance": "must",
+        "required": 3,
+        "current": 1,
+        "shortfall": 2,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "instructional-design-models",
+        "name": "Instructional design models and process (ADDIE, SAM, backward design)",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "training-needs-analysis",
+        "name": "Needs analysis and measurable learning objectives",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "instructional-writing",
+        "name": "Instructional writing (concise scripts, scenarios, assessment items, job aids)",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "sme-collaboration",
+        "name": "Working with subject matter experts and stakeholders",
+        "category": "professional",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "adult-learning-principles",
+        "name": "Adult learning principles and evidence-based practice (andragogy, cognitive load, spaced practice, scenario-based learning)",
+        "category": "domain",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "learning-evaluation",
+        "name": "Learning evaluation (Kirkpatrick levels, surveys, LMS completion and assessment data)",
+        "category": "technical",
+        "importance": "must",
+        "required": 2,
+        "current": 2,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "elearning-standards-scorm-xapi",
+        "name": "eLearning standards (SCORM, xAPI) and troubleshooting published packages",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "accessibility-wcag",
+        "name": "Accessible learning design (WCAG basics, captions, alt text, keyboard navigation)",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "tech-workplace-learning-context",
+        "name": "Tech workplace learning context (onboarding, software and product training, sales enablement, compliance, AI-assisted content creation)",
+        "category": "domain",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "virtual-instructor-led-design",
+        "name": "Virtual instructor-led training design (facilitator guides, slide decks, breakout activities for Zoom or Teams)",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 1,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "lms-administration",
+        "name": "Corporate LMS use and course publishing (e.g. Workday Learning, Docebo, Cornerstone, 360Learning)",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 2,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "multimedia-production",
+        "name": "Visual and multimedia production (Canva or Adobe tools, Camtasia or Vyond for video, basic audio)",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 2,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree (any field)",
+        "status": "common",
+        "note": "Most corporate postings list one, but the field rarely matters if the portfolio is strong."
+      },
+      {
+        "name": "Master's or graduate certificate in instructional design, learning design or educational technology",
+        "status": "optional",
+        "note": "It can help candidates without corporate experience get past screening, but employers weigh the portfolio more heavily."
+      },
+      {
+        "name": "ATD Associate Professional in Talent Development (APTD) or CPTD",
+        "status": "optional",
+        "note": "It occasionally appears as a preferred qualification and rarely decides hiring for early-career roles."
+      }
+    ],
+    "proofOfSkill": [
+      "An online portfolio (personal website or hosted Review 360 links) with 3 to 5 corporate-relevant pieces, such as a branching scenario in Storyline, a microlearning module in Rise, and a job aid or video.",
+      "One or two written case studies that follow a project from the business problem through needs analysis, objectives, design decisions, build, and evaluation plan or results.",
+      "A sample storyboard or design document for one portfolio piece.",
+      "A facilitator guide and slide deck for a virtual instructor-led session.",
+      "Completion of any take-home design or build exercise the employer sets during the hiring process."
+    ],
+    "counts": {
+      "met": 4,
+      "partial": 7,
+      "missing": 4
+    }
+  }
+}

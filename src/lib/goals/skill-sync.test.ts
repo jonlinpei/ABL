@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { ASSESSOR_SKILL } from "../specialists/assessor.generated";
 import { PROFILER_SKILL } from "../specialists/profiler.generated";
 import { REQUIREMENTS_ANALYST_SKILL } from "../specialists/requirements-analyst.generated";
 import { GOAL_CLARIFICATION_SKILL } from "./goal-clarification.generated";
@@ -37,6 +38,7 @@ describe("specialist skills", () => {
   it.each([
     ["requirements-analyst", REQUIREMENTS_ANALYST_SKILL],
     ["profiler", PROFILER_SKILL],
+    ["assessor", ASSESSOR_SKILL],
   ])("generated prompt for %s matches its SKILL.md (run `pnpm skills:sync` if this fails)", (name, generated) => {
     expect(generated).toBe(skillBody(name));
   });

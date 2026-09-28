@@ -8,12 +8,11 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import { after } from "next/server";
 
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { NoEligibleModelError, resolveModel } from "@/lib/ai/router";
-import { finishTrace, startTrace, sumUsage, type CallTrace, type TokenUsage } from "@/lib/ai/trace";
-import { ABORTED, captureAiGeneration } from "@/lib/ai/usage-events";
+import { trackChatUsage } from "@/lib/ai/chat-usage";
+import type { CallTrace } from "@/lib/ai/trace";
 import { invalidAttachments } from "@/lib/goals/attachments";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
 import { GoalBriefSchema } from "@/lib/goals/schema";
@@ -65,20 +64,8 @@ export async function POST(req: Request) {
   }
 
   const routed = resolution.primary;
-  const trace = startTrace("goal_discover", routed);
-  const startedAt = Date.now();
+  const usage = trackChatUsage({ task: "goal_discover", routed, userId, traceId });
   const today = new Date().toISOString().slice(0, 10);
-  let finished: CallTrace | undefined;
-  let streamError: unknown;
-  let abortedUsage: TokenUsage | undefined;
-
-  // Runs once the response has closed. Every call is recorded: finished,
-  // failed, or cut off by the client (with the usage of any finished steps).
-  after(() => {
-    if (finished) return captureAiGeneration(userId, finished, streamError, traceId);
-    const partial = finishTrace(trace, routed.model, abortedUsage, startedAt);
-    return captureAiGeneration(userId, partial, streamError ?? ABORTED, traceId);
-  });
 
   const modelMessages = await convertToModelMessages(messages);
   // A resume is resent on every turn. A cache breakpoint on the newest message
@@ -94,27 +81,15 @@ export async function POST(req: Request) {
     stopWhen: hasToolCall("propose_goal_brief"),
     // Stop generating (and paying) when the client disconnects.
     abortSignal: req.signal,
-    onAbort: ({ steps }) => {
-      abortedUsage = sumUsage(steps.map((step) => step.usage));
-    },
+    onAbort: usage.onAbort,
   });
 
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({
       stream: result.stream,
       originalMessages: messages,
-      messageMetadata: ({ part }) => {
-        if (part.type === "start") return trace;
-        if (part.type === "finish") {
-          finished = finishTrace(trace, routed.model, part.totalUsage, startedAt);
-          return finished;
-        }
-      },
-      onError: (error) => {
-        streamError = error;
-        console.error("[goal_discover]", error);
-        return error instanceof Error ? error.message : "The tutor hit an error.";
-      },
+      messageMetadata: usage.messageMetadata,
+      onError: usage.onError,
     }),
   });
 }

@@ -1,0 +1,467 @@
+{
+  "requirements": {
+    "summary": "An FP&A analyst in a tech company owns parts of the annual budget and rolling forecasts, builds driver-based models (headcount, revenue, opex), explains variances to actuals each month, and turns the numbers into clear recommendations for department heads and finance leadership. People get hired by showing strong Excel/Sheets modeling on a case study, fluency in tech and SaaS metrics, and the ability to explain what the numbers mean for the business, not just whether they are correct.",
+    "skills": [
+      {
+        "id": "financial-modeling",
+        "name": "Driver-based financial modeling (revenue, headcount and opex builds linked to P&L, with scenarios)",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Timed or take-home modeling case, e.g. build a 12–24 month forecast from assumptions and walk the interviewer through the logic and sensitivities."
+      },
+      {
+        "id": "budgeting-and-forecasting",
+        "name": "Budgeting and rolling forecasting process",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions on how you ran or contributed to an annual plan or reforecast cycle, and how you gathered inputs from budget owners."
+      },
+      {
+        "id": "variance-analysis",
+        "name": "Budget-vs-actual variance analysis and commentary",
+        "category": "technical",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Case where you are given plan vs actuals and asked to identify drivers and write short commentary for leadership."
+      },
+      {
+        "id": "advanced-excel",
+        "name": "Advanced Excel / Google Sheets (XLOOKUP/INDEX-MATCH, SUMIFS, pivot tables, dynamic ranges, clean model structure)",
+        "category": "tool",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Live Excel test or evaluation of the model built in the take-home case for accuracy, structure and speed."
+      },
+      {
+        "id": "saas-metrics",
+        "name": "Tech and SaaS metrics (ARR/MRR, net revenue retention, churn, CAC, LTV, payback, gross margin, burn and runway)",
+        "category": "domain",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Interview questions asking you to define and calculate metrics and explain what movements in them imply for the business."
+      },
+      {
+        "id": "accounting-fundamentals",
+        "name": "Accounting fundamentals for FP&A (three statements, accruals, revenue recognition under ASC 606/IFRS 15, capitalized software, stock-based compensation)",
+        "category": "domain",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Technical questions linking the income statement, balance sheet and cash flow, and on how accounting treatment affects forecasts."
+      },
+      {
+        "id": "headcount-planning",
+        "name": "Headcount and compensation planning",
+        "category": "technical",
+        "level": 2,
+        "importance": "must",
+        "howEmployersCheck": "Case or interview question on building a hiring plan with start dates, fully loaded cost and attrition assumptions."
+      },
+      {
+        "id": "financial-storytelling",
+        "name": "Presenting financial results to non-finance leaders (slides, charts, executive summaries)",
+        "category": "professional",
+        "level": 3,
+        "importance": "must",
+        "howEmployersCheck": "Presentation of the case study results to a panel, and behavioral questions about explaining numbers to executives."
+      },
+      {
+        "id": "business-partnering",
+        "name": "Business partnering with budget owners (e.g. engineering, sales, marketing leaders)",
+        "category": "professional",
+        "level": 2,
+        "importance": "must",
+        "howEmployersCheck": "Behavioral interview questions about pushing back on spend requests, gathering forecast inputs and influencing without authority."
+      },
+      {
+        "id": "fpa-planning-software",
+        "name": "FP&A planning software (e.g. Adaptive Planning, Anaplan, Pigment, Planful)",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Listed on résumé and discussed in interview; usually taught on the job if Excel skills are strong."
+      },
+      {
+        "id": "erp-systems",
+        "name": "ERP and GL systems (e.g. NetSuite, SAP, Oracle) for pulling actuals",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Résumé and interview discussion of extracting and reconciling actuals."
+      },
+      {
+        "id": "sql-querying",
+        "name": "SQL querying (joins, aggregations) for pulling operational and billing data",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Occasional SQL screen or questions at data-heavy tech companies; often waived."
+      },
+      {
+        "id": "bi-dashboards",
+        "name": "BI dashboards (e.g. Tableau, Looker, Power BI)",
+        "category": "tool",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Portfolio sample or interview discussion of reporting you built."
+      },
+      {
+        "id": "unit-economics-analysis",
+        "name": "Unit economics and ad hoc business case analysis (pricing, ROI of investments, vendor spend)",
+        "category": "technical",
+        "level": 2,
+        "importance": "nice",
+        "howEmployersCheck": "Case question such as evaluating whether to invest in a new sales team or tool."
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree in finance, accounting, economics or related field",
+        "status": "common",
+        "note": "Most postings list it, though relevant experience can substitute at some tech companies."
+      },
+      {
+        "name": "CPA",
+        "status": "optional",
+        "note": "Valued as a signal of accounting rigor but rarely required for FP&A roles."
+      },
+      {
+        "name": "CFA",
+        "status": "optional",
+        "note": "Occasionally seen as a plus, more relevant to investment-facing roles than internal FP&A."
+      },
+      {
+        "name": "FPAC (AFP Certified Financial Planning & Analysis Professional)",
+        "status": "optional",
+        "note": "Recognized by some employers but seldom decides hiring."
+      },
+      {
+        "name": "MBA",
+        "status": "optional",
+        "note": "More relevant for senior or strategic finance tracks at larger tech companies than for analyst roles."
+      }
+    ],
+    "proofOfSkill": [
+      "A driver-based three-statement or P&L forecast model for a hypothetical SaaS company, with an assumptions tab, scenarios and a clean summary output",
+      "A monthly budget-vs-actual variance pack with short written commentary suitable for a department head",
+      "A 5–8 slide presentation turning model outputs into recommendations for leadership",
+      "Résumé examples quantifying forecasting, budgeting, reporting or process improvement work",
+      "Strong performance on the employer's modeling case study, which is often the deciding factor"
+    ],
+    "caveats": [
+      "The target level wasn't specified, so this assumes an FP&A analyst (entry to mid) role; senior analyst and manager roles expect ownership of full plan cycles, deeper leadership partnering and sometimes people management.",
+      "Startups often want generalists who also handle strategic finance, board decks and fundraising models, while large tech companies have more specialized, system-heavy FP&A teams.",
+      "Planning tool and ERP names vary widely by company size, and the tools listed may change over time.",
+      "SaaS metrics matter most at subscription software companies; hardware, marketplace or consumer tech firms emphasize different drivers such as unit volumes, take rate or COGS.",
+      "Revenue recognition standards referenced (ASC 606 / IFRS 15) depend on whether the company reports under US GAAP or IFRS.",
+      "Case study formats (timed live test vs take-home) and whether SQL is screened differ a lot by employer."
+    ]
+  },
+  "profile": {
+    "summary": "This auditor brings a decade of deep financial-statement fluency, hands-on experience with real company financials under scrutiny, and strong client communication skills to the FP&A transition. They have no formal experience yet in financial modeling, forecasting, or SaaS-specific metrics, so the core FP&A technical and domain skills will need to be built largely from scratch.",
+    "skills": [
+      {
+        "skillId": "financial-modeling",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "The brief states they have no formal financial modeling or forecasting experience yet."
+      },
+      {
+        "skillId": "budgeting-and-forecasting",
+        "level": 0,
+        "basis": "self_reported",
+        "evidence": "The brief explicitly notes no formal forecasting experience yet."
+      },
+      {
+        "skillId": "variance-analysis",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Audit work involves analytical procedures comparing actual results to expectations, which is adjacent to but not the same as budget-vs-actual commentary."
+      },
+      {
+        "skillId": "advanced-excel",
+        "level": 3,
+        "basis": "inferred",
+        "evidence": "Ten years conducting financial statement audits at a mid-size firm routinely requires building and reviewing detailed Excel workpapers with lookups, pivot tables and reconciliations."
+      },
+      {
+        "skillId": "saas-metrics",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "Their audit experience spans multiple industries via external client work, with no mention of tech/SaaS-specific metrics like ARR or churn."
+      },
+      {
+        "skillId": "accounting-fundamentals",
+        "level": 3,
+        "basis": "work_history",
+        "evidence": "Ten years reviewing financial records for accuracy and compliance across clients demonstrates deep fluency in the three statements, accruals and related standards."
+      },
+      {
+        "skillId": "headcount-planning",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of compensation or headcount planning work; this is outside typical external audit scope."
+      },
+      {
+        "skillId": "financial-storytelling",
+        "level": 2,
+        "basis": "work_history",
+        "evidence": "They are described as strong at explaining numbers clearly to clients, though this was for audit findings rather than executive-level financial storytelling with slides and summaries."
+      },
+      {
+        "skillId": "business-partnering",
+        "level": 1,
+        "basis": "work_history",
+        "evidence": "Explaining audit findings to clients shows some comfort partnering with non-finance stakeholders, though not in an ongoing internal budget-owner relationship."
+      },
+      {
+        "skillId": "fpa-planning-software",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of any FP&A planning tools; audit work does not typically involve these platforms."
+      },
+      {
+        "skillId": "erp-systems",
+        "level": 2,
+        "basis": "inferred",
+        "evidence": "Auditing client financials across industries for a decade almost certainly required pulling data from client ERP/GL systems during fieldwork."
+      },
+      {
+        "skillId": "sql-querying",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of querying or database work; external audit rarely requires SQL."
+      },
+      {
+        "skillId": "bi-dashboards",
+        "level": 0,
+        "basis": "inferred",
+        "evidence": "No mention of BI tool usage; audit workpapers are typically Excel-based rather than dashboard-driven."
+      },
+      {
+        "skillId": "unit-economics-analysis",
+        "level": 1,
+        "basis": "inferred",
+        "evidence": "Deep financial statement fluency provides some foundation for analyzing business economics, but no direct experience with pricing or ROI analysis is mentioned."
+      }
+    ],
+    "otherStrengths": [
+      "Comfortable working with real company financials under scrutiny and high accuracy standards",
+      "Strong client-facing communication and ability to translate technical findings for non-experts",
+      "Experience working across multiple industries, providing broad business context",
+      "Rigorous, detail-oriented approach from years of compliance-focused review work"
+    ]
+  },
+  "gap": {
+    "items": [
+      {
+        "skillId": "financial-modeling",
+        "name": "Driver-based financial modeling (revenue, headcount and opex builds linked to P&L, with scenarios)",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "budgeting-and-forecasting",
+        "name": "Budgeting and rolling forecasting process",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "self_reported",
+        "verify": false
+      },
+      {
+        "skillId": "saas-metrics",
+        "name": "Tech and SaaS metrics (ARR/MRR, net revenue retention, churn, CAC, LTV, payback, gross margin, burn and runway)",
+        "category": "domain",
+        "importance": "must",
+        "required": 3,
+        "current": 0,
+        "shortfall": 3,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "variance-analysis",
+        "name": "Budget-vs-actual variance analysis and commentary",
+        "category": "technical",
+        "importance": "must",
+        "required": 3,
+        "current": 1,
+        "shortfall": 2,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "headcount-planning",
+        "name": "Headcount and compensation planning",
+        "category": "technical",
+        "importance": "must",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "financial-storytelling",
+        "name": "Presenting financial results to non-finance leaders (slides, charts, executive summaries)",
+        "category": "professional",
+        "importance": "must",
+        "required": 3,
+        "current": 2,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "business-partnering",
+        "name": "Business partnering with budget owners (e.g. engineering, sales, marketing leaders)",
+        "category": "professional",
+        "importance": "must",
+        "required": 2,
+        "current": 1,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "advanced-excel",
+        "name": "Advanced Excel / Google Sheets (XLOOKUP/INDEX-MATCH, SUMIFS, pivot tables, dynamic ranges, clean model structure)",
+        "category": "tool",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "accounting-fundamentals",
+        "name": "Accounting fundamentals for FP&A (three statements, accruals, revenue recognition under ASC 606/IFRS 15, capitalized software, stock-based compensation)",
+        "category": "domain",
+        "importance": "must",
+        "required": 3,
+        "current": 3,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "work_history",
+        "verify": false
+      },
+      {
+        "skillId": "fpa-planning-software",
+        "name": "FP&A planning software (e.g. Adaptive Planning, Anaplan, Pigment, Planful)",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "sql-querying",
+        "name": "SQL querying (joins, aggregations) for pulling operational and billing data",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "bi-dashboards",
+        "name": "BI dashboards (e.g. Tableau, Looker, Power BI)",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 0,
+        "shortfall": 2,
+        "status": "missing",
+        "basis": "inferred",
+        "verify": false
+      },
+      {
+        "skillId": "unit-economics-analysis",
+        "name": "Unit economics and ad hoc business case analysis (pricing, ROI of investments, vendor spend)",
+        "category": "technical",
+        "importance": "nice",
+        "required": 2,
+        "current": 1,
+        "shortfall": 1,
+        "status": "partial",
+        "basis": "inferred",
+        "verify": true
+      },
+      {
+        "skillId": "erp-systems",
+        "name": "ERP and GL systems (e.g. NetSuite, SAP, Oracle) for pulling actuals",
+        "category": "tool",
+        "importance": "nice",
+        "required": 2,
+        "current": 2,
+        "shortfall": 0,
+        "status": "met",
+        "basis": "inferred",
+        "verify": true
+      }
+    ],
+    "credentials": [
+      {
+        "name": "Bachelor's degree in finance, accounting, economics or related field",
+        "status": "common",
+        "note": "Most postings list it, though relevant experience can substitute at some tech companies."
+      },
+      {
+        "name": "CPA",
+        "status": "optional",
+        "note": "Valued as a signal of accounting rigor but rarely required for FP&A roles."
+      },
+      {
+        "name": "CFA",
+        "status": "optional",
+        "note": "Occasionally seen as a plus, more relevant to investment-facing roles than internal FP&A."
+      },
+      {
+        "name": "FPAC (AFP Certified Financial Planning & Analysis Professional)",
+        "status": "optional",
+        "note": "Recognized by some employers but seldom decides hiring."
+      },
+      {
+        "name": "MBA",
+        "status": "optional",
+        "note": "More relevant for senior or strategic finance tracks at larger tech companies than for analyst roles."
+      }
+    ],
+    "proofOfSkill": [
+      "A driver-based three-statement or P&L forecast model for a hypothetical SaaS company, with an assumptions tab, scenarios and a clean summary output",
+      "A monthly budget-vs-actual variance pack with short written commentary suitable for a department head",
+      "A 5–8 slide presentation turning model outputs into recommendations for leadership",
+      "Résumé examples quantifying forecasting, budgeting, reporting or process improvement work",
+      "Strong performance on the employer's modeling case study, which is often the deciding factor"
+    ],
+    "counts": {
+      "met": 3,
+      "partial": 4,
+      "missing": 7
+    }
+  }
+}

@@ -44,9 +44,10 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
-- `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version.
+- `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
+- `assessments`: what the skills check recorded per skill, one per brief version.
 
 Tables for plans and mastery arrive with the specialists that write them.
 
@@ -108,6 +109,7 @@ How it's wired:
   2. Find or build the target's requirements.
   3. Build the profile.
   4. Save the gap.
+  5. Wait for the skills check (`learner/assessment.done`, matched on the brief id), for up to 14 days. It skips the wait when there's nothing to check.
 
   Step results are memoized, so a retry resumes after the last finished step instead of paying for earlier model calls again. Step results are stored by Inngest, so they hold career details the same way the database does.
 - **Endpoint:** `/api/inngest`, served with `inngest/next`.
@@ -147,7 +149,13 @@ Settled defaults:
 - **Requirements analyst** (`skills/requirements-analyst`): `requirements_build`, cached per target.
 - **Profiler** (`skills/profiler`): `profile_extract`. It works from the confirmed brief only, because resumes aren't stored. It estimates each required skill on a 0–4 scale and says where each estimate comes from: work history, self-reported or inferred.
 - **Gap** (`src/lib/specialists/gap.ts`): deterministic. It flags every claimed or inferred level above 0 for the Assessor to verify.
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They're kept out of `pnpm test` because they call models.
+- **Assessor** (`skills/assessor`, task `assessment_run`, route `/api/assess`): the skills check.
+  - It checks up to five flagged skills, must-haves and the highest claims first, with one practical question each. It's friendly, never grades out loud, and treats "I haven't done that" as a fine answer.
+  - Results replace the estimates in the gap, marked as assessed.
+  - A submission that leaves out a checked skill is rejected and sent back to the Assessor, so a premature call can't save zeros.
+  - The UI polls `/api/learner/status` while the gap is built.
+- **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 
