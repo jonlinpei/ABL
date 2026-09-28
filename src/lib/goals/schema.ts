@@ -106,37 +106,3 @@ export const GoalBriefSchema = z.object({
     .describe("Fields filled in from inference rather than the learner's own words, for them to check."),
 });
 export type GoalBrief = z.infer<typeof GoalBriefSchema>;
-
-/** A first roadmap built from a confirmed goal brief (PRD F1, story 4). */
-export const RoadmapSchema = z.object({
-  title: z.string(),
-  summary: z.string().describe("Two or three sentences on the path and why it fits this learner."),
-  estimatedWeeks: z.number(),
-  weeklyHours: z.number().describe("Must not exceed the learner's weeklyHours."),
-  skippedAsKnown: z
-    .array(z.string())
-    .describe("Topics skipped because the learner's starting point already covers them."),
-  milestones: z
-    .array(
-      z.object({
-        title: z.string(),
-        weeks: z.number().describe("Weeks this milestone takes."),
-        whyItMatters: z.string().describe("One sentence connecting it to the learner's goal."),
-        topics: z.array(z.string()),
-        visibleWin: z
-          .string()
-          .describe("A small, concrete thing the learner can do at the end of it."),
-      }),
-    )
-    .describe("3 to 6 milestones, in order."),
-  firstSession: z.object({
-    title: z.string(),
-    minutes: z.number().describe("Must not exceed the learner's sessionMinutes."),
-    whatYouWillDo: z.string(),
-    outcome: z.string(),
-  }),
-  assumptions: z
-    .array(z.string())
-    .describe("Assumptions made where the brief was unclear, to confirm with the learner."),
-});
-export type Roadmap = z.infer<typeof RoadmapSchema>;

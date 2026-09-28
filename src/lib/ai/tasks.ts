@@ -19,6 +19,7 @@ export const TASK_TYPES = [
   "tutor_session",
   "coach_decide",
   "mastery_update",
+  "plan_review",
 ] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 
@@ -140,5 +141,12 @@ export const TASK_ROUTES: Readonly<Record<TaskType, TaskRoute>> = {
     fallback: ["standard"],
     rationale:
       "Mastery keeper's judgement calls: merge duplicate topics, link related ones. Evidence scoring and FSRS scheduling are deterministic and don't call a model.",
+  },
+  plan_review: {
+    tier: "standard",
+    requires: { structuredOutput: true },
+    fallback: ["deep"],
+    rationale:
+      "Plan reviewer: judge a draft plan against the brief and gap (deadline honesty, pacing, order, proof) after code has checked the arithmetic. A second model's read catches what the planner talked itself into.",
   },
 };

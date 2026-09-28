@@ -14,6 +14,8 @@ import type {
   AssessedSkill,
   Gap,
   LearnerProfile,
+  Plan,
+  PlanReview,
   TargetRequirements,
 } from "@/lib/specialists/schemas";
 
@@ -59,7 +61,12 @@ export const careerBriefs = pgTable(
 export type CareerBriefRow = typeof careerBriefs.$inferSelect;
 
 /** Event types on the learner record. Specialists and the orchestrator react to these. */
-export const LEARNER_EVENT_TYPES = ["brief_confirmed", "gap_ready", "assessment_done"] as const;
+export const LEARNER_EVENT_TYPES = [
+  "brief_confirmed",
+  "gap_ready",
+  "assessment_done",
+  "plan_published",
+] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
 /**
@@ -143,3 +150,28 @@ export const assessments = pgTable("assessments", {
   results: jsonb("results").$type<AssessedSkill[]>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Learning plans for a brief, newest version last. Replans add a version, so
+ * the learner's history and the reasons for each change stay visible.
+ */
+export const plans = pgTable(
+  "plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    briefId: uuid("brief_id")
+      .notNull()
+      .references(() => careerBriefs.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    plan: jsonb("plan").$type<Plan>().notNull(),
+    /** The final review: code checks plus the reviewer, with anything still open. */
+    review: jsonb("review").$type<PlanReview>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("plans_brief_version").on(t.briefId, t.version)],
+);
+
+export type PlanRow = typeof plans.$inferSelect;

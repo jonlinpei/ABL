@@ -2,14 +2,15 @@ import { auth } from "@clerk/nextjs/server";
 
 import { isDatabaseConfigured } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
-import type { Gap } from "@/lib/specialists/schemas";
+import type { Gap, Plan } from "@/lib/specialists/schemas";
 import { loadLatestBriefAndGap } from "@/lib/specialists/store";
 
 export type LearnerStatus =
   | { stage: "no_brief" }
   | { stage: "building_gap" }
   | { stage: "ready_to_check"; skills: { skillId: string; name: string }[] }
-  | { stage: "gap_ready"; gap: Gap; assessed: boolean };
+  | { stage: "planning"; gap: Gap; assessed: boolean }
+  | { stage: "plan_ready"; gap: Gap; assessed: boolean; plan: Plan };
 
 /** Where the learner is after discovery, for the app to poll. */
 export async function GET() {
@@ -23,10 +24,14 @@ export async function GET() {
   else if (!state.gap) status = { stage: "building_gap" };
   else {
     const skills = selectSkillsToCheck(state.gap.gap);
-    status =
-      !state.gap.assessedAt && skills.length > 0
-        ? { stage: "ready_to_check", skills: skills.map((s) => ({ skillId: s.skillId, name: s.name })) }
-        : { stage: "gap_ready", gap: state.gap.gap, assessed: !!state.gap.assessedAt };
+    const assessed = !!state.gap.assessedAt;
+    if (!assessed && skills.length > 0) {
+      status = { stage: "ready_to_check", skills: skills.map((s) => ({ skillId: s.skillId, name: s.name })) };
+    } else if (!state.plan) {
+      status = { stage: "planning", gap: state.gap.gap, assessed };
+    } else {
+      status = { stage: "plan_ready", gap: state.gap.gap, assessed, plan: state.plan.plan };
+    }
   }
   return Response.json(status);
 }

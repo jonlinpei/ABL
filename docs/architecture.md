@@ -44,10 +44,11 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
 - `assessments`: what the skills check recorded per skill, one per brief version.
+- `plans`: learning plans per brief, versioned, each saved with its final review. Replans will add versions.
 
 Tables for plans and mastery arrive with the specialists that write them.
 
@@ -110,6 +111,9 @@ How it's wired:
   3. Build the profile.
   4. Save the gap.
   5. Wait for the skills check (`learner/assessment.done`, matched on the brief id), for up to 14 days. It skips the wait when there's nothing to check.
+  6. Load the current gap: assessed levels if the check happened, estimates if it timed out.
+  7. Plan: draft, review, revise at most once.
+  8. Save the plan.
 
   Step results are memoized, so a retry resumes after the last finished step instead of paying for earlier model calls again. Step results are stored by Inngest, so they hold career details the same way the database does.
 - **Endpoint:** `/api/inngest`, served with `inngest/next`.
@@ -132,7 +136,7 @@ ABL is a team of specialists, each with one job, a typed input and a typed outpu
 | Profiler | Resume, LinkedIn and transcript to a skills profile with evidence; seeds the mastery graph | `profile_extract` |
 | Requirements analyst | What the target role, market and industry demand. Cached and shared by every learner with the same target | `requirements_build` |
 | Assessor | The short skills check that confirms or corrects the profile | `assessment_run`, `assessment_grade` |
-| Planner (+ reviewer) | Gap plus constraints to a versioned plan; runs replans | `roadmap_generate`, `replan` |
+| Planner (+ reviewer) | Gap plus constraints to a versioned plan; runs replans | `roadmap_generate`, `plan_review`, `replan` |
 | Tutor | Teaches the current step; assigns and follows up on exercises | `tutor_session`, `sidekick_answer` |
 | Coach | Keep-Going Engine: nudges, check-ins, replan signals | `coach_decide` |
 | Mastery keeper | Applies evidence to mastery; FSRS scheduling (deterministic); topic upkeep | `mastery_update`, `gap_detect` |
@@ -154,8 +158,13 @@ Settled defaults:
   - Results replace the estimates in the gap, marked as assessed.
   - A submission that leaves out a checked skill is rejected and sent back to the Assessor, so a premature call can't save zeros.
   - The UI polls `/api/learner/status` while the gap is built.
+- **Planner** (`skills/planner`, task `roadmap_generate`) **and plan reviewer** (`skills/plan-reviewer`, task `plan_review`), in `src/lib/specialists/planner.ts`.
+  - **Checks in code** (`plan-checks.ts`) catch the hard rules the plan can't break: weekly hours and session length, every must-have reaching its required level, no teaching of skills already met, and valid skill ids.
+  - **The reviewer** judges the rest: honesty about the deadline, pacing, order, proof of skill, and the learner's history.
+  - **One revision round** runs if either finds a must-fix problem. Anything still open is saved with the plan instead of looping.
+  - This replaced the old brief-only `/api/roadmap`.
 - **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. They're kept out of `pnpm test` because they call models.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

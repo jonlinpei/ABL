@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { computeGap } from "@/lib/specialists/gap";
-import { sampleProfile, sampleRequirements } from "@/lib/specialists/test-fixtures";
+import { samplePlan, sampleProfile, sampleRequirements } from "@/lib/specialists/test-fixtures";
 
 const auth = vi.fn();
 const loadLatestBriefAndGap = vi.fn();
@@ -33,7 +33,14 @@ describe("GET /api/learner/status", () => {
     });
 
     loadLatestBriefAndGap.mockResolvedValueOnce({ brief: {}, gap: { gap, assessedAt: "2026-09-28" } });
-    expect(await (await GET()).json()).toMatchObject({ stage: "gap_ready", assessed: true });
+    expect(await (await GET()).json()).toMatchObject({ stage: "planning", assessed: true });
+
+    loadLatestBriefAndGap.mockResolvedValueOnce({
+      brief: {},
+      gap: { gap, assessedAt: "2026-09-28" },
+      plan: { plan: samplePlan },
+    });
+    expect(await (await GET()).json()).toMatchObject({ stage: "plan_ready", plan: { title: samplePlan.title } });
   });
 
   it("requires sign-in", async () => {
