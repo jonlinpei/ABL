@@ -1,0 +1,49 @@
+{
+  "headline": "Payments backend engineer to grid/energy market backend engineer",
+  "current": {
+    "role": "Senior Backend Engineer",
+    "work": "Designs and runs a ledger service reconciling $2B/month in card payments; led a monolith-to-event-driven migration on Kafka; mentors three engineers. Previously built order/inventory APIs in Python/Django.",
+    "market": "B2B financial infrastructure (serving banks, merchants, payment processors), U.S.-based",
+    "industry": "Payments infrastructure / fintech",
+    "experience": "7 years, senior individual contributor, leads migrations and mentors others",
+    "strengths": [
+      "Ledger reconciliation and settlement logic (maps closely to energy market settlement)",
+      "Event-driven architecture on Kafka (maps to real-time grid telemetry and market data)",
+      "Designing and running high-scale, reliable distributed systems",
+      "Mentoring engineers"
+    ]
+  },
+  "target": {
+    "role": "Backend Engineer, Grid/Energy Markets",
+    "work": "Building backend systems for power grid and energy market operations, such as market settlement, matching/clearing engines, or real-time grid telemetry and data pipelines, for ISOs, utilities, or energy market platforms.",
+    "market": "B2B infrastructure (serving ISOs, utilities, energy market participants), U.S.-based",
+    "industry": "Energy / grid software (climate tech, power grid and market side specifically, not carbon accounting or EV)"
+  },
+  "changes": [
+    "industry"
+  ],
+  "profileSources": [
+    "linkedin"
+  ],
+  "goalInTheirWords": "keep doing backend engineering but in climate tech... drawn to grid/energy software specifically—like ISOs, utilities, energy markets... mostly wanting my work to matter more on climate, contributing to the energy transition",
+  "restatedGoal": "Be interview-ready within 6 months for backend engineering roles at grid/energy market companies (ISOs, utilities, energy market platforms).",
+  "motivation": "Wants engineering work to contribute directly to the energy transition, rather than payments infrastructure.",
+  "successLooksLike": "Comfortable interviewing for backend roles at energy/grid market companies, able to speak to domain concepts (ISOs, market settlement, grid operations) as well as technical skills.",
+  "deadline": "Interview-ready in about 6 months (around March 2027)",
+  "startingPoint": "Deep backend and distributed-systems experience; no technical or market background yet in energy/grid systems (read some climate books last year but didn't get into the technical/market side).",
+  "weeklyHours": 4,
+  "sessionMinutes": 60,
+  "preferredTimes": "Weekend mornings",
+  "pastAttempts": "Read a couple of climate books last year but never got into the technical or market side; this is the first real attempt at preparing for the move.",
+  "priority": "practical",
+  "interests": [
+    "Climate/energy transition"
+  ],
+  "inferred": [
+    "current.market",
+    "target.market",
+    "target.role",
+    "successLooksLike",
+    "priority"
+  ]
+}

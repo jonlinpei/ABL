@@ -1,0 +1,45 @@
+{
+  "headline": "Audit to FP&A (tech)",
+  "current": {
+    "role": "Auditor",
+    "work": "Conducts financial statement audits for clients at a mid-size public accounting firm — reviewing financial records for accuracy and compliance, and explaining findings to clients.",
+    "market": "External, multiple clients across industries",
+    "industry": "Public accounting / audit services",
+    "experience": "10 years in audit, mid-size firm",
+    "strengths": [
+      "Deep financial statement fluency",
+      "Comfortable working with real company financials under scrutiny",
+      "Strong at explaining numbers clearly to clients"
+    ]
+  },
+  "target": {
+    "role": "FP&A analyst",
+    "work": "Embedded within one company, building budgets and forecasts, financial modeling, and presenting numbers to internal leadership",
+    "market": "Internal, single company",
+    "industry": "Tech"
+  },
+  "changes": [
+    "role",
+    "industry"
+  ],
+  "profileSources": [
+    "conversation"
+  ],
+  "goalInTheirWords": "I want out of accounting - burnt out on the billable-hours grind and busy season. FP&A jumps out at me - I like the idea of being embedded at one company, especially something in tech, and not dealing with client billing anymore.",
+  "restatedGoal": "Move from public accounting audit into an FP&A analyst role at a tech company, ready to start interviewing within about 9 months.",
+  "motivation": "Burnt out on billable hours and busy season; wants a steadier internal role where she still gets to explain numbers to people, just without client billing.",
+  "successLooksLike": "Landing an FP&A analyst role at a tech company, working on internal budgeting and forecasting instead of client audits.",
+  "deadline": "Start interviewing within about 9 months (roughly June 2027)",
+  "startingPoint": "Strong accounting and financial statement foundation from audit; no formal financial modeling or forecasting experience yet",
+  "weeklyHours": 4,
+  "sessionMinutes": 60,
+  "preferredTimes": "Tuesday and Thursday evenings, Sunday",
+  "pastAttempts": "None - first time trying to switch careers",
+  "priority": "practical",
+  "interests": [],
+  "inferred": [
+    "current.market",
+    "target.market",
+    "priority"
+  ]
+}

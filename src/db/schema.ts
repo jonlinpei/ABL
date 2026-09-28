@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { GoalBrief } from "@/lib/goals/schema";
+import type { Gap, LearnerProfile, TargetRequirements } from "@/lib/specialists/schemas";
 
 /**
  * App-side user record. Clerk owns identity (email, name, sessions); this row
@@ -53,7 +54,7 @@ export const careerBriefs = pgTable(
 export type CareerBriefRow = typeof careerBriefs.$inferSelect;
 
 /** Event types on the learner record. Specialists and the orchestrator react to these. */
-export const LEARNER_EVENT_TYPES = ["brief_confirmed"] as const;
+export const LEARNER_EVENT_TYPES = ["brief_confirmed", "gap_ready"] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
 /**
@@ -75,3 +76,49 @@ export const learnerEvents = pgTable(
 );
 
 export type LearnerEvent = typeof learnerEvents.$inferSelect;
+
+/**
+ * What a target role, market and industry require. Shared: one row per
+ * target key, reused by every learner aiming there (the requirements
+ * analyst's cache).
+ */
+export const targetRequirements = pgTable("target_requirements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  targetKey: text("target_key").notNull().unique(),
+  requirements: jsonb("requirements").$type<TargetRequirements>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** The profiler's estimate of a learner's skills, for one brief version. */
+export const learnerProfiles = pgTable("learner_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  briefId: uuid("brief_id")
+    .notNull()
+    .unique()
+    .references(() => careerBriefs.id, { onDelete: "cascade" }),
+  requirementsId: uuid("requirements_id")
+    .notNull()
+    .references(() => targetRequirements.id),
+  profile: jsonb("profile").$type<LearnerProfile>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Requirements minus profile for one brief version: what the plan has to close. */
+export const gaps = pgTable("gaps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  briefId: uuid("brief_id")
+    .notNull()
+    .unique()
+    .references(() => careerBriefs.id, { onDelete: "cascade" }),
+  profileId: uuid("profile_id")
+    .notNull()
+    .references(() => learnerProfiles.id, { onDelete: "cascade" }),
+  gap: jsonb("gap").$type<Gap>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

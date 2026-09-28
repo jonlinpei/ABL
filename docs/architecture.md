@@ -44,9 +44,11 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log, starting with `brief_confirmed`.
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`).
+- `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
+- `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version.
 
-Tables for the profile, requirements, plans and mastery arrive with the specialists that write them.
+Tables for plans and mastery arrive with the specialists that write them.
 
 - `pnpm db:generate` writes SQL migrations to `drizzle/` from `src/db/schema.ts`.
 - `pnpm db:migrate` applies them. It uses `DATABASE_URL_UNPOOLED` if set, otherwise `DATABASE_URL`.
@@ -101,7 +103,13 @@ Roadmap generation, replanning after missed sessions (PRD F7), scheduled check-i
 How it's wired:
 
 - **Client and events:** `src/inngest/`. Typed events use zod schemas, e.g. `learner/brief.confirmed`.
-- **Functions:** `src/inngest/functions.ts`. `learner-lifecycle` starts when a brief is confirmed. Each specialist becomes a step in it as it's built.
+- **Functions:** `src/inngest/functions.ts`. `learner-lifecycle` starts when a brief is confirmed and runs these steps:
+  1. Load the brief.
+  2. Find or build the target's requirements.
+  3. Build the profile.
+  4. Save the gap.
+
+  Step results are memoized, so a retry resumes after the last finished step instead of paying for earlier model calls again. Step results are stored by Inngest, so they hold career details the same way the database does.
 - **Endpoint:** `/api/inngest`, served with `inngest/next`.
 - **Saving comes first.** The brief and its `learner_events` row are saved before the event is sent, so if Inngest is unreachable, the confirmation still stands and the event can be re-sent from the log.
 - **Locally:** set `INNGEST_DEV=1` and run `pnpm inngest:dev` alongside `pnpm dev`. The Inngest dev UI is at http://localhost:8288.
@@ -132,6 +140,14 @@ Settled defaults:
 - **The Assessor is its own specialist.** Evidence of skill is the most important trust point, so it isn't folded into mastery upkeep.
 - **The coach speaks in the same ABL voice as the tutor.**
 - **Requirements start from model knowledge plus the reviewed skill maps.** Grounding in job postings comes later.
+
+**Built so far:**
+
+- **Discovery.**
+- **Requirements analyst** (`skills/requirements-analyst`): `requirements_build`, cached per target.
+- **Profiler** (`skills/profiler`): `profile_extract`. It works from the confirmed brief only, because resumes aren't stored. It estimates each required skill on a 0–4 scale and says where each estimate comes from: work history, self-reported or inferred.
+- **Gap** (`src/lib/specialists/gap.ts`): deterministic. It flags every claimed or inferred level above 0 for the Assessor to verify.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

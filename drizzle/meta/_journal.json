@@ -15,6 +15,13 @@
       "when": 1790573723838,
       "tag": "0001_learner_record",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790575596933,
+      "tag": "0002_profile_requirements_gap",
+      "breakpoints": true
     }
   ]
 }
