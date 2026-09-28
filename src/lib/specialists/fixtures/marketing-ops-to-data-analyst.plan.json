@@ -1,0 +1,181 @@
+{
+  "title": "From pivot tables to SQL: Marketing Ops to B2B SaaS Data Analyst by fall 2027",
+  "summary": "This plan turns the reporting you already do (campaign reports, HubSpot funnel data, attribution dashboards) into SQL-based analyses and published dashboards, ending with three portfolio projects and SQL-screen practice. Because past courses stalled around week three when work got busy, the first milestone is only three weeks long with a win in the very first session, every milestone ends in something you can show, and a 'busy week' rule (one 45-minute session keeps you on track) protects your momentum. Priority is practical, so you learn each skill by rebuilding real marketing and SaaS reports rather than through theory first.",
+  "weeklyHours": 3,
+  "sessionMinutes": 45,
+  "milestones": [
+    {
+      "title": "Rebuild one of your pivot tables in SQL",
+      "weeks": 3,
+      "whyItMatters": "SQL is the skill every data analyst screen tests, and starting from reports you already build in Excel makes the first steps fast and familiar.",
+      "skills": [
+        {
+          "skillId": "sql-querying",
+          "toLevel": 1
+        }
+      ],
+      "topics": [
+        "SELECT, WHERE and ORDER BY: picking rows and columns, like filtering in Excel",
+        "GROUP BY with COUNT, SUM and AVG: the SQL version of a pivot table",
+        "Translating an XLOOKUP-and-pivot report into a single query",
+        "Working in a free browser SQL playground with a sample leads table"
+      ],
+      "project": null,
+      "visibleWin": "You can write a query that reproduces a weekly leads-by-source pivot table you'd normally build in Excel."
+    },
+    {
+      "title": "Join tables to rebuild your weekly campaign report",
+      "weeks": 5,
+      "whyItMatters": "Real company data lives in many tables, and joining them (instead of chaining XLOOKUPs) is what analysts do every day.",
+      "skills": [
+        {
+          "skillId": "sql-querying",
+          "toLevel": 2
+        },
+        {
+          "skillId": "cloud-data-warehouse",
+          "toLevel": 1
+        }
+      ],
+      "topics": [
+        "INNER and LEFT JOINs: combining contacts, campaigns and deals tables",
+        "Handling NULLs (blank values) and duplicates in joined results, using your HubSpot hygiene know-how",
+        "CASE WHEN: building your own categories, like lead routing rules in SQL",
+        "Moving to the free Google BigQuery sandbox, a cloud data warehouse (where companies store data for querying)",
+        "Saving queries in a GitHub repo with clear comments"
+      ],
+      "project": null,
+      "visibleWin": "A single commented SQL query in BigQuery that produces your weekly campaign performance report from separate contacts, campaigns and deals tables, saved to your new GitHub repo."
+    },
+    {
+      "title": "Portfolio project 1: B2B marketing funnel analysis",
+      "weeks": 7,
+      "whyItMatters": "A funnel conversion analysis is exactly what B2B SaaS teams ask analysts for, and it lets you tell an interview story straight from your current job.",
+      "skills": [
+        {
+          "skillId": "sql-querying",
+          "toLevel": 2
+        },
+        {
+          "skillId": "data-analysis-problem-framing",
+          "toLevel": 3
+        },
+        {
+          "skillId": "bi-dashboarding",
+          "toLevel": 2
+        }
+      ],
+      "topics": [
+        "Framing the question first: which funnel stage is leaking and why, and what decision the answer drives",
+        "Defining metrics precisely, e.g. what counts as an MQL-to-SQL conversion and over what time window",
+        "CTEs (named steps inside a query) and subqueries to build the funnel stage by stage",
+        "Your first Looker Studio dashboard connected to BigQuery",
+        "Writing a one-page recommendation for a VP of Marketing"
+      ],
+      "project": "End-to-end funnel conversion analysis on a realistic B2B SaaS dataset: SQL with CTEs on GitHub, a published Looker Studio dashboard and a short written recommendation.",
+      "visibleWin": "A public dashboard link and a one-page recommendation you could hand to your VP of Marketing today."
+    },
+    {
+      "title": "Portfolio project 2: SaaS revenue retention and churn with window functions",
+      "weeks": 8,
+      "whyItMatters": "ARR, churn and net revenue retention are the metrics SaaS leaders watch most, and window functions are the hardest part of most SQL screens.",
+      "skills": [
+        {
+          "skillId": "sql-querying",
+          "toLevel": 3
+        },
+        {
+          "skillId": "saas-metrics",
+          "toLevel": 3
+        },
+        {
+          "skillId": "cloud-data-warehouse",
+          "toLevel": 2
+        }
+      ],
+      "topics": [
+        "MRR and ARR (monthly and annual recurring revenue), new vs. expansion vs. churned revenue",
+        "Gross and net revenue retention (how much revenue you keep from existing customers, before and after upsells)",
+        "CAC and LTV (cost to win a customer and the revenue they bring over time)",
+        "Window functions: LAG, running totals, RANK and ROW_NUMBER to compare each month with the last",
+        "Cohort retention tables: grouping customers by signup month and tracking them over time",
+        "Partitioned tables and query cost basics in BigQuery"
+      ],
+      "project": "Cohort retention and churn analysis on a synthetic SaaS subscriptions dataset: well-commented SQL with CTEs and window functions on GitHub, a dashboard and a written recommendation on where churn is concentrated.",
+      "visibleWin": "A cohort retention chart and an MRR bridge (new, expansion, churn) built entirely from your own SQL, which you can explain in two minutes."
+    },
+    {
+      "title": "Portfolio project 3: a public Tableau SaaS KPI dashboard for your resume",
+      "weeks": 6,
+      "whyItMatters": "Employers want a polished public dashboard linked from your resume, and Tableau is the tool most often named in Bay Area postings.",
+      "skills": [
+        {
+          "skillId": "bi-dashboarding",
+          "toLevel": 3
+        }
+      ],
+      "topics": [
+        "Tableau Public basics: data sources, calculated fields, filters and parameters",
+        "Dashboard design: one headline question per view, clear labels, sensible colors",
+        "Combining pipeline, marketing attribution and revenue metrics in one executive view",
+        "Getting feedback from one colleague and revising"
+      ],
+      "project": "Public Tableau dashboard of B2B SaaS KPIs (pipeline, funnel conversion, attribution by channel, ARR and retention) on a realistic dataset, linked from your resume.",
+      "visibleWin": "A Tableau Public link on your resume that a non-technical person can use to answer 'which channel drives the most retained revenue?'"
+    },
+    {
+      "title": "Package the portfolio and rewrite your resume",
+      "weeks": 3,
+      "whyItMatters": "Hiring managers skim fast, so your repo, dashboards and resume need to show business impact at a glance.",
+      "skills": [],
+      "topics": [
+        "Cleaning up the GitHub repo: README per project, question, approach, result",
+        "Rewriting current-job bullets around the decision each report drove and the metric it changed",
+        "Turning each project into a 3-minute spoken walkthrough"
+      ],
+      "project": "A GitHub portfolio with three project READMEs and a resume that links to it and to your public dashboards.",
+      "visibleWin": "A finished resume and portfolio link you'd be comfortable sending to a hiring manager."
+    },
+    {
+      "title": "Practice SQL screens and take-home walkthroughs",
+      "weeks": 5,
+      "whyItMatters": "Most data analyst offers depend on passing a timed SQL screen and presenting a take-home clearly.",
+      "skills": [],
+      "topics": [
+        "Timed SQL practice problems on joins, CTEs and window functions",
+        "Talking through your approach out loud while writing queries",
+        "One full mock take-home: a SaaS dataset, a question, 3 hours spread over the week, and a short slide walkthrough"
+      ],
+      "project": null,
+      "visibleWin": "You can solve typical medium-difficulty SQL interview problems in under 20 minutes and present a mock take-home in 10 minutes."
+    }
+  ],
+  "firstSession": {
+    "title": "Turn a pivot table into your first SQL query",
+    "minutes": 45,
+    "whatYouWillDo": "Open a free browser SQL playground (no install) with a small, provided leads table that looks like a HubSpot export. Write three queries: list all leads from one source, count leads by source, and count leads by source and month, the same thing as a pivot table you build every week.",
+    "outcome": "You've written three working SQL queries and reproduced a familiar pivot table in code, in one sitting."
+  },
+  "notCovered": [
+    {
+      "skillId": "python-data-analysis",
+      "reason": "Nice-to-have that would add 20+ hours; SQL and BI are what entry-level SaaS analyst screens test. Worth adding after the first job offer."
+    },
+    {
+      "skillId": "data-modeling-dbt",
+      "reason": "More of an analytics-engineering skill; you'll see star schemas informally in the projects, and dbt is easy to learn on the job or after landing the role."
+    },
+    {
+      "skillId": "statistics-experimentation",
+      "reason": "Cohort analysis is covered in milestone 4, but A/B test significance adds 10 to 15 hours; add it in the buffer weeks if you're ahead, since it's rarely screened for in marketing and revenue analyst roles."
+    }
+  ],
+  "deadlineFit": "The milestones total 37 weeks at 3 hours a week, finishing around mid-June 2027, well before your fall 2027 target to start applying. That leaves roughly 12 to 15 weeks of buffer for busy work weeks, holidays or adding A/B testing basics, so a missed week delays you rather than derails you.",
+  "assumptions": [
+    "Your 3 hours will be four 45-minute weeknight sessions; in a busy week, doing just one session counts as staying on track, and the buffer absorbs the rest.",
+    "You'll use public or synthetic datasets for portfolio projects rather than your employer's HubSpot data, so everything can be published.",
+    "You can create a free Google account for BigQuery sandbox and Looker Studio, and a free Tableau Public account.",
+    "Your SQL starts at zero; if you've written some queries before, milestone 1 can shrink to one or two weeks.",
+    "You're targeting analyst roles close to marketing, revenue or growth teams, where your CRM and attribution background is a strength."
+  ]
+}

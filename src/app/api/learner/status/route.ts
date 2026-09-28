@@ -2,15 +2,24 @@ import { auth } from "@clerk/nextjs/server";
 
 import { isDatabaseConfigured } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
-import type { Gap, Plan } from "@/lib/specialists/schemas";
-import { loadLatestBriefAndGap } from "@/lib/specialists/store";
+import type { Gap, Plan, SessionReport } from "@/lib/specialists/schemas";
+import { loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
+import { currentMilestone } from "@/lib/specialists/tutor";
 
 export type LearnerStatus =
   | { stage: "no_brief" }
   | { stage: "building_gap" }
   | { stage: "ready_to_check"; skills: { skillId: string; name: string }[] }
   | { stage: "planning"; gap: Gap; assessed: boolean }
-  | { stage: "plan_ready"; gap: Gap; assessed: boolean; plan: Plan };
+  | { stage: "plan_ready"; gap: Gap; assessed: boolean; plan: Plan; progress: PlanProgress };
+
+export interface PlanProgress {
+  /** The milestone being worked on; equal to the milestone count when the plan is done. */
+  milestoneIndex: number;
+  sessionsDone: number;
+  activeSessionId: string | null;
+  lastReport: SessionReport | null;
+}
 
 /** Where the learner is after discovery, for the app to poll. */
 export async function GET() {
@@ -30,7 +39,22 @@ export async function GET() {
     } else if (!state.plan) {
       status = { stage: "planning", gap: state.gap.gap, assessed };
     } else {
-      status = { stage: "plan_ready", gap: state.gap.gap, assessed, plan: state.plan.plan };
+      const rows = await loadSessions(state.plan.id);
+      const history = rows
+        .filter((r) => r.endedAt && r.report)
+        .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
+      status = {
+        stage: "plan_ready",
+        gap: state.gap.gap,
+        assessed,
+        plan: state.plan.plan,
+        progress: {
+          milestoneIndex: currentMilestone(state.plan.plan, history),
+          sessionsDone: history.length,
+          activeSessionId: rows.find((r) => !r.endedAt)?.id ?? null,
+          lastReport: history.at(-1)?.report ?? null,
+        },
+      };
     }
   }
   return Response.json(status);

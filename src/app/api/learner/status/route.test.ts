@@ -9,6 +9,7 @@ vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth() }));
 vi.mock("@/db", () => ({ isDatabaseConfigured: () => true }));
 vi.mock("@/lib/specialists/store", () => ({
   loadLatestBriefAndGap: (...a: unknown[]) => loadLatestBriefAndGap(...a),
+  loadSessions: async () => [],
 }));
 
 const { GET } = await import("./route");
@@ -38,9 +39,13 @@ describe("GET /api/learner/status", () => {
     loadLatestBriefAndGap.mockResolvedValueOnce({
       brief: {},
       gap: { gap, assessedAt: "2026-09-28" },
-      plan: { plan: samplePlan },
+      plan: { id: "plan_1", plan: samplePlan },
     });
-    expect(await (await GET()).json()).toMatchObject({ stage: "plan_ready", plan: { title: samplePlan.title } });
+    expect(await (await GET()).json()).toMatchObject({
+      stage: "plan_ready",
+      plan: { title: samplePlan.title },
+      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null },
+    });
   });
 
   it("requires sign-in", async () => {

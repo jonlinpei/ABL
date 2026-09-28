@@ -178,3 +178,34 @@ export const PlanReviewSchema = z.object({
     .describe("Empty when approving."),
 });
 export type PlanReview = z.infer<typeof PlanReviewSchema>;
+
+/** What the tutor records when a session ends. */
+export const SessionReport = z.object({
+  summary: z
+    .string()
+    .describe("Two or three sentences for your own next session: what you covered, how it went, where to pick up."),
+  recap: z
+    .string()
+    .describe('One or two sentences to the learner, in the second person, on what they can now do, e.g. "You wrote your first GROUP BY and rebuilt your leads-by-source pivot."'),
+  covered: z.array(z.string()).describe("Topics taught, in plain words."),
+  evidence: z
+    .array(
+      z.object({
+        skillId: z.string(),
+        level: z.number().describe("The level their work in this session showed, a whole number from 0 to 4."),
+        evidence: z.string().describe("What they did that shows it, in one sentence."),
+      }),
+    )
+    .describe("Only skills they actually practised this session."),
+  homework: z
+    .object({
+      task: z.string().describe("A small, concrete task that fits in one session or less."),
+      minutes: z.number().describe("About how long it takes."),
+    })
+    .nullable(),
+  milestoneComplete: z
+    .boolean()
+    .describe("True only when they've achieved the current milestone's visible win."),
+  endedEarly: z.boolean().describe("True if the learner stopped before the session's goal."),
+});
+export type SessionReport = z.infer<typeof SessionReport>;

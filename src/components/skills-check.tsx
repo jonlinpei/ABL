@@ -10,6 +10,7 @@ import type { Gap, Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
+import { SessionPanel } from "./tutor-session";
 
 const LEVEL_LABEL = ["None", "Aware", "With help", "Independent", "Can lead"];
 
@@ -104,6 +105,7 @@ export function SkillsCheck() {
   if (status.stage === "plan_ready") {
     return (
       <>
+        <SessionPanel plan={status.plan} progress={status.progress} onSessionEnd={restartPolling} />
         <PlanView plan={status.plan} gap={status.gap} />
         <details className="rounded-xl border border-foreground/15">
           <summary className="cursor-pointer p-4 text-sm text-foreground/70">Where you stand, skill by skill</summary>
