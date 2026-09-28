@@ -13,6 +13,12 @@ export const TASK_TYPES = [
   "replan",
   "assessment_grade",
   "gap_detect",
+  "profile_extract",
+  "requirements_build",
+  "assessment_run",
+  "tutor_session",
+  "coach_decide",
+  "mastery_update",
 ] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 
@@ -92,5 +98,47 @@ export const TASK_ROUTES: Readonly<Record<TaskType, TaskRoute>> = {
     fallback: ["standard"],
     rationale:
       "Classify whether a sidekick question reveals a knowledge gap (PRD story 7). High volume, simple label.",
+  },
+  profile_extract: {
+    tier: "standard",
+    requires: { structuredOutput: true },
+    fallback: ["deep"],
+    rationale:
+      "Profiler: turn a resume, LinkedIn profile and discovery transcript into a skills profile with evidence. Runs once per confirmed brief; misread skills skew the gap, so no fast-tier fallback.",
+  },
+  requirements_build: {
+    tier: "deep",
+    requires: { structuredOutput: true },
+    fallback: ["standard"],
+    rationale:
+      "Requirements analyst: what a target role, market and industry demand. Cached and shared by every learner with the same target, so the deep tier's cost is paid rarely.",
+  },
+  assessment_run: {
+    tier: "standard",
+    requires: { toolUse: true },
+    fallback: ["deep"],
+    rationale:
+      "Assessor: the short skills check after discovery that confirms or corrects the profile. Conversational, emits results as tool calls.",
+  },
+  tutor_session: {
+    tier: "standard",
+    requires: { toolUse: true },
+    fallback: ["deep"],
+    rationale:
+      "Tutor: teach the current plan step and assign and follow up on exercises. The main learner-facing conversation; quick side questions use sidekick_answer instead.",
+  },
+  coach_decide: {
+    tier: "fast",
+    requires: { structuredOutput: true },
+    fallback: ["standard"],
+    rationale:
+      "Coach: decide whether and how to nudge, check in or raise a replan signal from engagement events. Frequent and small; the message itself uses the ABL voice.",
+  },
+  mastery_update: {
+    tier: "fast",
+    requires: { structuredOutput: true },
+    fallback: ["standard"],
+    rationale:
+      "Mastery keeper's judgement calls: merge duplicate topics, link related ones. Evidence scoring and FSRS scheduling are deterministic and don't call a model.",
   },
 };

@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "skills:sync": "node scripts/sync-skills.mjs"
+    "skills:sync": "node scripts/sync-skills.mjs",
+    "inngest:dev": "npx --yes inngest-cli@latest dev -u http://localhost:3000/api/inngest"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.63",
@@ -29,6 +30,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "ai": "^7.0.114",
     "drizzle-orm": "^0.45.3",
+    "inngest": "^4.21.0",
     "next": "16.3.6",
     "posthog-js": "^1.434.12",
     "posthog-node": "^5.53.0",
