@@ -8,6 +8,7 @@ import type { AssessMessage } from "@/app/api/assess/route";
 import type { LearnerStatus } from "@/app/api/learner/status/route";
 import type { Gap } from "@/lib/specialists/schemas";
 
+import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
 
 const LEVEL_LABEL = ["None", "Aware", "With help", "Independent", "Can lead"];
@@ -27,6 +28,9 @@ const BASIS_LABEL: Record<Gap["items"][number]["basis"], string> = {
 export function SkillsCheck() {
   const [status, setStatus] = useState<LearnerStatus | { stage: "error"; error: string } | null>(null);
   const [started, setStarted] = useState(false);
+  const chat = useChat<AssessMessage>({
+    transport: new DefaultChatTransport({ api: "/api/assess" }),
+  });
 
   const poll = useCallback(async () => {
     try {
@@ -97,7 +101,12 @@ export function SkillsCheck() {
           ))}
         </ul>
         <button
-          onClick={() => setStarted(true)}
+          onClick={() => {
+            setStarted(true);
+            // Sent from the click, not an effect: React's development double
+            // mount cancels a request sent while mounting.
+            chat.sendMessage({ text: "I'm ready." });
+          }}
           className="mt-4 rounded-lg bg-foreground px-4 py-2 text-sm text-background"
         >
           Start the skills check
@@ -105,23 +114,19 @@ export function SkillsCheck() {
       </Panel>
     );
   }
-  return <CheckChat onDone={poll} />;
+  return <CheckChat chat={chat} onDone={poll} />;
 }
 
-function CheckChat({ onDone }: { onDone: () => void }) {
+function CheckChat({
+  chat: { messages, sendMessage, status, error },
+  onDone,
+}: {
+  chat: ReturnType<typeof useChat<AssessMessage>>;
+  onDone: () => void;
+}) {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status, error } = useChat<AssessMessage>({
-    transport: new DefaultChatTransport({ api: "/api/assess" }),
-  });
   const busy = status === "submitted" || status === "streaming";
-  const opened = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
-    sendMessage({ text: "I'm ready." });
-  }, [sendMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -161,7 +166,7 @@ function CheckChat({ onDone }: { onDone: () => void }) {
                     : "whitespace-pre-wrap leading-relaxed"
                 }
               >
-                {part.text}
+                {m.role === "user" ? part.text : <ChatText text={part.text} />}
               </div>
             ) : part.type === "tool-submit_assessment" && part.state !== "output-available" && !submitted ? (
               <div key={i} className="text-sm text-foreground/50">

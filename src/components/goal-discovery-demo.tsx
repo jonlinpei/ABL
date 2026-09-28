@@ -10,6 +10,7 @@ import type { CallTrace } from "@/lib/ai/trace";
 import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
 
 import { SkillsCheck } from "./skills-check";
+import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
 import {
   GoalBriefSchema,
@@ -229,7 +230,7 @@ export function GoalDiscoveryDemo() {
                           : "whitespace-pre-wrap leading-relaxed"
                       }
                     >
-                      {part.text}
+                      {m.role === "user" ? part.text : <ChatText text={part.text} />}
                     </div>
                   );
                 }

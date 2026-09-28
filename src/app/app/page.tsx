@@ -1,5 +1,5 @@
-import { GoalDiscoveryDemo } from "@/components/goal-discovery-demo";
+import { LearnerHome } from "@/components/learner-home";
 
 export default function AppHome() {
-  return <GoalDiscoveryDemo />;
+  return <LearnerHome />;
 }
