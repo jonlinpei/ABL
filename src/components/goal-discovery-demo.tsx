@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart } from "ai";
 import { useEffect, useRef, useState } from "react";
 
+import type { SaveBriefResponse } from "@/app/api/briefs/route";
 import type { DiscoveryMessage } from "@/app/api/discover/route";
 import type { CallTrace } from "@/lib/ai/trace";
 import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
@@ -54,6 +55,12 @@ export function GoalDiscoveryDemo() {
   const [pending, setPending] = useState<{ part: FileUIPart; size: number }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<GoalBrief | null>(null);
+  const [save, setSave] = useState<
+    | { state: "saving" }
+    | { state: "saved"; version: number }
+    | { state: "failed"; error: string }
+    | null
+  >(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -106,9 +113,27 @@ export function GoalDiscoveryDemo() {
     else textRef.current?.focus();
   }
 
+  async function confirm(brief: GoalBrief) {
+    setConfirmed(brief);
+    setSave({ state: "saving" });
+    try {
+      const res = await fetch("/api/briefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+      setSave({ state: "saved", version: (data as SaveBriefResponse).version });
+    } catch (err) {
+      setSave({ state: "failed", error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
   function startOver() {
     setMessages([]);
     setConfirmed(null);
+    setSave(null);
     setPending([]);
     setMode(null);
     setAttachError(null);
@@ -223,7 +248,7 @@ export function GoalDiscoveryDemo() {
                       brief={brief.data}
                       active={isLatest && !confirmed && !busy}
                       confirmed={isLatest && !!confirmed}
-                      onConfirm={() => setConfirmed(brief.data)}
+                      onConfirm={() => confirm(brief.data)}
                     />
                   );
                 }
@@ -243,11 +268,28 @@ export function GoalDiscoveryDemo() {
 
       {confirmed && (
         <div className="rounded-lg border border-dashed border-foreground/20 p-4 text-sm text-foreground/70">
-          Goal discovery is done. Next comes a short check of what you already know, then your
-          first roadmap. Those steps aren&apos;t in this demo yet.{" "}
-          <button className="underline" onClick={startOver}>
-            Start over
-          </button>
+          {save?.state === "saving" && <p>Saving your brief…</p>}
+          {save?.state === "saved" && (
+            <p>
+              Saved to your learner record
+              {save.version > 1 ? ` (version ${save.version})` : ""}.
+            </p>
+          )}
+          {save?.state === "failed" && (
+            <p className="text-red-600 dark:text-red-400">
+              {save.error}{" "}
+              <button className="underline" onClick={() => confirm(confirmed)}>
+                Try again
+              </button>
+            </p>
+          )}
+          <p className="mt-2">
+            Goal discovery is done. Next comes a short check of what you already know, then your
+            first roadmap. Those steps aren&apos;t in this demo yet.{" "}
+            <button className="underline" onClick={startOver}>
+              Start over
+            </button>
+          </p>
         </div>
       )}
 

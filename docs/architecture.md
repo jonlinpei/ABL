@@ -1,6 +1,6 @@
 # ABL Architecture
 
-**Status:** Initial skeleton · **Date:** 2026-09-24
+**Status:** Initial skeleton · **Date:** 2026-09-27
 
 This file records the stack decisions for ABL and the reason for each one. The product context is in the [PRD](prd.md). When a decision changes, update this file in the same change.
 
@@ -12,13 +12,14 @@ This file records the stack decisions for ABL and the reason for each one. The p
 | Hosting | Vercel | Decided, not deployed |
 | Platforms | Web first, then an installable PWA, then Expo native apps | Decided |
 | Database | Postgres on Neon, Drizzle ORM (`@neondatabase/serverless` HTTP driver) | Installed |
+| Agents | Specialists around a shared learner record, with a bounded "huddle" for replans | Decided; learner record started |
 | Mastery graph | Relational tables in Postgres, no graph database | Decided, not modelled |
 | Semantic search | pgvector in the same Postgres | Later |
 | Spaced review | FSRS | Later |
 | Auth | Clerk | Installed |
 | Product analytics | PostHog (`posthog-js` client, `posthog-node` server) | Installed |
 | AI calls | Vercel AI SDK with Anthropic, OpenAI and Google providers, behind a task router | Installed |
-| Background jobs | Inngest or Trigger.dev | Not yet chosen or installed |
+| Background jobs | Inngest | Installed (learner lifecycle) |
 | LLM observability | Langfuse or PostHog LLM analytics | Not yet chosen or installed |
 | Evals | promptfoo | Not yet installed |
 | Tests | Vitest | Installed (router tests) |
@@ -39,7 +40,13 @@ Adults will mostly plan and study on a laptop, and check in on a phone. The web 
 
 Postgres is the one store for user data, plans, the mastery graph and later embeddings. Neon is serverless Postgres. It scales to zero, gives each preview deploy a database branch, and its HTTP driver works in serverless functions without connection-pool problems. Drizzle is a thin, typed query builder. Its schema is plain TypeScript, and it produces readable SQL migrations. It has no heavy runtime or code generator.
 
-The schema has only a `users` table for now, keyed by the Clerk user id with created and updated timestamps. The domain model (goals, roadmap, topics, mastery, glossary) waits until we decide where content comes from (see Open decisions), because that choice shapes the topic tables.
+The schema holds the start of the learner record (see [Agent architecture](#agent-architecture)):
+
+- `users`, keyed by the Clerk user id.
+- `career_briefs`: every brief the learner confirmed, versioned per learner.
+- `learner_events`: an append-only event log, starting with `brief_confirmed`.
+
+Tables for the profile, requirements, plans and mastery arrive with the specialists that write them.
 
 - `pnpm db:generate` writes SQL migrations to `drizzle/` from `src/db/schema.ts`.
 - `pnpm db:migrate` applies them. It uses `DATABASE_URL_UNPOOLED` if set, otherwise `DATABASE_URL`.
@@ -84,14 +91,67 @@ The PRD defines leading indicators such as onboarding completion, week-1 session
 - `src/lib/posthog-server.ts` provides a `posthog-node` client for server-side events. It flushes right away because serverless functions can end before a batch is sent.
 - If `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is unset, analytics is off and the app still runs.
 
-### Background jobs: Inngest or Trigger.dev (not yet installed)
+### Background jobs: Inngest
 
-Roadmap generation, replanning after missed sessions (PRD F7), scheduled check-ins and FSRS review scheduling are long-running or scheduled work. They don't fit in a request. Both Inngest and Trigger.dev offer durable, retryable steps and cron on Vercel. We'll pick one when the first job exists. The main factors are pricing and how each handles long LLM steps.
+Roadmap generation, replanning after missed sessions (PRD F7), scheduled check-ins and FSRS review scheduling are long-running or scheduled work. They don't fit in a request. We chose Inngest because:
+
+- Its durable steps run in parallel, wait for events and retry, which is what the specialists and the huddle need (see [Agent architecture](#agent-architecture)).
+- It runs on Vercel without extra infrastructure.
+
+How it's wired:
+
+- **Client and events:** `src/inngest/`. Typed events use zod schemas, e.g. `learner/brief.confirmed`.
+- **Functions:** `src/inngest/functions.ts`. `learner-lifecycle` starts when a brief is confirmed. Each specialist becomes a step in it as it's built.
+- **Endpoint:** `/api/inngest`, served with `inngest/next`.
+- **Saving comes first.** The brief and its `learner_events` row are saved before the event is sent, so if Inngest is unreachable, the confirmation still stands and the event can be re-sent from the log.
+- **Locally:** set `INNGEST_DEV=1` and run `pnpm inngest:dev` alongside `pnpm dev`. The Inngest dev UI is at http://localhost:8288.
+- **Production:** set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`.
 
 ### LLM observability and evals
 
 - **Tracing and cost:** Langfuse or PostHog LLM analytics, not yet chosen. PostHog is already in the stack, which favours it. Langfuse has richer prompt management and datasets. Either way, every AI call should log task type, model, tokens, latency, cost and which fallback (if any) served it.
 - **Evals:** promptfoo, with one suite per task type. Evals are what gate the model allowlist (see below).
+
+## Agent architecture
+
+ABL is a team of specialists, each with one job, a typed input and a typed output. They coordinate through a **shared learner record** in Postgres rather than open-ended conversation with each other. The learner hears one voice, "ABL".
+
+| Specialist | Job | Router task |
+|---|---|---|
+| Discovery | Where the learner is now and where they want to go, confirmed as a career brief | `goal_discover` |
+| Profiler | Resume, LinkedIn and transcript to a skills profile with evidence; seeds the mastery graph | `profile_extract` |
+| Requirements analyst | What the target role, market and industry demand. Cached and shared by every learner with the same target | `requirements_build` |
+| Assessor | The short skills check that confirms or corrects the profile | `assessment_run`, `assessment_grade` |
+| Planner (+ reviewer) | Gap plus constraints to a versioned plan; runs replans | `roadmap_generate`, `replan` |
+| Tutor | Teaches the current step; assigns and follows up on exercises | `tutor_session`, `sidekick_answer` |
+| Coach | Keep-Going Engine: nudges, check-ins, replan signals | `coach_decide` |
+| Mastery keeper | Applies evidence to mastery; FSRS scheduling (deterministic); topic upkeep | `mastery_update`, `gap_detect` |
+
+Settled defaults:
+
+- **The Assessor is its own specialist.** Evidence of skill is the most important trust point, so it isn't folded into mastery upkeep.
+- **The coach speaks in the same ABL voice as the tutor.**
+- **Requirements start from model knowledge plus the reviewed skill maps.** Grounding in job postings comes later.
+
+**Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
+
+**Adapting the plan** is where the specialists coordinate most closely:
+
+- **Signals.** Specialists and simple detectors raise typed signals on the record: a changed goal or hours, missed sessions, a topic that isn't sticking, faster progress than planned, new information about the target.
+- **Escalation ladder.** Each change is handled at the lowest level that fixes it:
+  1. The tutor adjusts locally.
+  2. The coach and planner shift the schedule.
+  3. A replan runs as a **huddle**.
+  4. Discovery reopens the goal.
+- **Huddle.** The planner asks the affected specialists for input in parallel, drafts a proposal, takes at most one objection from each, and decides. It is capped at two rounds, and every message is typed and logged.
+- **Learner approval.** Changes from level 3 up reach the learner as a proposal with the reason, which they can accept or change.
+
+Why structured coordination and not free conversation between agents:
+
+- **Speed:** specialists answer at the same time.
+- **Cost:** a bounded number of rounds fits the roughly $5 per learner per month AI budget.
+- **Explainability:** every change can be traced back to the messages behind it.
+- **Testability:** each specialist can be evaluated on its own, like the goal-clarification skill.
 
 ## AI router
 
@@ -115,7 +175,7 @@ MODEL_REGISTRY ∩ MODEL_ALLOWLIST ──► resolveModel() ──► { primary,
 | `providers.ts` | Turns a routed model into an AI SDK `LanguageModel`, using the BYOK key or the platform key. |
 | `router.test.ts` | Vitest unit tests for the router. |
 
-Task types: `sidekick_answer`, `glossary_define`, `goal_clarify`, `goal_discover`, `roadmap_generate`, `replan`, `assessment_grade`, `gap_detect`.
+Task types: `sidekick_answer`, `glossary_define`, `goal_clarify`, `goal_discover`, `roadmap_generate`, `replan`, `assessment_grade`, `gap_detect`, and one per new specialist: `profile_extract`, `requirements_build`, `assessment_run`, `tutor_session`, `coach_decide`, `mastery_update`.
 
 ### Design principles
 

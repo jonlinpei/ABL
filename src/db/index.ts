@@ -20,4 +20,9 @@ export function getDb(): NeonHttpDatabase<typeof schema> {
   return cached;
 }
 
+/** Whether a database is configured. The discovery demo still runs without one. */
+export function isDatabaseConfigured(): boolean {
+  return !!process.env.DATABASE_URL;
+}
+
 export { schema };
