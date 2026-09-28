@@ -129,11 +129,11 @@ export const TASK_ROUTES: Readonly<Record<TaskType, TaskRoute>> = {
       "Tutor: teach the current plan step and assign and follow up on exercises. The main learner-facing conversation; quick side questions use sidekick_answer instead.",
   },
   coach_decide: {
-    tier: "fast",
+    tier: "standard",
     requires: { structuredOutput: true },
-    fallback: ["standard"],
+    fallback: ["deep"],
     rationale:
-      "Coach: decide whether and how to nudge, check in or raise a replan signal from engagement events. Frequent and small; the message itself uses the ABL voice.",
+      "Coach: decide how to respond to missed sessions, falling pace or a stuck topic, and write the check-in. The message goes straight to a learner at risk of quitting, and in evals the fast tier broke tone rules (framing a gap as past failure, claiming a late plan was on track). It only runs when code has found a signal, about once a day at most, so the standard tier's cost is small.",
   },
   mastery_update: {
     tier: "fast",

@@ -44,7 +44,7 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`, `coach_noted`, `replan_suggested`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
 - `assessments`: what the skills check recorded per skill, one per brief version.
@@ -52,6 +52,7 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 - `sessions`: tutoring sessions on a plan.
   - Each row records its milestone, the transcript (so a reload resumes the session) and the tutor's end-of-session report.
   - A partial unique index allows only one active session per plan. `mastery_applied_at` marks sessions whose evidence has been applied.
+- `coach_notes`: what the Coach decided. Each row holds the signals it saw, the check-in and its options, any Tutor note and a replan flag, plus the learner's answer or dismissal.
 - `skill_mastery`: what the learner knows, per skill and across goals. Each row holds the level, recent evidence and an FSRS review card, and `due` is indexed for "due for review" queries.
 
 Tables for plans and mastery arrive with the specialists that write them.
@@ -179,8 +180,18 @@ Settled defaults:
   - **Each session is applied once,** via `mastery_applied_at` and one-at-a-time processing per learner.
   - **Due reviews:** skills due for review outside the current milestone, at most two, go into the Tutor's context, and it opens with one quick review question.
   - The `mastery_update` task, for LLM topic upkeep, isn't needed until there are topic graphs.
+- **Coach** (`skills/coach`, task `coach_decide`, standard tier; Inngest functions `coach` and `daily-coach-check`): the Keep-Going Engine, levels 1–2 of the escalation ladder.
+  - **Signals come from code** (`signals.ts`):
+    - `missed_sessions`: 5+ days and at least two expected sessions; a lapse after 14 days.
+    - `behind_pace`: under 60% of planned sessions over the last 3 weeks. It includes a projected finish date only when the pace is at least a quarter of the plan's.
+    - `stuck_topic`: a milestone skill that hasn't risen over its last 3 pieces of evidence.
+  - **The model is only called when there are signals** and no session is running.
+  - **Check-in limits:** at most one every 3 days, and a week after one that got no session in response.
+  - **What the Coach decides:** a short check-in with 2–3 tappable options, a Tutor note (used quietly in the next session), and/or a replan suggestion, logged as `replan_suggested` for the huddle.
+  - **When it runs:** after each session (debounced 5 minutes per learner, so mastery updates first) and daily at 17:00 Pacific.
+  - **Tier:** it moved from the fast tier to standard after evals showed the fast tier breaking tone rules in learner-facing messages.
 - **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, a quick review of a due skill, running out of time, and stopping early. They're kept out of `pnpm test` because they call models.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, a quick review of a due skill, running out of time, and stopping early. The coach evals judge decisions on missed sessions, a lapse with a missed deadline, and a stuck topic. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

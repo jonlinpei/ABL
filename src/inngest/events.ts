@@ -26,3 +26,8 @@ export const sessionCompleted = eventType("learner/session.completed", {
     sessionId: z.string(),
   }),
 });
+
+/** Ask the coach to look at one learner's signals. */
+export const coachCheck = eventType("learner/coach.check", {
+  schema: z.object({ userId: z.string() }),
+});

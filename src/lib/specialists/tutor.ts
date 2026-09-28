@@ -30,6 +30,7 @@ export function tutorContext({
   history,
   milestoneIndex,
   dueReviews = [],
+  coachNotes = [],
 }: {
   brief: GoalBrief;
   gap: Gap;
@@ -37,6 +38,7 @@ export function tutorContext({
   history: PastSession[];
   milestoneIndex: number;
   dueReviews?: MasteryRecord[];
+  coachNotes?: string[];
 }): string {
   const m = plan.milestones[milestoneIndex]!;
   const byId = new Map(gap.items.map((i) => [i.skillId, i]));
@@ -79,6 +81,7 @@ ${
         .join("\n")}\nAfter the homework check, ask one short question on one of these (two minutes at most), then move on. Record what it showed in the evidence.`
     : ""
 }
+${coachNotes.length ? `\n## Note from the coach\n${coachNotes.map((n) => `- ${n}`).join("\n")}\nUse it quietly: change how you teach; don't mention the note to the learner.` : ""}
 ${recent ? `\n## Recent sessions\n${recent}` : ""}
 
 Sessions are ${plan.sessionMinutes} minutes. Each learner message ends with the session clock.`;

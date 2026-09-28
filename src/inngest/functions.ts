@@ -3,6 +3,8 @@ import { NonRetriableError } from "inngest";
 
 import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
+import { runCoach } from "@/lib/specialists/coach-run";
+import { learnersWithPlans } from "@/lib/specialists/coach-store";
 import { computeGap } from "@/lib/specialists/gap";
 import { applySessionEvidence } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
@@ -18,7 +20,7 @@ import {
 } from "@/lib/specialists/store";
 
 import { inngest } from "./client";
-import { assessmentDone, briefConfirmed, sessionCompleted } from "./events";
+import { assessmentDone, briefConfirmed, coachCheck, sessionCompleted } from "./events";
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -113,4 +115,30 @@ export const masteryKeeper = inngest.createFunction(
   async ({ event, step }) => step.run("apply-session-evidence", () => applySessionEvidence(event.data.sessionId)),
 );
 
-export const functions = [learnerLifecycle, masteryKeeper];
+/**
+ * Coach: looks at a learner's signals after each session and on the daily
+ * check. Debounced per learner, so the mastery keeper has applied the
+ * session first and a burst of events makes one decision.
+ */
+export const coach = inngest.createFunction(
+  {
+    id: "coach",
+    triggers: [coachCheck, sessionCompleted],
+    debounce: { key: "event.data.userId", period: "5m" },
+  },
+  async ({ event, step }) => step.run("run-coach", () => runCoach(event.data.userId)),
+);
+
+/** Once a day, ask the coach to check on every learner with a plan. */
+export const dailyCoachCheck = inngest.createFunction(
+  { id: "daily-coach-check", triggers: [{ cron: "TZ=America/Los_Angeles 0 17 * * *" }] },
+  async ({ step }) => {
+    const userIds = await step.run("list-learners", () => learnersWithPlans());
+    if (userIds.length > 0) {
+      await step.sendEvent("fan-out", userIds.map((userId) => coachCheck.create({ userId })));
+    }
+    return { learners: userIds.length };
+  },
+);
+
+export const functions = [learnerLifecycle, masteryKeeper, coach, dailyCoachCheck];

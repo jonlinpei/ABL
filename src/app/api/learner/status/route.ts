@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { isDatabaseConfigured } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
+import { openCheckIn } from "@/lib/specialists/coach-store";
 import type { Gap, Plan, SessionReport } from "@/lib/specialists/schemas";
 import { loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
 import { currentMilestone } from "@/lib/specialists/tutor";
@@ -19,6 +20,8 @@ export interface PlanProgress {
   sessionsDone: number;
   activeSessionId: string | null;
   lastReport: SessionReport | null;
+  /** The coach's newest unanswered check-in, if any. */
+  checkIn: { id: string; message: string; options: string[] } | null;
 }
 
 /** Where the learner is after discovery, for the app to poll. */
@@ -39,7 +42,7 @@ export async function GET() {
     } else if (!state.plan) {
       status = { stage: "planning", gap: state.gap.gap, assessed };
     } else {
-      const rows = await loadSessions(state.plan.id);
+      const [rows, note] = await Promise.all([loadSessions(state.plan.id), openCheckIn(userId)]);
       const history = rows
         .filter((r) => r.endedAt && r.report)
         .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
@@ -53,6 +56,7 @@ export async function GET() {
           sessionsDone: history.length,
           activeSessionId: rows.find((r) => !r.endedAt)?.id ?? null,
           lastReport: history.at(-1)?.report ?? null,
+          checkIn: note?.message ? { id: note.id, message: note.message, options: note.options } : null,
         },
       };
     }

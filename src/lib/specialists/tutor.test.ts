@@ -84,6 +84,12 @@ describe("tutorContext", () => {
     expect(tutorContext({ ...base, history: [] })).not.toContain("Due for a quick review");
   });
 
+  it("passes on the coach's note, to use without mentioning it", () => {
+    const ctx = tutorContext({ ...base, history: [], coachNotes: ["Joins aren't sticking: use two small tables from her HubSpot export first."] });
+    expect(ctx).toContain("## Note from the coach\n- Joins aren't sticking");
+    expect(ctx).toContain("don't mention the note to the learner");
+  });
+
   it("stays the same from turn to turn, so it can be cached", () => {
     expect(tutorContext({ ...base, history: [] })).toBe(tutorContext({ ...base, history: [] }));
     expect(tutorContext({ ...base, history: [] })).not.toMatch(/minutes have gone/);

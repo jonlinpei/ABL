@@ -45,6 +45,11 @@ const SKILLS = [
     target: "src/lib/specialists/tutor.generated.ts",
     exportName: "TUTOR_SKILL",
   },
+  {
+    source: "skills/coach/SKILL.md",
+    target: "src/lib/specialists/coach.generated.ts",
+    exportName: "COACH_SKILL",
+  },
 ];
 
 /** SKILL.md minus its YAML frontmatter. */
