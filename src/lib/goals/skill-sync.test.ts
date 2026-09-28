@@ -4,6 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { PROFILER_SKILL } from "../specialists/profiler.generated";
+import { REQUIREMENTS_ANALYST_SKILL } from "../specialists/requirements-analyst.generated";
 import { GOAL_CLARIFICATION_SKILL } from "./goal-clarification.generated";
 import { GoalBriefSchema } from "./schema";
 
@@ -12,8 +14,7 @@ const skill = readFileSync(skillPath, "utf8");
 
 describe("goal-clarification skill", () => {
   it("generated prompt matches SKILL.md (run `pnpm skills:sync` if this fails)", () => {
-    const body = skill.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
-    expect(GOAL_CLARIFICATION_SKILL).toBe(body);
+    expect(GOAL_CLARIFICATION_SKILL).toBe(skillBody("goal-clarification"));
   });
 
   it("documents every goal brief field the app's schema defines", () => {
@@ -30,4 +31,18 @@ function briefFields(shape: z.ZodRawShape, prefix = ""): string[] {
       ? briefFields(schema.shape, `${prefix}${key}.`)
       : [`${prefix}${key}`],
   );
+}
+
+describe("specialist skills", () => {
+  it.each([
+    ["requirements-analyst", REQUIREMENTS_ANALYST_SKILL],
+    ["profiler", PROFILER_SKILL],
+  ])("generated prompt for %s matches its SKILL.md (run `pnpm skills:sync` if this fails)", (name, generated) => {
+    expect(generated).toBe(skillBody(name));
+  });
+});
+
+function skillBody(name: string): string {
+  const md = readFileSync(path.resolve(__dirname, `../../../skills/${name}/SKILL.md`), "utf8");
+  return md.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
 }

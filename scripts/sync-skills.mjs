@@ -15,6 +15,16 @@ const SKILLS = [
     target: "src/lib/goals/goal-clarification.generated.ts",
     exportName: "GOAL_CLARIFICATION_SKILL",
   },
+  {
+    source: "skills/requirements-analyst/SKILL.md",
+    target: "src/lib/specialists/requirements-analyst.generated.ts",
+    exportName: "REQUIREMENTS_ANALYST_SKILL",
+  },
+  {
+    source: "skills/profiler/SKILL.md",
+    target: "src/lib/specialists/profiler.generated.ts",
+    exportName: "PROFILER_SKILL",
+  },
 ];
 
 /** SKILL.md minus its YAML frontmatter. */

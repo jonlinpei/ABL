@@ -1,0 +1,51 @@
+{
+  "headline": "Biology teacher to instructional designer (tech L&D)",
+  "current": {
+    "role": "Biology Teacher & Science Department Lead",
+    "work": "Design and teach biology and AP biology curriculum for 150+ students; build digital course materials and self-paced review modules in Google Classroom and Canvas; lead a 6-teacher department, running monthly PD sessions on formative assessment and edtech tools; created an instructional video series now used across 4 schools.",
+    "market": "Public K-12 education, Sacramento/Stockton, CA",
+    "industry": "Public education",
+    "experience": "9 years teaching; currently department lead managing 6 teachers",
+    "strengths": [
+      "Curriculum design aligned to standards (NGSS)",
+      "Building digital courses in LMS platforms (Canvas, Google Classroom)",
+      "Facilitating training/PD sessions for adult colleagues",
+      "Creating instructional video content",
+      "Data-driven assessment design"
+    ]
+  },
+  "target": {
+    "role": "Instructional Designer",
+    "work": "Design training courses and learning materials for employees on a tech company's L&D team, using authoring tools and a corporate LMS, working fully remote",
+    "market": "Remote, corporate employees at a tech company",
+    "industry": "Tech"
+  },
+  "changes": [
+    "role",
+    "market",
+    "industry"
+  ],
+  "profileSources": [
+    "resume",
+    "conversation"
+  ],
+  "goalInTheirWords": "Instructional designer at a tech company's L&D team, ideally fully remote.",
+  "restatedGoal": "Land a remote instructional designer role on a tech company's L&D team by June 2027.",
+  "motivation": "Burnout from classroom management, plus wanting remote work and better pay. Loves building curriculum, just not the classroom management side.",
+  "successLooksLike": "Working remotely as an instructional designer, building training content for a tech company instead of managing a classroom.",
+  "deadline": "June 2027 (end of current school year)",
+  "startingPoint": "Strong adjacent experience from teaching: curriculum design, LMS course-building, facilitating adult training (PD sessions), instructional video creation. Started a Coursera instructional design course last summer but stalled once the school year picked back up.",
+  "weeklyHours": 5,
+  "sessionMinutes": 60,
+  "preferredTimes": "Weeknights",
+  "pastAttempts": "Started a Coursera instructional design course last summer, stalled out once the school year started back up.",
+  "priority": "practical",
+  "interests": [],
+  "inferred": [
+    "current.market",
+    "current.industry",
+    "target.market",
+    "successLooksLike",
+    "priority"
+  ]
+}

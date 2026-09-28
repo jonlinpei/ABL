@@ -1,0 +1,45 @@
+{
+  "headline": "Marketing ops to data analyst (B2B SaaS)",
+  "current": {
+    "role": "Marketing Operations Coordinator",
+    "work": "Builds weekly campaign performance reports in Excel (pivot tables, XLOOKUP) for the VP of Marketing, owns HubSpot data hygiene (dedupe, field standards, lead routing rules), and builds attribution dashboards she presents at monthly marketing reviews.",
+    "market": "Bay Area, B2B SaaS (currently at a 400-employee company)",
+    "industry": "B2B SaaS / software",
+    "experience": "5 years in B2B marketing (2019-present): 2 years as Marketing Coordinator, then 2+ years as Marketing Operations Coordinator, individual contributor",
+    "strengths": [
+      "Building reporting with Excel pivot tables and XLOOKUP",
+      "HubSpot data hygiene and standardization",
+      "Building attribution dashboards and presenting results to leadership"
+    ]
+  },
+  "target": {
+    "role": "Data Analyst",
+    "work": "Deeper querying and analysis (SQL) feeding BI/reporting dashboards, building on the reporting and attribution work she already does but with real query tools instead of pivot-table workarounds",
+    "market": "Bay Area, B2B SaaS",
+    "industry": "B2B SaaS / software"
+  },
+  "changes": [
+    "role"
+  ],
+  "profileSources": [
+    "resume",
+    "conversation"
+  ],
+  "goalInTheirWords": "\"I want to move into data analytics... I like the reporting/dashboard side already, just want to go deeper with real querying instead of pivot table gymnastics.\"",
+  "restatedGoal": "Move from marketing operations coordinator to a data analyst role in B2B SaaS in the Bay Area, ready to start applying in about a year.",
+  "motivation": "Enjoys the reporting/dashboard work she already does and wants to go deeper with real querying (SQL) instead of relying on pivot tables.",
+  "successLooksLike": "Landing a data analyst role in B2B SaaS in the Bay Area, doing SQL-based reporting and analysis instead of pivot-table workarounds.",
+  "deadline": "About a year from now (fall 2027) to start applying for data analyst roles",
+  "startingPoint": "Strong Excel (pivot tables, XLOOKUP), hands-on HubSpot reporting and data hygiene, and experience building/presenting attribution dashboards. No SQL or formal querying experience yet. Has tried a couple of free online courses before.",
+  "weeklyHours": 3,
+  "sessionMinutes": 45,
+  "preferredTimes": "Weeknights",
+  "pastAttempts": "Tried a couple of free online courses before but fizzled out around week three when work got busy.",
+  "priority": "practical",
+  "interests": [],
+  "inferred": [
+    "current.market",
+    "successLooksLike",
+    "priority"
+  ]
+}
