@@ -1,0 +1,1 @@
+ALTER TABLE "target_requirements" ADD COLUMN "refreshed_at" timestamp with time zone;

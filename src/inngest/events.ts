@@ -32,6 +32,11 @@ export const coachCheck = eventType("learner/coach.check", {
   schema: z.object({ userId: z.string() }),
 });
 
+/** Rebuild one cached target's requirements from current postings. */
+export const requirementsRefreshRequested = eventType("requirements/refresh.requested", {
+  schema: z.object({ requirementsId: z.string() }),
+});
+
 /** A huddle was opened; run it. */
 export const replanRequested = eventType("learner/replan.requested", {
   schema: z.object({ userId: z.string(), huddleId: z.string() }),

@@ -8,8 +8,17 @@ import { sampleRequirements } from "./test-fixtures";
 const generateStructured = vi.fn();
 vi.mock("@/lib/ai/structured", () => ({ generateStructured: (...a: unknown[]) => generateStructured(...a) }));
 
-const { groundInPostings, requirementsPrompt, researchPostings, targetKey, usablePostings, withUniqueSkillIds } =
-  await import("./requirements");
+const {
+  dueForRefresh,
+  groundInPostings,
+  mustHaveChanges,
+  pickRefreshed,
+  requirementsPrompt,
+  researchPostings,
+  targetKey,
+  usablePostings,
+  withUniqueSkillIds,
+} = await import("./requirements");
 
 beforeEach(() => generateStructured.mockReset());
 
@@ -164,5 +173,49 @@ describe("requirementsPrompt with postings", () => {
     expect(p).toContain("Required: SQL");
     expect(p).toContain("Preferred: Tableau");
     expect(requirementsPrompt(sampleBrief)).toMatch(/No current job postings/);
+  });
+});
+
+describe("refreshing cached requirements", () => {
+  const now = new Date("2027-01-01T00:00:00Z");
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+
+  it("refreshes grounded targets after 90 days and retries ungrounded ones after a week, oldest first", () => {
+    const due = dueForRefresh(
+      [
+        { id: "grounded-fresh", lastBuilt: daysAgo(30), grounded: true },
+        { id: "grounded-stale", lastBuilt: daysAgo(91), grounded: true },
+        { id: "ungrounded-new", lastBuilt: daysAgo(3), grounded: false },
+        { id: "ungrounded-old", lastBuilt: daysAgo(200), grounded: false },
+      ],
+      now,
+    );
+    expect(due).toEqual(["ungrounded-old", "grounded-stale"]);
+    expect(dueForRefresh([{ id: "a", lastBuilt: daysAgo(8), grounded: false }, { id: "b", lastBuilt: daysAgo(9), grounded: false }], now, 1)).toEqual(["b"]);
+  });
+
+  it("never swaps grounded requirements for ungrounded ones", () => {
+    const grounded = { ...sampleRequirements, groundedAt: "2026-10-01" };
+    const fresh = { ...sampleRequirements, groundedAt: "2027-01-01" };
+    expect(pickRefreshed(grounded, fresh)).toBe(fresh);
+    expect(pickRefreshed(grounded, sampleRequirements)).toBeNull();
+    expect(pickRefreshed(sampleRequirements, sampleRequirements)).toBe(sampleRequirements);
+  });
+
+  it("reports must-haves added and dropped", () => {
+    const next = {
+      ...sampleRequirements,
+      skills: sampleRequirements.skills.map((s) =>
+        s.id === "spreadsheets" ? { ...s, importance: "nice" as const } : s.id === "dashboards" ? { ...s, importance: "must" as const } : s,
+      ),
+    };
+    expect(mustHaveChanges(sampleRequirements, next)).toEqual({ added: ["dashboards"], dropped: ["spreadsheets"] });
+  });
+
+  it("asks the analyst to keep the skill ids already in use", () => {
+    expect(requirementsPrompt(sampleBrief, [], sampleRequirements)).toContain(
+      "Skill ids already in use: sql-querying, spreadsheets, dashboards, stakeholder-communication.",
+    );
+    expect(requirementsPrompt(sampleBrief)).not.toContain("already in use");
   });
 });
