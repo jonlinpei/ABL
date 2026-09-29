@@ -8,7 +8,8 @@ import { z } from "zod";
 
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
-import { GapSchema, PlanSchema, type SessionReport } from "./schemas";
+import { correctGap } from "./corrections";
+import { GapSchema, PlanSchema, type Gap, type SessionReport } from "./schemas";
 import type { MasteryRecord } from "./mastery";
 import { endSessionSchema, normalizeReport, sessionClock, tutorContext, type PastSession } from "./tutor";
 import { TUTOR_SKILL } from "./tutor.generated";
@@ -43,11 +44,15 @@ interface Scenario {
   dueReviews?: MasteryRecord[];
   /** Minutes already gone when the session is joined. */
   startAt?: number;
+  /** Change the fixture's gap, e.g. a level the learner corrected themselves. */
+  gap?: (gap: Gap) => Gap;
   maxTurns: number;
 }
 
 async function runSession(name: string, s: Scenario) {
-  const { brief, gap, plan } = load(s.fixture);
+  const loaded = load(s.fixture);
+  const { brief, plan } = loaded;
+  const gap = s.gap ? s.gap(loaded.gap) : loaded.gap;
   const history = s.history ?? [];
   const milestone = plan.milestones[0]!;
   let report: SessionReport | undefined;
@@ -239,6 +244,23 @@ describe("tutor sessions", () => {
       await judge(r.log, [
         "Early in the session, the tutor asks one short question that has the learner use funnel or pipeline metrics, as a quick review",
         "The review stays brief (about one exchange) and the tutor then moves on to the session's main topic",
+      ]),
+    );
+  }, SESSION_TIMEOUT);
+
+  it("checks a level the learner reported themselves before building on it", async () => {
+    const r = await runSession("self-reported", {
+      fixture: "marketing-ops-to-data-analyst",
+      persona:
+        "You are Maya, a marketing ops coordinator. On the About me page you said you're already fine with basic SQL, but really you've only edited one query a colleague wrote. If asked to write a simple SELECT with WHERE yourself, you get it mostly right but forget quotes around a text value. You're a little embarrassed but happy to learn. Reply briefly.",
+      gap: (g) => correctGap(g, "sql-querying", 2)!,
+      maxTurns: 10,
+    });
+    expectJudged(
+      await judge(r.log, [
+        "Early in the session (within the first few tutor messages), the tutor checks her SQL level with a quick question or small task rather than assuming it",
+        "The check is low-stakes and doesn't make her feel doubted or tested on her honesty",
+        "After seeing her attempt, the tutor pitches the teaching to what she actually showed",
       ]),
     );
   }, SESSION_TIMEOUT);

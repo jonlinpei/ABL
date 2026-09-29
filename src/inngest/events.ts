@@ -32,6 +32,11 @@ export const coachCheck = eventType("learner/coach.check", {
   schema: z.object({ userId: z.string() }),
 });
 
+/** The learner deleted their data; running and waiting work for them stops. */
+export const learnerDataDeleted = eventType("learner/data.deleted", {
+  schema: z.object({ userId: z.string() }),
+});
+
 /** Rebuild one cached target's requirements from current postings. */
 export const requirementsRefreshRequested = eventType("requirements/refresh.requested", {
   schema: z.object({ requirementsId: z.string() }),

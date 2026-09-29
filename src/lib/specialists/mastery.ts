@@ -3,11 +3,11 @@ import { createEmptyCard, fsrs, Rating, State, type Card, type Grade } from "ts-
 import { finishGap, scoreItem } from "./gap";
 import type { Gap } from "./schemas";
 
-/** One piece of evidence about a skill, from a session or a check. */
+/** One piece of evidence about a skill, from a session, a check or the learner's own correction. */
 export interface EvidenceEntry {
   level: number;
   evidence: string;
-  source: "session" | "assessment";
+  source: "session" | "assessment" | "learner";
   at: string;
 }
 
