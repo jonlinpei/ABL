@@ -48,7 +48,8 @@ export function tutorContext({
   const skills = m.skills
     .map((s) => {
       const g = byId.get(s.skillId);
-      return `- ${s.skillId}: ${g?.name ?? s.skillId}. Now ${g?.current ?? "?"} (${g?.basis.replace("_", " ") ?? "unknown"}); this milestone takes it to ${s.toLevel}.`;
+      const check = g?.verify && g.basis === "self_reported" ? " Their own estimate, so check it early with one quick question." : "";
+      return `- ${s.skillId}: ${g?.name ?? s.skillId}. Now ${g?.current ?? "?"} (${g?.basis.replace("_", " ") ?? "unknown"}); this milestone takes it to ${s.toLevel}.${check}`;
     })
     .join("\n");
   // Past sessions on this plan, or, right after a replan, on the plan before it.

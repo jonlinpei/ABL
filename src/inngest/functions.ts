@@ -28,10 +28,14 @@ import {
   assessmentDone,
   briefConfirmed,
   coachCheck,
+  learnerDataDeleted,
   replanRequested,
   requirementsRefreshRequested,
   sessionCompleted,
 } from "./events";
+
+/** Stop a learner's running or waiting work once they delete their data. */
+const cancelOnDelete = [{ event: learnerDataDeleted, match: "data.userId" }];
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -40,7 +44,7 @@ import {
  * (and re-paying for) earlier model calls.
  */
 export const learnerLifecycle = inngest.createFunction(
-  { id: "learner-lifecycle", triggers: [briefConfirmed] },
+  { id: "learner-lifecycle", triggers: [briefConfirmed], cancelOn: cancelOnDelete },
   async ({ event, step }) => {
     const { userId, briefId } = event.data;
 
@@ -126,6 +130,7 @@ export const masteryKeeper = inngest.createFunction(
     id: "mastery-keeper",
     triggers: [sessionCompleted],
     concurrency: { key: "event.data.userId", limit: 1 },
+    cancelOn: cancelOnDelete,
   },
   async ({ event, step }) => step.run("apply-session-evidence", () => applySessionEvidence(event.data.sessionId)),
 );
@@ -140,6 +145,7 @@ export const coach = inngest.createFunction(
     id: "coach",
     triggers: [coachCheck, sessionCompleted],
     debounce: { key: "event.data.userId", period: "5m" },
+    cancelOn: cancelOnDelete,
   },
   async ({ event, step }) => step.run("run-coach", () => runCoach(event.data.userId)),
 );
@@ -166,6 +172,7 @@ export const huddle = inngest.createFunction(
     id: "replan-huddle",
     triggers: [replanRequested],
     concurrency: { key: "event.data.userId", limit: 1 },
+    cancelOn: cancelOnDelete,
     onFailure: async ({ event }) => {
       await failHuddle(event.data.event.data.huddleId);
     },

@@ -5,11 +5,21 @@ import { useState } from "react";
 import type { Plan, Replan, ReplanRequest } from "@/lib/specialists/schemas";
 
 /** "Life changed? Rework my plan": new hours, session length, deadline, and what changed. */
-export function ReplanForm({ plan, onStarted, onCancel }: { plan: Plan; onStarted: () => void; onCancel: () => void }) {
+export function ReplanForm({
+  plan,
+  onStarted,
+  onCancel,
+  initialNote = "",
+}: {
+  plan: Pick<Plan, "weeklyHours" | "sessionMinutes">;
+  onStarted: () => void;
+  onCancel: () => void;
+  initialNote?: string;
+}) {
   const [hours, setHours] = useState(String(plan.weeklyHours));
   const [minutes, setMinutes] = useState(String(plan.sessionMinutes));
   const [deadline, setDeadline] = useState("");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(initialNote);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

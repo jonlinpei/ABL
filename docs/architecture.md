@@ -93,7 +93,20 @@ Wiring:
 - `/app` is protected by `auth.protect()` in `src/app/app/layout.tsx`. This follows Clerk's current guidance: it has deprecated `createRouteMatcher` path matching in the proxy in favour of checks placed next to the resource.
 - Clerk Core 3 (`@clerk/nextjs` 7) replaced `<SignedIn>` / `<SignedOut>` with `<Show when="signed-in" | "signed-out">`.
 
-Clerk owns identity. Our `users` row holds only the Clerk id so that domain tables have a local foreign key. A Clerk `user.created` webhook (or lazy upsert on first request) will create the row. This is not built yet.
+Clerk owns identity. Our `users` row holds only the Clerk id so that domain tables have a local foreign key. Every learner table cascades from it, so "Delete what ABL knows about you" on `/app/about-me` deletes that row. It first sends `learner/data.deleted`, which cancels the learner's Inngest runs (`cancelOn`). The Clerk account and PostHog analytics stay. A Clerk `user.created` webhook (or lazy upsert on first request) will create the row. This is not built yet.
+
+### What ABL knows about the learner (`/app/about-me`)
+
+Learners see their brief, and every skill with its level, where the level came from and the evidence behind it (profile, skills check, sessions or their own correction). They can change some things in place:
+
+- **Brief details:** interests, strengths, priority, preferred times, motivation, success and past attempts. These are `PATCH /api/learner/brief`, logged as `brief_edited`.
+- **Hours, session length and deadline:** these go through a replan.
+- **The goal itself:** this goes through a new brief.
+- **Skill corrections** (`POST /api/learner/skill`):
+  - They count at once as `self_reported`.
+  - They're also written to `skill_mastery`, so the next session's update starts from them rather than overwriting them.
+  - The tutor is told to check the level early. Session evidence then settles it.
+  - When the plan teaches what the learner now says they know, or assumed more than they have, the page offers a rework.
 
 ### PostHog for product analytics
 

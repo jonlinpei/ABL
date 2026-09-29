@@ -9,18 +9,9 @@ import type { LearnerStatus } from "@/app/api/learner/status/route";
 import type { Gap, Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
+import { BASIS_LABEL, LEVEL_LABEL, LevelBar } from "./skill-labels";
 import { TraceChip } from "./trace-chip";
 import { SessionPanel } from "./tutor-session";
-
-const LEVEL_LABEL = ["None", "Aware", "With help", "Independent", "Can lead"];
-
-const BASIS_LABEL: Record<Gap["items"][number]["basis"], string> = {
-  assessed: "checked",
-  practiced: "from your sessions",
-  work_history: "from your work history",
-  self_reported: "you said",
-  inferred: "estimate",
-};
 
 /**
  * What happens after discovery (docs/architecture.md, "Agent architecture"):
@@ -378,26 +369,6 @@ function PlanView({ plan, gap }: { plan: Plan; gap: Gap }) {
         </div>
       )}
     </section>
-  );
-}
-
-/** Four segments: filled to the current level, outlined up to the required level. */
-function LevelBar({ current, required }: { current: number; required: number }) {
-  return (
-    <div className="flex gap-1" aria-label={`Level ${current} of ${required} needed`}>
-      {[1, 2, 3, 4].map((n) => (
-        <span
-          key={n}
-          className={`h-2 flex-1 rounded-sm ${
-            n <= current
-              ? "bg-foreground/70"
-              : n <= required
-                ? "border border-foreground/40"
-                : "bg-foreground/5"
-          }`}
-        />
-      ))}
-    </div>
   );
 }
 
