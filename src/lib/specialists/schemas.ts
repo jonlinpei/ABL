@@ -152,6 +152,9 @@ export const GapSchema = z.object({
       basis: SkillBasis,
       /** The Assessor should confirm this level before the plan relies on it. */
       verify: z.boolean(),
+      /** From grounded requirements: how often postings ask, and work that shows the skill. */
+      frequency: RequiredSkill.shape.frequency,
+      howToShow: z.string().optional(),
     }),
   ),
   credentials: TargetRequirementsSchema.shape.credentials,
@@ -196,6 +199,9 @@ export const PlanSchema = z.object({
           .string()
           .nullable()
           .describe("Something they build that employers will see, or null."),
+        projectShows: z
+          .array(z.string())
+          .describe("Skill ids from the gap that the project shows an employer. Empty when project is null."),
         visibleWin: z.string().describe("A small, concrete thing they can do at the end."),
       }),
     )

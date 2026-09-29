@@ -21,7 +21,10 @@
         "Common kinds of tech-company training: onboarding, software rollouts, sales enablement and compliance"
       ],
       "project": "Case study part 1: a needs analysis and objectives for a fictional SaaS (software sold as a subscription) company whose new customer-support hires take too long to learn its ticketing tool",
-      "visibleWin": "A two-page needs analysis with 3 to 5 measurable objectives that you can walk through in an interview."
+      "visibleWin": "A two-page needs analysis with 3 to 5 measurable objectives that you can walk through in an interview.",
+      "projectShows": [
+        "training-needs-analysis"
+      ]
     },
     {
       "title": "Write a design document for your support-onboarding course",
@@ -44,7 +47,11 @@
         "Starting a free Asana board to track your own tasks, a habit you'll build on in the client project"
       ],
       "project": "A design document for a 10-minute onboarding module and a branching scenario, saved as a PDF for your portfolio",
-      "visibleWin": "A finished design document you could send to a stakeholder for sign-off."
+      "visibleWin": "A finished design document you could send to a stakeholder for sign-off.",
+      "projectShows": [
+        "instructional-design-models",
+        "storyboarding"
+      ]
     },
     {
       "title": "Storyboard the module and scenario screen by screen",
@@ -63,7 +70,10 @@
         "Getting feedback from one peer and revising"
       ],
       "project": "A storyboard for the onboarding module and a branching-scenario flowchart, published as a portfolio PDF",
-      "visibleWin": "A storyboard someone else could build from without asking you questions."
+      "visibleWin": "A storyboard someone else could build from without asking you questions.",
+      "projectShows": [
+        "storyboarding"
+      ]
     },
     {
       "title": "Build and publish a microlearning module in Articulate Rise",
@@ -82,7 +92,10 @@
         "Sharing a draft through Review 360 and revising from the comments"
       ],
       "project": "A Rise microlearning module titled \"Your first week with the ticketing tool\", hosted as a Review 360 link",
-      "visibleWin": "A public link to a finished Rise course you can send to anyone."
+      "visibleWin": "A public link to a finished Rise course you can send to anyone.",
+      "projectShows": [
+        "elearning-authoring-articulate"
+      ]
     },
     {
       "title": "Build a branching customer-support scenario in Storyline",
@@ -106,7 +119,11 @@
         "Publishing and sharing the scenario through Review 360"
       ],
       "project": "A Storyline branching scenario where a new support agent handles an escalating customer ticket, hosted on Review 360",
-      "visibleWin": "A working scenario with three decision points and different endings based on the learner's choices."
+      "visibleWin": "A working scenario with three decision points and different endings based on the learner's choices.",
+      "projectShows": [
+        "elearning-authoring-articulate",
+        "instructional-writing"
+      ]
     },
     {
       "title": "Create a virtual training kit for a tech team",
@@ -130,7 +147,11 @@
         "Using AI tools to draft facilitator scripts and practice examples, then editing them for accuracy and tone"
       ],
       "project": "A virtual instructor-led kit on \"Giving useful feedback in code or design reviews\", with facilitator guide, slide deck and one-page job aid",
-      "visibleWin": "A complete kit someone else could use to run the session tomorrow."
+      "visibleWin": "A complete kit someone else could use to run the session tomorrow.",
+      "projectShows": [
+        "virtual-instructor-led-design",
+        "tech-workplace-learning-context"
+      ]
     },
     {
       "title": "Run one real project remotely with a real subject matter expert",
@@ -154,7 +175,11 @@
         "Handling conflicting feedback, scope creep and slipping deadlines politely"
       ],
       "project": "A short real-world Rise module for a volunteer client, with a project timeline, review log and SME quote",
-      "visibleWin": "A client-approved module and a written testimonial from your SME."
+      "visibleWin": "A client-approved module and a written testimonial from your SME.",
+      "projectShows": [
+        "sme-collaboration",
+        "learning-project-management"
+      ]
     },
     {
       "title": "Launch your portfolio site and write two case studies",
@@ -167,7 +192,8 @@
         "Rewriting your resume and LinkedIn in corporate terms, for example \"students\" to \"learners\" and \"PD\" to \"training\""
       ],
       "project": "A portfolio website with 5 pieces and 2 written case studies: the support-onboarding course and the volunteer client project",
-      "visibleWin": "A single portfolio URL you can put on every application."
+      "visibleWin": "A single portfolio URL you can put on every application.",
+      "projectShows": []
     }
   ],
   "firstSession": {

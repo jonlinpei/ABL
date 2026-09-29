@@ -339,6 +339,12 @@ function PlanView({ plan, gap }: { plan: Plan; gap: Gap }) {
               <div className="mt-1.5 text-sm">
                 <span className="text-foreground/50">You&apos;ll build: </span>
                 {m.project}
+                {(m.projectShows ?? []).length > 0 && (
+                  <span className="text-foreground/50">
+                    {" "}
+                    (shows {(m.projectShows ?? []).map((id) => names.get(id) ?? id).join(", ")})
+                  </span>
+                )}
               </div>
             )}
             <div className="mt-1 text-sm">

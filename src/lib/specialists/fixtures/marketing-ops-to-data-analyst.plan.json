@@ -21,7 +21,8 @@
         "Working in a free browser SQL playground with a sample leads table"
       ],
       "project": null,
-      "visibleWin": "You can write a query that reproduces a weekly leads-by-source pivot table you'd normally build in Excel."
+      "visibleWin": "You can write a query that reproduces a weekly leads-by-source pivot table you'd normally build in Excel.",
+      "projectShows": []
     },
     {
       "title": "Join tables to rebuild your weekly campaign report",
@@ -45,7 +46,8 @@
         "Saving queries in a GitHub repo with clear comments"
       ],
       "project": null,
-      "visibleWin": "A single commented SQL query in BigQuery that produces your weekly campaign performance report from separate contacts, campaigns and deals tables, saved to your new GitHub repo."
+      "visibleWin": "A single commented SQL query in BigQuery that produces your weekly campaign performance report from separate contacts, campaigns and deals tables, saved to your new GitHub repo.",
+      "projectShows": []
     },
     {
       "title": "Portfolio project 1: B2B marketing funnel analysis",
@@ -73,7 +75,12 @@
         "Writing a one-page recommendation for a VP of Marketing"
       ],
       "project": "End-to-end funnel conversion analysis on a realistic B2B SaaS dataset: SQL with CTEs on GitHub, a published Looker Studio dashboard and a short written recommendation.",
-      "visibleWin": "A public dashboard link and a one-page recommendation you could hand to your VP of Marketing today."
+      "visibleWin": "A public dashboard link and a one-page recommendation you could hand to your VP of Marketing today.",
+      "projectShows": [
+        "sql-querying",
+        "data-analysis-problem-framing",
+        "bi-dashboarding"
+      ]
     },
     {
       "title": "Portfolio project 2: SaaS revenue retention and churn with window functions",
@@ -102,7 +109,12 @@
         "Partitioned tables and query cost basics in BigQuery"
       ],
       "project": "Cohort retention and churn analysis on a synthetic SaaS subscriptions dataset: well-commented SQL with CTEs and window functions on GitHub, a dashboard and a written recommendation on where churn is concentrated.",
-      "visibleWin": "A cohort retention chart and an MRR bridge (new, expansion, churn) built entirely from your own SQL, which you can explain in two minutes."
+      "visibleWin": "A cohort retention chart and an MRR bridge (new, expansion, churn) built entirely from your own SQL, which you can explain in two minutes.",
+      "projectShows": [
+        "sql-querying",
+        "saas-metrics",
+        "cloud-data-warehouse"
+      ]
     },
     {
       "title": "Portfolio project 3: a public Tableau SaaS KPI dashboard for your resume",
@@ -121,7 +133,10 @@
         "Getting feedback from one colleague and revising"
       ],
       "project": "Public Tableau dashboard of B2B SaaS KPIs (pipeline, funnel conversion, attribution by channel, ARR and retention) on a realistic dataset, linked from your resume.",
-      "visibleWin": "A Tableau Public link on your resume that a non-technical person can use to answer 'which channel drives the most retained revenue?'"
+      "visibleWin": "A Tableau Public link on your resume that a non-technical person can use to answer 'which channel drives the most retained revenue?'",
+      "projectShows": [
+        "bi-dashboarding"
+      ]
     },
     {
       "title": "Package the portfolio and rewrite your resume",
@@ -134,7 +149,8 @@
         "Turning each project into a 3-minute spoken walkthrough"
       ],
       "project": "A GitHub portfolio with three project READMEs and a resume that links to it and to your public dashboards.",
-      "visibleWin": "A finished resume and portfolio link you'd be comfortable sending to a hiring manager."
+      "visibleWin": "A finished resume and portfolio link you'd be comfortable sending to a hiring manager.",
+      "projectShows": []
     },
     {
       "title": "Practice SQL screens and take-home walkthroughs",
@@ -147,7 +163,8 @@
         "One full mock take-home: a SaaS dataset, a question, 3 hours spread over the week, and a short slide walkthrough"
       ],
       "project": null,
-      "visibleWin": "You can solve typical medium-difficulty SQL interview problems in under 20 minutes and present a mock take-home in 10 minutes."
+      "visibleWin": "You can solve typical medium-difficulty SQL interview problems in under 20 minutes and present a mock take-home in 10 minutes.",
+      "projectShows": []
     }
   ],
   "firstSession": {

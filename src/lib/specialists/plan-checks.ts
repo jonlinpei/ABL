@@ -4,8 +4,9 @@ import type { Gap, Plan, PlanReview } from "./schemas";
 
 /**
  * The hard rules every plan must pass, checked in code rather than trusted
- * to a model: it fits the learner's real week, closes every must-have, and
- * doesn't spend time on what they already know.
+ * to a model: it fits the learner's real week, closes every must-have, shows
+ * each must-have in a project, and doesn't spend time on what they already
+ * know.
  */
 export function checkPlan(plan: Plan, gap: Gap, brief: GoalBrief): PlanReview["issues"] {
   const issues: PlanReview["issues"] = [];
@@ -42,6 +43,20 @@ export function checkPlan(plan: Plan, gap: Gap, brief: GoalBrief): PlanReview["i
   }
   const leftOut = new Set(plan.notCovered.map((n) => n.skillId));
 
+  // Skills some project shows an employer. Plans saved before projectShows existed have none.
+  const shown = new Set<string>();
+  for (const m of plan.milestones) {
+    for (const id of m.projectShows ?? []) {
+      if (!byId.has(id)) {
+        must(`Milestone "${m.title}" says its project shows unknown skill "${id}".`, "Use only skill ids from the gap.");
+      } else if (m.project) {
+        shown.add(id);
+      }
+    }
+  }
+  const showIt = (item: Gap["items"][number]) =>
+    item.howToShow ? `Add it to a milestone project, e.g. ${lowerFirst(item.howToShow)}` : "Add it to a milestone project.";
+
   for (const item of gap.items) {
     const to = reached.get(item.skillId);
     if (item.status === "met") {
@@ -53,7 +68,12 @@ export function checkPlan(plan: Plan, gap: Gap, brief: GoalBrief): PlanReview["i
       }
       continue;
     }
-    if (item.importance !== "must") continue;
+    if (item.importance !== "must") {
+      if (item.frequency === "common" && !leftOut.has(item.skillId) && to !== undefined && !shown.has(item.skillId)) {
+        should(`"${item.name}" is taught but no project shows it, and many postings ask for it.`, showIt(item));
+      }
+      continue;
+    }
     if (leftOut.has(item.skillId)) {
       must(
         `Must-have "${item.name}" is left out of the plan.`,
@@ -67,9 +87,15 @@ export function checkPlan(plan: Plan, gap: Gap, brief: GoalBrief): PlanReview["i
         `Bring it to level ${item.required}.`,
       );
     }
+    // Learning it isn't enough: employers need to see it.
+    if (!leftOut.has(item.skillId) && !shown.has(item.skillId)) {
+      must(`Must-have "${item.name}" is never shown in a project, so employers only have the learner's word for it.`, showIt(item));
+    }
   }
   return issues;
 }
+
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /** Total weeks, derived from the milestones so it can't disagree with them. */
 export function totalWeeks(plan: Plan): number {

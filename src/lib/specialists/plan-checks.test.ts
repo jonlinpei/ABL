@@ -59,6 +59,54 @@ describe("checkPlan", () => {
   });
 });
 
+describe("checkPlan: showing the skill", () => {
+  const unshow = (plan: Plan, id: string) => ({
+    ...plan,
+    milestones: plan.milestones.map((m) => ({ ...m, projectShows: m.projectShows.filter((s) => s !== id) })),
+  });
+
+  it("rejects a must-have that's taught but never shown in a project, suggesting how to show it", () => {
+    const withHow = {
+      ...gap,
+      items: gap.items.map((i) => (i.skillId === "sql-querying" ? { ...i, howToShow: "A SQL analysis published with its queries" } : i)),
+    };
+    const found = checkPlan(unshow(samplePlan, "sql-querying"), withHow, brief);
+    expect(found).toEqual([
+      {
+        severity: "must_fix",
+        issue: expect.stringMatching(/SQL querying" is never shown in a project/),
+        fix: "Add it to a milestone project, e.g. a SQL analysis published with its queries",
+      },
+    ]);
+  });
+
+  it("only counts milestones that have a project, and rejects unknown ids", () => {
+    const [first, second, third] = samplePlan.milestones;
+    const noProject = {
+      ...samplePlan,
+      milestones: [{ ...first!, projectShows: ["sql-querying", "made-up"] }, { ...second!, projectShows: [] }, third!],
+    };
+    const found = issues(noProject).map((i) => i.issue);
+    expect(found).toContainEqual(expect.stringMatching(/SQL querying" is never shown/));
+    expect(found).toContainEqual(expect.stringMatching(/project shows unknown skill "made-up"/));
+  });
+
+  it("asks for common skills to be shown when taught, and leaves rarer ones alone", () => {
+    const withNice = (frequency: "common" | "sometimes") => ({
+      ...gap,
+      items: [...gap.items, { ...gap.items[0]!, skillId: "python", name: "Python", importance: "nice" as const, frequency }],
+    });
+    const teachesPython = {
+      ...samplePlan,
+      milestones: [...samplePlan.milestones, { ...samplePlan.milestones[0]!, title: "Python", skills: [{ skillId: "python", toLevel: 2 }] }],
+    };
+    expect(checkPlan(teachesPython, withNice("common"), brief)).toEqual([
+      expect.objectContaining({ severity: "should_fix", issue: expect.stringMatching(/Python" is taught but no project shows it/) }),
+    ]);
+    expect(checkPlan(teachesPython, withNice("sometimes"), brief)).toEqual([]);
+  });
+});
+
 describe("checkReplanWorkload", () => {
   // samplePlan: 12 weeks at 3 h/week = 36 hours from the start.
   const at = (weeklyHours: number, weeks: number[]) => ({

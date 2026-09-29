@@ -1,10 +1,17 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { generateText, Output } from "ai";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
+import { computeGap } from "./gap";
+import { checkPlan } from "./plan-checks";
+import { planWithReview } from "./planner";
+import { buildProfile } from "./profiler";
 import { buildRequirements, MIN_POSTINGS, researchPostings, withoutGonePostings } from "./requirements";
 
 // Evals don't report usage to PostHog.
@@ -54,5 +61,29 @@ describe("requirements grounded in job postings", () => {
     // Not too restrictive: must-haves are a minority, and years of experience aren't skills.
     expect(requirements.skills.filter((s) => s.importance === "must").length).toBeLessThanOrEqual(requirements.skills.length * 0.6);
     expect(requirements.skills.some((s) => /years|experience/i.test(`${s.id} ${s.name}`))).toBe(false);
-  }, 600_000);
+
+    // On to the plan: every open must-have is shown in a project, not just learned.
+    const profile = await buildProfile(brief, requirements, "eval");
+    const gap = computeGap(requirements, profile);
+    const { plan } = await planWithReview({ brief, gap, userId: "eval", today: "2026-09-29" });
+    writeFileSync(path.join(OUT, "data-analyst-plan.json"), JSON.stringify({ gap, plan }, null, 2));
+    expect(checkPlan(plan, gap, brief).filter((i) => i.severity === "must_fix")).toEqual([]);
+    const shown = new Set(plan.milestones.filter((m) => m.project).flatMap((m) => m.projectShows));
+    const open = gap.items.filter((i) => i.importance === "must" && i.status !== "met");
+    expect(open.filter((i) => !shown.has(i.skillId)).map((i) => i.name)).toEqual([]);
+
+    // And the projects really show what they claim.
+    const projects = plan.milestones
+      .filter((m) => m.project)
+      .map((m, i) => `${i}. ${m.project}\n   Claims to show: ${m.projectShows.map((id) => gap.items.find((g) => g.skillId === id)?.name ?? id).join(", ")}`);
+    const { output } = await generateText({
+      model: createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-opus-5-5"),
+      instructions: "You're a hiring manager for junior data analysts. Judge strictly but fairly.",
+      prompt: `A career switcher's learning plan lists these portfolio projects and the skills each claims to show:\n\n${projects.join("\n")}\n\nFor each project, would seeing it (or hearing them walk through it) give you real evidence of every skill it claims? Fail a project only if it claims a skill it would barely show.`,
+      output: Output.object({ schema: z.object({ results: z.array(z.object({ index: z.number(), passed: z.boolean(), evidence: z.string() })) }) }),
+      abortSignal: AbortSignal.timeout(180_000),
+    });
+    const failed = output.results.filter((r) => !r.passed);
+    expect(failed.length, JSON.stringify(failed, null, 2)).toBeLessThanOrEqual(Math.floor(projects.length / 4));
+  }, 900_000);
 });
