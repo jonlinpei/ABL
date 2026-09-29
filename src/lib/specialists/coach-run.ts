@@ -1,8 +1,8 @@
 import { coachContext, decide, mayCheckIn } from "./coach";
 import { loadCoachNotes, saveCoachNote } from "./coach-store";
 import { loadMastery } from "./mastery-store";
-import { detectSignals } from "./signals";
-import { loadLatestBriefAndGap, loadSessions } from "./store";
+import { detectSignals, requirementsChangedSignal } from "./signals";
+import { loadLatestBriefAndGap, loadRequirementsChanges, loadSessions } from "./store";
 import { currentMilestone } from "./tutor";
 
 /**
@@ -27,9 +27,14 @@ export async function runCoach(userId: string, now = new Date()) {
     milestoneIndex,
     now,
   });
+
+  // Requirement changes since the coach last looked (or since this plan, which was built after earlier ones).
+  const notes = await loadCoachNotes(state.plan.id);
+  const lastLook = notes.at(-1)?.createdAt ?? state.plan.createdAt;
+  const changed = requirementsChangedSignal(await loadRequirementsChanges(userId, lastLook));
+  if (changed) signals.push(changed);
   if (signals.length === 0) return { outcome: "on_track" as const };
 
-  const notes = await loadCoachNotes(state.plan.id);
   const lastCheckIn = notes.filter((n) => n.message).at(-1)?.createdAt ?? null;
   const lastSessionEnd = ended.at(-1)?.endedAt ?? null;
   const allowCheckIn = mayCheckIn(lastCheckIn, lastSessionEnd, now);
@@ -51,7 +56,8 @@ export async function runCoach(userId: string, now = new Date()) {
     allowCheckIn,
     userId,
   );
-  if (!decision.message && !decision.tutorNote && !decision.suggestReplan) {
+  // A requirements change is kept as a note even with no action, so it isn't raised again.
+  if (!decision.message && !decision.tutorNote && !decision.suggestReplan && !changed) {
     return { outcome: "no_action" as const, signals, reason: decision.reason };
   }
   const { id } = await saveCoachNote(userId, state.plan.id, signals, decision);

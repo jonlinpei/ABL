@@ -202,8 +202,14 @@ export const weeklyRequirementsRefresh = inngest.createFunction(
  */
 export const refreshRequirements = inngest.createFunction(
   { id: "refresh-requirements", triggers: [requirementsRefreshRequested], concurrency: { limit: 2 } },
-  // Step results come back JSON-serialized; everything here is plain JSON.
-  async ({ event, step }) => refreshTarget(event.data.requirementsId, (name, fn) => step.run(name, fn) as never),
+  async ({ event, step }) => {
+    // Step results come back JSON-serialized; everything here is plain JSON.
+    const result = await refreshTarget(event.data.requirementsId, (name, fn) => step.run(name, fn) as never);
+    if ("notify" in result && result.notify.length > 0) {
+      await step.sendEvent("tell-coach", result.notify.map((userId) => coachCheck.create({ userId })));
+    }
+    return result;
+  },
 );
 
 export const functions = [

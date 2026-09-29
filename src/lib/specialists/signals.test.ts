@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MasteryRecord } from "./mastery";
 import type { SessionReport } from "./schemas";
-import { detectSignals, expectedSessionsPerWeek, type SessionFact } from "./signals";
+import { detectSignals, expectedSessionsPerWeek, requirementsChangedSignal, type SessionFact } from "./signals";
 import { samplePlan } from "./test-fixtures";
 
 const DAY = 86_400_000;
@@ -87,5 +87,21 @@ describe("stuck topic", () => {
 describe("a finished plan", () => {
   it("raises nothing", () => {
     expect(detect([session(40)], { milestoneIndex: samplePlan.milestones.length })).toEqual([]);
+  });
+});
+
+describe("requirementsChangedSignal", () => {
+  const py = { skillId: "python", name: "Python" };
+  const xl = { skillId: "spreadsheets", name: "Spreadsheets" };
+
+  it("merges changes, latest first", () => {
+    expect(requirementsChangedSignal([{ added: [py], dropped: [xl] }])).toEqual({
+      kind: "requirements_changed",
+      nowMustHave: ["Python"],
+      noLongerMustHave: ["Spreadsheets"],
+    });
+    // Added, then dropped again: nothing to tell.
+    expect(requirementsChangedSignal([{ added: [py], dropped: [] }, { added: [], dropped: [py] }])).toBeNull();
+    expect(requirementsChangedSignal([])).toBeNull();
   });
 });

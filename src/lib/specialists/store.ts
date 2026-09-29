@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
@@ -11,6 +11,7 @@ import type {
   SessionReport,
   TargetRequirements,
 } from "./schemas";
+import type { RequirementsChange } from "./signals";
 
 const {
   assessments,
@@ -86,6 +87,73 @@ export async function saveRefreshedRequirements(requirementsId: string, requirem
     .update(targetRequirements)
     .set({ refreshedAt: new Date(), ...(requirements && { requirements }) })
     .where(eq(targetRequirements.id, requirementsId));
+}
+
+/**
+ * The current gaps built on a cached target: one per learner whose newest
+ * brief chose it, with whether they have an active plan.
+ */
+export async function loadGapsOnRequirements(requirementsId: string) {
+  const db = getDb();
+  const rows = await db
+    .select({ gapId: gaps.id, userId: gaps.userId, briefId: gaps.briefId, version: careerBriefs.version, gap: gaps.gap })
+    .from(gaps)
+    .innerJoin(learnerProfiles, eq(learnerProfiles.id, gaps.profileId))
+    .innerJoin(careerBriefs, eq(careerBriefs.id, gaps.briefId))
+    .where(eq(learnerProfiles.requirementsId, requirementsId));
+  if (rows.length === 0) return [];
+  const userIds = [...new Set(rows.map((r) => r.userId))];
+  const newest = new Map(
+    (
+      await db
+        .select({ userId: careerBriefs.userId, version: max(careerBriefs.version) })
+        .from(careerBriefs)
+        .where(inArray(careerBriefs.userId, userIds))
+        .groupBy(careerBriefs.userId)
+    ).map((r) => [r.userId, r.version]),
+  );
+  const current = rows.filter((r) => newest.get(r.userId) === r.version);
+  const active = new Set(
+    current.length
+      ? (
+          await db
+            .select({ briefId: plans.briefId })
+            .from(plans)
+            .where(and(inArray(plans.briefId, current.map((r) => r.briefId)), eq(plans.status, "active")))
+        ).map((p) => p.briefId)
+      : [],
+  );
+  return current.map((r) => ({ gapId: r.gapId, userId: r.userId, briefId: r.briefId, gap: r.gap, hasActivePlan: active.has(r.briefId) }));
+}
+
+/** Save a learner's gap rebased on refreshed requirements, and log the change when they should hear about it. */
+export async function saveRebasedGap(
+  gapId: string,
+  userId: string,
+  gap: Gap,
+  change: (RequirementsChange & { requirementsId: string }) | null,
+) {
+  const db = getDb();
+  const update = db.update(gaps).set({ gap }).where(eq(gaps.id, gapId));
+  await (change
+    ? db.batch([update, db.insert(learnerEvents).values({ userId, type: "requirements_changed", payload: { ...change } })])
+    : update);
+}
+
+/** Requirement changes logged for a learner after `since`, oldest first. */
+export async function loadRequirementsChanges(userId: string, since: Date | null): Promise<RequirementsChange[]> {
+  const rows = await getDb()
+    .select({ payload: learnerEvents.payload })
+    .from(learnerEvents)
+    .where(
+      and(
+        eq(learnerEvents.userId, userId),
+        eq(learnerEvents.type, "requirements_changed"),
+        ...(since ? [gt(learnerEvents.createdAt, since)] : []),
+      ),
+    )
+    .orderBy(learnerEvents.createdAt);
+  return rows.map((r) => r.payload as unknown as RequirementsChange);
 }
 
 /** Save the profile for a brief. A retried step returns the row already saved. */
