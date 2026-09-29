@@ -4,7 +4,9 @@ import { generateStructured } from "@/lib/ai/structured";
 import type { GoalBrief } from "@/lib/goals/schema";
 
 import { COACH_SKILL } from "./coach.generated";
-import type { Plan, SessionReport } from "./schemas";
+import { REWORK_OPTION, type Plan, type SessionReport } from "./schemas";
+
+export { REWORK_OPTION };
 import type { Signal } from "./signals";
 
 const DAY = 86_400_000;
@@ -105,5 +107,9 @@ export async function decide(context: string, allowCheckIn: boolean, userId: str
 
 export function enforce(decision: CoachDecision, allowCheckIn: boolean): CoachDecision {
   const message = allowCheckIn ? decision.message : null;
-  return { ...decision, message, options: message ? decision.options.slice(0, 3) : [] };
+  if (!message) return { ...decision, message, options: [] };
+  // When the coach suggests a replan, the learner gets the one-tap way to start it.
+  const others = decision.options.filter((o) => !/rework|replan|rebuild.*plan|adjust.*plan/i.test(o));
+  const options = decision.suggestReplan ? [...others.slice(0, 2), REWORK_OPTION] : decision.options.slice(0, 3);
+  return { ...decision, message, options };
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { sampleBrief } from "@/lib/goals/test-fixtures";
 
 import { computeGap } from "./gap";
-import { checkPlan, totalWeeks } from "./plan-checks";
+import { checkPlan, checkReplanWorkload, totalWeeks } from "./plan-checks";
 import type { Plan } from "./schemas";
 import { samplePlan, sampleProfile, sampleRequirements } from "./test-fixtures";
 
@@ -56,5 +56,35 @@ describe("checkPlan", () => {
     const found = issues(withMet);
     expect(found).toContainEqual(expect.objectContaining({ severity: "should_fix", issue: expect.stringMatching(/already at the needed level/) }));
     expect(found).toContainEqual(expect.objectContaining({ severity: "must_fix", issue: expect.stringMatching(/unknown skill "made-up"/) }));
+  });
+});
+
+describe("checkReplanWorkload", () => {
+  // samplePlan: 12 weeks at 3 h/week = 36 hours from the start.
+  const at = (weeklyHours: number, weeks: number[]) => ({
+    ...samplePlan,
+    weeklyHours,
+    milestones: weeks.map((w, i) => ({ ...samplePlan.milestones[i % samplePlan.milestones.length]!, weeks: w })),
+  });
+
+  it("accepts fewer hours a week when the timeline stretches to match", () => {
+    expect(checkReplanWorkload(samplePlan, 0, at(2, [6, 7, 5]))).toEqual([]); // 18 wk × 2 = 36 h
+  });
+
+  it("rejects the same work promised in less time", () => {
+    const [issue] = checkReplanWorkload(samplePlan, 0, at(2, [4, 5, 3])); // 12 wk × 2 = 24 h
+    expect(issue).toMatchObject({ severity: "must_fix" });
+    expect(issue!.issue).toMatch(/36 hours to 24/);
+    expect(issue!.fix).toMatch(/about 18 weeks/);
+  });
+
+  it("only asks for it to be named when scope is cut in the open", () => {
+    const cut = { ...at(2, [4, 5, 3]), notCovered: [{ skillId: "dashboards", reason: "Dropped to fit the new job." }] };
+    expect(checkReplanWorkload(samplePlan, 0, cut)[0]).toMatchObject({ severity: "should_fix" });
+  });
+
+  it("counts only the remaining milestones", () => {
+    // From milestone 2: 8 weeks × 3 = 24 h left.
+    expect(checkReplanWorkload(samplePlan, 1, at(2, [6, 6]))).toEqual([]);
   });
 });

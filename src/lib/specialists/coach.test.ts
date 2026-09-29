@@ -38,6 +38,11 @@ describe("enforce", () => {
     expect(enforce(decision, false)).toMatchObject({ message: null, options: [], tutorNote: "Try smaller steps." });
   });
 
+  it("gives the one-tap rework option when a replan is suggested, replacing the model's own wording", () => {
+    const d = enforce({ ...decision, suggestReplan: true, options: ["Do a 20-minute session", "Rework my plan around less time", "Aim for two next week"] }, true);
+    expect(d.options).toEqual(["Do a 20-minute session", "Aim for two next week", "Rework my plan"]);
+  });
+
   it("caps options at three and drops options without a message", () => {
     expect(enforce(decision, true).options).toEqual(["a", "b", "c"]);
     expect(enforce({ ...decision, message: null }, true).options).toEqual([]);

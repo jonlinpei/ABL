@@ -101,7 +101,8 @@ export async function loadLatestBriefAndGap(userId: string) {
   const [plan] = await db
     .select()
     .from(plans)
-    .where(eq(plans.briefId, brief.id))
+    // The learner's plan is the newest active one; a proposed replan isn't theirs until accepted.
+    .where(and(eq(plans.briefId, brief.id), eq(plans.status, "active")))
     .orderBy(desc(plans.version))
     .limit(1);
   return { brief, gap, plan };
