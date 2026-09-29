@@ -10,7 +10,7 @@ You must be at least 18 years old and able to form a binding contract to use the
 
 ## 2. Your account
 
-You're responsible for your account, for keeping your sign-in credentials secure, and for all activity under your account. Provide accurate information and tell us promptly at [CONTACT EMAIL] about any unauthorized use.
+You're responsible for your account, for keeping your sign-in credentials secure, and for all activity under your account. Provide accurate information and tell us promptly at [hello@iamabl.com](mailto:hello@iamabl.com) about any unauthorized use.
 
 ## 3. The Service
 
@@ -70,7 +70,7 @@ You agree to indemnify and hold ABL harmless from claims arising out of your con
 
 ## 12. Disputes
 
-If you have a concern or dispute about the Service, please contact us first at [CONTACT EMAIL] so we can try to resolve it informally. Nothing in these Terms limits rights you have under the consumer protection laws that apply to you.
+If you have a concern or dispute about the Service, please contact us first at [hello@iamabl.com](mailto:hello@iamabl.com) so we can try to resolve it informally. Nothing in these Terms limits rights you have under the consumer protection laws that apply to you.
 
 ## 13. General
 
@@ -78,4 +78,4 @@ These Terms and our Privacy Policy are the entire agreement between you and ABL 
 
 ## 14. Contact us
 
-Questions about these Terms: [CONTACT EMAIL].
+Questions about these Terms: [hello@iamabl.com](mailto:hello@iamabl.com).
