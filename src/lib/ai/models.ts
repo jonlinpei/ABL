@@ -34,6 +34,21 @@ export interface ModelPricing {
   inputPerMTok: number;
   /** USD per million output tokens. */
   outputPerMTok: number;
+  /**
+   * USD per million input tokens read from the prompt cache, and written to
+   * it. When unset, cached tokens are priced as ordinary input, which
+   * overstates cost rather than hiding it.
+   */
+  cacheReadPerMTok?: number;
+  cacheWritePerMTok?: number;
+}
+
+/**
+ * Anthropic's prompt cache: reads at 10% of the input price, writes (5-minute
+ * cache) at 125%.
+ */
+function anthropicPricing(inputPerMTok: number, outputPerMTok: number): ModelPricing {
+  return { inputPerMTok, outputPerMTok, cacheReadPerMTok: inputPerMTok * 0.1, cacheWritePerMTok: inputPerMTok * 1.25 };
 }
 
 export interface ModelSpec {
@@ -59,7 +74,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     provider: "anthropic",
     tier: "fast",
     capabilities: { structuredOutput: true, toolUse: true, contextWindow: 200_000 },
-    pricing: { inputPerMTok: 1, outputPerMTok: 5 },
+    pricing: anthropicPricing(1, 5),
     status: "stable",
   },
   {
@@ -67,7 +82,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     provider: "anthropic",
     tier: "standard",
     capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000 },
-    pricing: { inputPerMTok: 2, outputPerMTok: 10 },
+    pricing: anthropicPricing(2, 10),
     status: "stable",
   },
   {
@@ -77,7 +92,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     provider: "anthropic",
     tier: "deep",
     capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000 },
-    pricing: { inputPerMTok: 4, outputPerMTok: 20 },
+    pricing: anthropicPricing(4, 20),
     status: "stable",
   },
 

@@ -68,11 +68,33 @@ describe("captureAiGeneration", () => {
     expect(props.$ai_trace_id).toEqual(expect.any(String));
   });
 
+  it("reports cache tokens separately and passes its own cache-aware costs through", async () => {
+    await captureAiGeneration(
+      "u",
+      trace({ inputTokens: 10_000, cacheReadTokens: 8_000, cacheWriteTokens: 1_000, inputCostUsd: 0.006, outputCostUsd: 0.003, costUsd: 0.009 }),
+    );
+    const { props } = captured();
+    expect(props).toMatchObject({
+      $ai_input_tokens: 1_000,
+      $ai_cache_read_input_tokens: 8_000,
+      $ai_cache_creation_input_tokens: 1_000,
+      $ai_cache_reporting_exclusive: true,
+      $ai_input_cost_usd: 0.006,
+      $ai_output_cost_usd: 0.003,
+      $ai_total_cost_usd: 0.009,
+    });
+  });
+
   it("uses a fresh trace id for each call", async () => {
     await captureAiGeneration("u", trace());
     await captureAiGeneration("u", trace());
     const [a, b] = captureServerEvent.mock.calls.map((c) => c[2].$ai_trace_id);
     expect(a).not.toBe(b);
+  });
+
+  it("reports BYOK calls as zero cost in every cost field", async () => {
+    await captureAiGeneration("u", trace({ keySource: "byok", inputCostUsd: 0.3, outputCostUsd: 0.2, costUsd: 0.5 }));
+    expect(captured().props).toMatchObject({ $ai_input_cost_usd: 0, $ai_output_cost_usd: 0, $ai_total_cost_usd: 0 });
   });
 
   it("reports BYOK calls as zero cost but keeps the estimate", async () => {

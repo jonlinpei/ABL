@@ -17,10 +17,17 @@ export interface CallTrace {
   keySource: RoutedModel["keySource"];
   /** Models tried and failed before this one, in order. */
   failedOver: string[];
+  /** All input tokens, cached or not. */
   inputTokens?: number;
   outputTokens?: number;
+  /** Input tokens read from, and written to, the prompt cache (part of inputTokens). */
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
   /** `null` when the model's pricing is unknown. */
   costUsd?: number | null;
+  /** The cost split, cache included in input. `null` when pricing is unknown. */
+  inputCostUsd?: number | null;
+  outputCostUsd?: number | null;
   latencyMs?: number;
 }
 
@@ -41,14 +48,21 @@ export function startTrace(
 }
 
 /** The token counts a trace needs; full SDK usage objects fit too. */
-export type TokenUsage = Pick<LanguageModelUsage, "inputTokens" | "outputTokens">;
+export type TokenUsage = Pick<LanguageModelUsage, "inputTokens" | "outputTokens"> & {
+  inputTokenDetails?: Partial<Pick<LanguageModelUsage["inputTokenDetails"], "cacheReadTokens" | "cacheWriteTokens">>;
+};
 
 /** Adds up usage across steps, e.g. the steps that finished before an abort. */
 export function sumUsage(usages: TokenUsage[]): TokenUsage | undefined {
   if (usages.length === 0) return undefined;
+  const total = (f: (u: TokenUsage) => number | undefined) => usages.reduce((n, u) => n + (f(u) ?? 0), 0);
   return {
-    inputTokens: usages.reduce((n, u) => n + (u.inputTokens ?? 0), 0),
-    outputTokens: usages.reduce((n, u) => n + (u.outputTokens ?? 0), 0),
+    inputTokens: total((u) => u.inputTokens),
+    outputTokens: total((u) => u.outputTokens),
+    inputTokenDetails: {
+      cacheReadTokens: total((u) => u.inputTokenDetails?.cacheReadTokens),
+      cacheWriteTokens: total((u) => u.inputTokenDetails?.cacheWriteTokens),
+    },
   };
 }
 
@@ -58,24 +72,42 @@ export function finishTrace(
   usage: TokenUsage | undefined,
   startedAt: number,
 ): CallTrace {
+  const cost = estimateCost(model, usage);
   return {
     ...trace,
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
-    costUsd: estimateCostUsd(model, usage),
+    cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
+    cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+    costUsd: cost?.total ?? null,
+    inputCostUsd: cost?.input ?? null,
+    outputCostUsd: cost?.output ?? null,
     latencyMs: Date.now() - startedAt,
   };
 }
 
-/** List-price estimate. Ignores cache discounts, so it slightly overstates cost. */
-export function estimateCostUsd(
+/**
+ * List-price estimate, with prompt-cache reads and writes at their own
+ * prices. `inputTokens` includes cached tokens (the AI SDK counts them in),
+ * so the uncached part is what's left after taking them out.
+ */
+export function estimateCost(
   model: ModelSpec,
   usage: TokenUsage | undefined,
-): number | null {
+): { input: number; output: number; total: number } | null {
   if (!model.pricing || !usage) return null;
-  const input = usage.inputTokens ?? 0;
-  const output = usage.outputTokens ?? 0;
-  return (
-    (input * model.pricing.inputPerMTok + output * model.pricing.outputPerMTok) / 1_000_000
-  );
+  const p = model.pricing;
+  const read = usage.inputTokenDetails?.cacheReadTokens ?? 0;
+  const write = usage.inputTokenDetails?.cacheWriteTokens ?? 0;
+  const uncached = Math.max(0, (usage.inputTokens ?? 0) - read - write);
+  const input =
+    (uncached * p.inputPerMTok + read * (p.cacheReadPerMTok ?? p.inputPerMTok) + write * (p.cacheWritePerMTok ?? p.inputPerMTok)) /
+    1_000_000;
+  const output = ((usage.outputTokens ?? 0) * p.outputPerMTok) / 1_000_000;
+  return { input, output, total: input + output };
+}
+
+/** Total cost only. */
+export function estimateCostUsd(model: ModelSpec, usage: TokenUsage | undefined): number | null {
+  return estimateCost(model, usage)?.total ?? null;
 }
