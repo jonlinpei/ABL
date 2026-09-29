@@ -179,3 +179,16 @@ describe("captureAiGeneration", () => {
     await expect(captureAiGeneration("u", trace())).resolves.toBeUndefined();
   });
 });
+
+describe("test users", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("marks test_* ids and listed accounts as internal, and leaves learners alone", async () => {
+    vi.stubEnv("POSTHOG_TEST_USER_IDS", "user_e2e, user_other");
+    for (const id of ["test_lifecycle_a", "user_e2e", "user_real"]) {
+      captureServerEvent.mockReset();
+      await captureAiGeneration(id, trace());
+      expect(captured().props.$set, id).toEqual(id === "user_real" ? undefined : { $internal_or_test_user: true });
+    }
+  });
+});

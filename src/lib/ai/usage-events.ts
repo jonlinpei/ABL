@@ -45,10 +45,19 @@ export async function captureAiGeneration(
       key_source: trace.keySource,
       failed_over: trace.failedOver,
       estimated_cost_usd: trace.costUsd,
+      // Puts test users in PostHog's "Internal / Test users" cohort, which
+      // the project's test-account filter excludes.
+      ...(isTestUser(userId) && { $set: { $internal_or_test_user: true } }),
     });
   } catch (err) {
     console.error("[ai_usage] failed to capture $ai_generation", err);
   }
+}
+
+/** Eval and live-test IDs (`test_*`), plus accounts listed in POSTHOG_TEST_USER_IDS (e.g. the e2e user). */
+export function isTestUser(userId: string): boolean {
+  if (userId.startsWith("test_") || userId === "eval") return true;
+  return (process.env.POSTHOG_TEST_USER_IDS ?? "").split(",").map((s) => s.trim()).includes(userId);
 }
 
 /** Input tokens not served from or written to the cache, as PostHog's exclusive reporting expects. */
