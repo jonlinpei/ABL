@@ -1,7 +1,7 @@
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import type { z } from "zod";
 
-import { configuredProviders, toLanguageModel } from "./providers";
+import { configuredProviders, toLanguageModel, webSearchCount, webSearchTools } from "./providers";
 import { resolveModel } from "./router";
 import type { TaskType } from "./tasks";
 import { finishTrace, startTrace, type CallTrace } from "./trace";
@@ -30,6 +30,9 @@ export async function generateStructured<T>({
   schema,
   traceId = crypto.randomUUID(),
   capture = (fn) => fn(),
+  webSearch,
+  timeoutMs,
+  effort,
 }: {
   task: TaskType;
   userId: string;
@@ -38,6 +41,11 @@ export async function generateStructured<T>({
   schema: z.ZodType<T>;
   traceId?: string;
   capture?: (report: () => Promise<void>) => unknown;
+  /** Let the model search the web, up to `maxUses` times. The task must require `webSearch`. */
+  webSearch?: { maxUses: number };
+  timeoutMs?: number;
+  /** How hard the model thinks, for providers that support it. Lower is faster and cheaper. */
+  effort?: "low" | "medium" | "high";
 }): Promise<{ output: T; trace: CallTrace }> {
   const { primary, fallbacks } = resolveModel(task, { allowedProviders: configuredProviders() });
   const failedOver: string[] = [];
@@ -51,8 +59,12 @@ export async function generateStructured<T>({
         instructions,
         prompt,
         output: Output.object({ schema }),
+        ...(webSearch && { tools: webSearchTools(routed, webSearch.maxUses) }),
+        ...(timeoutMs && { abortSignal: AbortSignal.timeout(timeoutMs) }),
+        ...(effort && { providerOptions: { anthropic: { effort } } }),
       });
-      const finished = finishTrace(trace, routed.model, result.totalUsage, startedAt);
+      const searches = webSearchCount(result.providerMetadata);
+      const finished = finishTrace(trace, routed.model, result.totalUsage, startedAt, searches);
       await capture(() => captureAiGeneration(userId, finished, undefined, traceId));
       return { output: result.output as T, trace: finished };
     } catch (err) {

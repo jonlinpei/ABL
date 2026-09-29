@@ -152,6 +152,7 @@ export function meetsRequirements(model: ModelSpec, req: TaskRequirements): bool
   const c = model.capabilities;
   if (req.structuredOutput && !c.structuredOutput) return false;
   if (req.toolUse && !c.toolUse) return false;
+  if (req.webSearch && !c.webSearch) return false;
   if (req.minContextWindow !== undefined && c.contextWindow < req.minContextWindow) {
     return false;
   }
@@ -189,6 +190,7 @@ function describeRequirements(req: TaskRequirements): string {
   const parts: string[] = [];
   if (req.structuredOutput) parts.push("structuredOutput");
   if (req.toolUse) parts.push("toolUse");
+  if (req.webSearch) parts.push("webSearch");
   if (req.minContextWindow !== undefined) {
     parts.push(`contextWindow >= ${req.minContextWindow}`);
   }

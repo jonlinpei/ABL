@@ -33,7 +33,8 @@ export async function captureAiGeneration(
       $ai_cache_creation_input_tokens: trace.cacheWriteTokens,
       $ai_cache_reporting_exclusive: true,
       $ai_output_tokens: trace.outputTokens,
-      // BYOK calls are billed to the user's key, so they cost us nothing.
+      $ai_web_search_count: trace.webSearches,
+      // The total includes web search fees; BYOK calls are billed to the user's key, so they cost us nothing.
       $ai_input_cost_usd: byok ? 0 : (trace.inputCostUsd ?? undefined),
       $ai_output_cost_usd: byok ? 0 : (trace.outputCostUsd ?? undefined),
       $ai_total_cost_usd: byok ? 0 : (trace.costUsd ?? undefined),

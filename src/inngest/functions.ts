@@ -11,7 +11,7 @@ import { computeGap } from "@/lib/specialists/gap";
 import { applySessionEvidence } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
 import { buildProfile } from "@/lib/specialists/profiler";
-import { buildRequirements, targetKey } from "@/lib/specialists/requirements";
+import { buildRequirements, researchPostings, targetKey } from "@/lib/specialists/requirements";
 import {
   findRequirements,
   loadGap,
@@ -45,13 +45,17 @@ export const learnerLifecycle = inngest.createFunction(
     });
 
     // Requirements analyst: shared by every learner with the same target.
+    // Researching postings takes minutes, so it's a step of its own.
     const key = targetKey(brief.target);
     const cached = await step.run("find-requirements", () => findRequirements(key));
     const requirementsRow =
       cached ??
-      (await step.run("build-requirements", async () =>
-        saveRequirements(key, await buildRequirements(brief, userId)),
-      ));
+      (await (async () => {
+        const research = await step.run("research-postings", () => researchPostings(brief, userId));
+        return step.run("build-requirements", async () =>
+          saveRequirements(key, await buildRequirements(brief, userId, research)),
+        );
+      })());
     const { requirements } = requirementsRow;
 
     // Profiler: this learner against those requirements.

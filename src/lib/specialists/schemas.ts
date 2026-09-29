@@ -33,6 +33,11 @@ export const RequiredSkill = z.object({
   howEmployersCheck: z
     .string()
     .describe("How hiring managers check it, e.g. a take-home SQL test or a portfolio piece."),
+  /** Set from job postings (see `groundInPostings`); absent on requirements built without them. */
+  howToShow: z.string().optional(),
+  frequency: z.enum(["core", "common", "sometimes"]).optional(),
+  /** Share of the researched postings that ask for it, 0 to 1. */
+  postingShare: z.number().optional(),
 });
 export type RequiredSkill = z.infer<typeof RequiredSkill>;
 
@@ -55,8 +60,52 @@ export const TargetRequirementsSchema = z.object({
   caveats: z
     .array(z.string())
     .describe("Where this varies a lot by employer or place, or may be out of date."),
+  /** The postings the requirements were grounded in, and when. Absent if none were found. */
+  sources: z.array(z.object({ title: z.string(), company: z.string(), url: z.string() })).optional(),
+  groundedAt: z.string().optional(),
 });
 export type TargetRequirements = z.infer<typeof TargetRequirementsSchema>;
+
+/** One job posting the researcher found, with the requirements it lists. */
+export const PostingSchema = z.object({
+  title: z.string(),
+  company: z.string(),
+  url: z.string().describe("The posting's own page, not a search results or listings page."),
+  location: z.string(),
+  requirements: z.array(
+    z.object({
+      text: z.string().describe("The requirement as the posting words it, lightly trimmed."),
+      required: z.boolean().describe("false if the posting calls it preferred, a plus or nice to have."),
+    }),
+  ),
+});
+export type Posting = z.infer<typeof PostingSchema>;
+
+export const PostingResearchSchema = z.object({
+  postings: z.array(PostingSchema).describe("8 to 12 distinct, current postings."),
+  notes: z.string().describe("What limited the search, e.g. few postings at this level in this market. Empty if nothing did."),
+});
+export type PostingResearch = z.infer<typeof PostingResearchSchema>;
+
+/**
+ * What the requirements analyst writes. Code then counts `seenIn` against
+ * the postings to set each skill's frequency and importance.
+ */
+export const RequirementsDraftSchema = TargetRequirementsSchema.omit({ sources: true, groundedAt: true }).extend({
+  skills: z
+    .array(
+      RequiredSkill.omit({ howToShow: true, frequency: true, postingShare: true }).extend({
+        howToShow: z
+          .string()
+          .describe("Work a learner can build that shows this skill to an employer, e.g. a SQL analysis of a public dataset, published with its queries."),
+        seenIn: z
+          .array(z.number())
+          .describe("Numbers of the postings that ask for this skill, from the numbered list. Empty if none do or there are no postings."),
+      }),
+    )
+    .describe("8 to 15 skills, most important first."),
+});
+export type RequirementsDraft = z.infer<typeof RequirementsDraftSchema>;
 
 /**
  * Where a level comes from. The profiler sets the first three, the Assessor

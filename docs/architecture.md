@@ -142,7 +142,7 @@ ABL is a team of specialists, each with one job, a typed input and a typed outpu
 |---|---|---|
 | Discovery | Where the learner is now and where they want to go, confirmed as a career brief | `goal_discover` |
 | Profiler | Resume, LinkedIn and transcript to a skills profile with evidence; seeds the mastery graph | `profile_extract` |
-| Requirements analyst | What the target role, market and industry demand. Cached and shared by every learner with the same target | `requirements_build` |
+| Requirements analyst | What the target role, market and industry demand, grounded in current job postings. Cached and shared by every learner with the same target | `requirements_research`, `requirements_build` |
 | Assessor | The short skills check that confirms or corrects the profile | `assessment_run`, `assessment_grade` |
 | Planner (+ reviewer) | Gap plus constraints to a versioned plan; runs replans | `roadmap_generate`, `plan_review`, `replan` |
 | Tutor | Teaches the current step; assigns and follows up on exercises | `tutor_session`, `sidekick_answer` |
@@ -153,12 +153,12 @@ Settled defaults:
 
 - **The Assessor is its own specialist.** Evidence of skill is the most important trust point, so it isn't folded into mastery upkeep.
 - **The coach speaks in the same ABL voice as the tutor.**
-- **Requirements start from model knowledge plus the reviewed skill maps.** Grounding in job postings comes later.
+- **Requirements are grounded in job postings.** The posting researcher (`skills/posting-researcher`) searches the web for 8 to 12 current postings, and pages that are gone are dropped. The analyst writes the skills and notes which postings ask for each one. Code then counts: a skill in at least 60% of postings is **core** (a must-have), 30 to 60% is **common** and under 30% is **sometimes**. Both of those are nice-to-haves, because postings over-ask. Skills no posting names, often domain knowledge, keep the analyst's call. Each skill also gets a `howToShow`: work the learner can build to show it. With fewer than 5 postings, the analyst's own must/nice calls stand, and a caveat says so.
 
 **Built so far:**
 
 - **Discovery.**
-- **Requirements analyst** (`skills/requirements-analyst`): `requirements_build`, cached per target.
+- **Requirements analyst** (`skills/posting-researcher`, `skills/requirements-analyst`): `requirements_research` (web search, about 45s and $0.25), then `requirements_build`, cached per target.
 - **Profiler** (`skills/profiler`): `profile_extract`. It works from the confirmed brief only, because resumes aren't stored. It estimates each required skill on a 0–4 scale and says where each estimate comes from: work history, self-reported or inferred.
 - **Gap** (`src/lib/specialists/gap.ts`): deterministic. It flags every claimed or inferred level above 0 for the Assessor to verify.
 - **Assessor** (`skills/assessor`, task `assessment_run`, route `/api/assess`): the skills check.

@@ -23,6 +23,8 @@ export interface CallTrace {
   /** Input tokens read from, and written to, the prompt cache (part of inputTokens). */
   cacheReadTokens?: number;
   cacheWriteTokens?: number;
+  /** Provider web searches the call ran; each is billed on top of tokens. */
+  webSearches?: number;
   /** `null` when the model's pricing is unknown. */
   costUsd?: number | null;
   /** The cost split, cache included in input. `null` when pricing is unknown. */
@@ -71,14 +73,16 @@ export function finishTrace(
   model: ModelSpec,
   usage: TokenUsage | undefined,
   startedAt: number,
+  webSearches = 0,
 ): CallTrace {
-  const cost = estimateCost(model, usage);
+  const cost = estimateCost(model, usage, webSearches);
   return {
     ...trace,
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
     cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
     cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+    ...(webSearches > 0 && { webSearches }),
     costUsd: cost?.total ?? null,
     inputCostUsd: cost?.input ?? null,
     outputCostUsd: cost?.output ?? null,
@@ -88,12 +92,13 @@ export function finishTrace(
 
 /**
  * List-price estimate, with prompt-cache reads and writes at their own
- * prices. `inputTokens` includes cached tokens (the AI SDK counts them in),
+ * prices, and web searches in the total. `inputTokens` includes cached tokens (the AI SDK counts them in),
  * so the uncached part is what's left after taking them out.
  */
 export function estimateCost(
   model: ModelSpec,
   usage: TokenUsage | undefined,
+  webSearches = 0,
 ): { input: number; output: number; total: number } | null {
   if (!model.pricing || !usage) return null;
   const p = model.pricing;
@@ -104,7 +109,8 @@ export function estimateCost(
     (uncached * p.inputPerMTok + read * (p.cacheReadPerMTok ?? p.inputPerMTok) + write * (p.cacheWritePerMTok ?? p.inputPerMTok)) /
     1_000_000;
   const output = ((usage.outputTokens ?? 0) * p.outputPerMTok) / 1_000_000;
-  return { input, output, total: input + output };
+  const searches = webSearches * (p.webSearchPerRequest ?? 0);
+  return { input, output, total: input + output + searches };
 }
 
 /** Total cost only. */

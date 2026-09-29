@@ -14,6 +14,7 @@ export const TASK_TYPES = [
   "assessment_grade",
   "gap_detect",
   "profile_extract",
+  "requirements_research",
   "requirements_build",
   "assessment_run",
   "tutor_session",
@@ -26,6 +27,8 @@ export type TaskType = (typeof TASK_TYPES)[number];
 export interface TaskRequirements {
   structuredOutput?: boolean;
   toolUse?: boolean;
+  /** Needs the provider's web search tool. */
+  webSearch?: boolean;
   /** Minimum input tokens the model must accept. */
   minContextWindow?: number;
 }
@@ -106,6 +109,13 @@ export const TASK_ROUTES: Readonly<Record<TaskType, TaskRoute>> = {
     fallback: ["deep"],
     rationale:
       "Profiler: turn a resume, LinkedIn profile and discovery transcript into a skills profile with evidence. Runs once per confirmed brief; misread skills skew the gap, so no fast-tier fallback.",
+  },
+  requirements_research: {
+    tier: "standard",
+    requires: { structuredOutput: true, webSearch: true },
+    fallback: [],
+    rationale:
+      "Requirements analyst's research: find current job postings for a target and pull out what they ask for. Cached per target like the requirements. Searching takes minutes, so there's no fallback retry; without postings, requirements are built from model knowledge.",
   },
   requirements_build: {
     tier: "deep",
