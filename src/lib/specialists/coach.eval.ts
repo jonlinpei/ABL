@@ -47,6 +47,37 @@ async function judge(decision: CoachDecision, situation: string, assertions: str
 }
 
 describe.concurrent("coach decisions", () => {
+  it("postings now screen for Python, which her plan doesn't teach: tells her and suggests a rework", async () => {
+    const d = await run(
+      "requirements-changed",
+      [{ kind: "requirements_changed", nowMustHave: ["Python for data analysis"], noLongerMustHave: ["Advanced spreadsheets"] }],
+      [recap("You wrote joins across two tables.", 2)],
+    );
+    expect(d.message).not.toBeNull();
+    expect(d.suggestReplan).toBe(true);
+    await judge(d, "ABL re-checked current job postings for her target: most now ask for Python, which her plan doesn't teach, and advanced spreadsheets became optional. She's on track otherwise; her last session, two days ago (Friday), was on joins across two tables.", [
+      "The message says what changed (Python is now widely asked for; spreadsheets less so) and that it comes from current job postings",
+      "It frames the change calmly as keeping her plan aimed at what employers want now, not as a setback or cause for alarm",
+      "It offers reworking the plan as a next step",
+      "It doesn't invent facts, such as specific companies, numbers of postings or dates",
+    ]);
+  });
+
+  it("a skill she hasn't started became optional: good news, no rework pushed", async () => {
+    const d = await run(
+      "requirements-easier",
+      [{ kind: "requirements_changed", nowMustHave: [], noLongerMustHave: ["dbt for SQL transformations"] }],
+      [recap("You wrote joins across two tables.", 2)],
+    );
+    expect(d.suggestReplan).toBe(false);
+    if (d.message) {
+      await judge(d, "Current job postings for her target ask for dbt less often, so it became optional. She's on track; her last session, two days ago, was on joins.", [
+        "The message presents it as good news or neutral, not a problem",
+        "It doesn't push her to change her plan",
+      ]);
+    }
+  });
+
   it("missed 9 days, having quit at week three before: a short, warm check-in with a light option", async () => {
     const d = await run(
       "missed",

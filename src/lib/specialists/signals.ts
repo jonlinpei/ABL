@@ -21,7 +21,19 @@ export type Signal =
       projectedFinish: string | null;
       plannedFinish: string;
     }
-  | { kind: "stuck_topic"; skillId: string; name: string; sessionsOnMilestone: number; level: number; toLevel: number };
+  | { kind: "stuck_topic"; skillId: string; name: string; sessionsOnMilestone: number; level: number; toLevel: number }
+  | {
+      kind: "requirements_changed";
+      /** Skills that became must-haves they haven't met, and ones that stopped being must-haves. */
+      nowMustHave: string[];
+      noLongerMustHave: string[];
+    };
+
+/** A `requirements_changed` event's payload. */
+export interface RequirementsChange {
+  added: { skillId: string; name: string }[];
+  dropped: { skillId: string; name: string }[];
+}
 
 /** Sessions a week the plan assumes: weekly hours over session length. */
 export function expectedSessionsPerWeek(plan: Plan): number {
@@ -113,6 +125,27 @@ export function detectSignals({
     }
   }
   return signals;
+}
+
+/**
+ * One signal for the requirement changes the coach hasn't seen yet, oldest
+ * first, so a later change wins: a skill added and then dropped again is
+ * no change at all.
+ */
+export function requirementsChangedSignal(changes: RequirementsChange[]): Signal | null {
+  const state = new Map<string, { name: string; must: boolean; was: boolean }>();
+  for (const c of changes) {
+    for (const [list, must] of [[c.added, true], [c.dropped, false]] as const) {
+      for (const { skillId, name } of list) {
+        const prev = state.get(skillId);
+        state.set(skillId, { name, must, was: prev ? prev.was : !must });
+      }
+    }
+  }
+  const moved = [...state.values()].filter((s) => s.must !== s.was);
+  const nowMustHave = moved.filter((s) => s.must).map((s) => s.name);
+  const noLongerMustHave = moved.filter((s) => !s.must).map((s) => s.name);
+  return nowMustHave.length || noLongerMustHave.length ? { kind: "requirements_changed", nowMustHave, noLongerMustHave } : null;
 }
 
 function isoDate(ms: number): string {

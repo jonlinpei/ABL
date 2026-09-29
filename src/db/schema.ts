@@ -82,6 +82,7 @@ export const LEARNER_EVENT_TYPES = [
   "plan_proposed",
   "plan_accepted",
   "plan_declined",
+  "requirements_changed",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 

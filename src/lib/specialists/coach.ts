@@ -15,7 +15,9 @@ export const CoachDecisionSchema = z.object({
   message: z.string().nullable().describe("A short check-in to the learner, or null if one wouldn't help now."),
   options: z.array(z.string()).describe("2 or 3 next steps they can tap, written from their side. Empty when there's no message."),
   tutorNote: z.string().nullable().describe("What the tutor should try differently next session, or null."),
-  suggestReplan: z.boolean().describe("True only when the plan no longer fits: the deadline will clearly be missed, or a long lapse."),
+  suggestReplan: z
+    .boolean()
+    .describe("True only when the plan no longer fits: the deadline will clearly be missed, a long lapse, or employers now require something the plan doesn't cover."),
   reason: z.string().describe("One sentence on why."),
 });
 export type CoachDecision = z.infer<typeof CoachDecisionSchema>;
