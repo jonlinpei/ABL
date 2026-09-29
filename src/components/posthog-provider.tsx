@@ -16,6 +16,11 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       // client-side (history API) navigations, which the App Router uses.
       defaults: "2026-05-30",
       person_profiles: "identified_only",
+      // The privacy policy promises both: a Do Not Track signal turns
+      // analytics off, and session replays hide page text (conversations,
+      // resumes, briefs) and form fields, keeping only layout and clicks.
+      respect_dnt: true,
+      session_recording: { maskAllInputs: true, maskTextSelector: "*" },
     });
   }, []);
 
