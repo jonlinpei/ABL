@@ -18,16 +18,25 @@ export async function captureAiGeneration(
   error?: unknown,
   traceId: string = crypto.randomUUID(),
 ): Promise<void> {
+  const byok = trace.keySource === "byok";
   try {
     await captureServerEvent(userId, "$ai_generation", {
       $ai_trace_id: traceId,
       $ai_span_name: trace.task,
       $ai_model: trace.model,
       $ai_provider: trace.provider,
-      $ai_input_tokens: trace.inputTokens,
+      // Cache tokens are reported separately from $ai_input_tokens
+      // (Anthropic style), and costs are passed through: PostHog's own
+      // cache-aware pricing currently overstates Claude costs.
+      $ai_input_tokens: uncachedInput(trace),
+      $ai_cache_read_input_tokens: trace.cacheReadTokens,
+      $ai_cache_creation_input_tokens: trace.cacheWriteTokens,
+      $ai_cache_reporting_exclusive: true,
       $ai_output_tokens: trace.outputTokens,
       // BYOK calls are billed to the user's key, so they cost us nothing.
-      $ai_total_cost_usd: trace.keySource === "byok" ? 0 : (trace.costUsd ?? undefined),
+      $ai_input_cost_usd: byok ? 0 : (trace.inputCostUsd ?? undefined),
+      $ai_output_cost_usd: byok ? 0 : (trace.outputCostUsd ?? undefined),
+      $ai_total_cost_usd: byok ? 0 : (trace.costUsd ?? undefined),
       $ai_latency: trace.latencyMs !== undefined ? trace.latencyMs / 1000 : undefined,
       $ai_is_error: error !== undefined,
       $ai_error: error === undefined ? undefined : describeError(error),
@@ -36,10 +45,25 @@ export async function captureAiGeneration(
       key_source: trace.keySource,
       failed_over: trace.failedOver,
       estimated_cost_usd: trace.costUsd,
+      // Puts test users in PostHog's "Internal / Test users" cohort, which
+      // the project's test-account filter excludes.
+      ...(isTestUser(userId) && { $set: { $internal_or_test_user: true } }),
     });
   } catch (err) {
     console.error("[ai_usage] failed to capture $ai_generation", err);
   }
+}
+
+/** Eval and live-test IDs (`test_*`), plus accounts listed in POSTHOG_TEST_USER_IDS (e.g. the e2e user). */
+export function isTestUser(userId: string): boolean {
+  if (userId.startsWith("test_") || userId === "eval") return true;
+  return (process.env.POSTHOG_TEST_USER_IDS ?? "").split(",").map((s) => s.trim()).includes(userId);
+}
+
+/** Input tokens not served from or written to the cache, as PostHog's exclusive reporting expects. */
+function uncachedInput(trace: CallTrace): number | undefined {
+  if (trace.inputTokens === undefined) return undefined;
+  return Math.max(0, trace.inputTokens - (trace.cacheReadTokens ?? 0) - (trace.cacheWriteTokens ?? 0));
 }
 
 /** Marks a call the client cut off before it finished. */
