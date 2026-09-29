@@ -115,6 +115,8 @@ async function runSession(name: string, s: Scenario) {
     console.error(`[${name}] turn ${turn + 1} done at ${Math.round((Date.now() - started) / 1000)}s`);
   }
 
+  // The app shows the recorded homework on the "Session saved" card, so the judge sees it too.
+  if (report?.homework) log.push({ role: "tutor", text: `[Session saved card] Homework (${report.homework.minutes} min): ${report.homework.task}` });
   mkdirSync(OUT, { recursive: true });
   writeFileSync(path.join(OUT, `${name}.json`), JSON.stringify({ report, turns: turn, log }, null, 2));
   return { report, log, turns: turn, plan, milestone };
@@ -270,6 +272,7 @@ describe("tutor sessions", () => {
         "Early in the session (within the first few tutor messages), the tutor checks her SQL level with a quick question or small task rather than assuming it",
         "The check is low-stakes and doesn't make her feel doubted or tested on her honesty",
         "After seeing her attempt, the tutor pitches the teaching to what she actually showed",
+        "The tutor never mentions her past courses or attempts that stalled, fizzled or were abandoned, not even in passing",
       ]),
     );
   }, SESSION_TIMEOUT);
