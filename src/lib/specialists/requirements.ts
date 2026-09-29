@@ -99,13 +99,17 @@ export async function withoutGonePostings(postings: Posting[]): Promise<Posting[
   return postings.filter((_, i) => !gone[i]);
 }
 
-export function requirementsPrompt(brief: GoalBrief, postings: Posting[] = []): string {
+export function requirementsPrompt(brief: GoalBrief, postings: Posting[] = [], previous?: TargetRequirements): string {
   const list = postings.length
     ? `Current job postings for this target:\n\n${postings.map(postingLines).join("\n\n")}`
     : "No current job postings were found for this target. Work from what you know.";
+  // Learners' mastery is keyed by skill id, so a refresh keeps the ids it can.
+  const ids = previous
+    ? `\n\nThis refreshes earlier requirements for the same target. Skill ids already in use: ${previous.skills.map((s) => s.id).join(", ")}. Reuse an id whenever a skill is the same one.`
+    : "";
   return `${targetLines(brief)}
 
-${list}
+${list}${ids}
 
 For context, the learner aiming here is moving from: ${brief.current.role} (${brief.current.industry}), ${brief.current.experience}. Write requirements for the target itself, not for this learner.`;
 }
@@ -123,12 +127,13 @@ export async function buildRequirements(
   brief: GoalBrief,
   userId: string,
   research: PostingResearch = { postings: [], notes: "" },
+  previous?: TargetRequirements,
 ): Promise<TargetRequirements> {
   const { output } = await generateStructured({
     task: "requirements_build",
     userId,
     instructions: REQUIREMENTS_ANALYST_SKILL,
-    prompt: requirementsPrompt(brief, research.postings),
+    prompt: requirementsPrompt(brief, research.postings, previous),
     schema: RequirementsDraftSchema,
   });
   return withUniqueSkillIds(groundInPostings(output, research.postings, new Date()));
@@ -164,6 +169,41 @@ export function groundInPostings(draft: RequirementsDraft, postings: Posting[], 
     sources: postings.map(({ title, company, url }) => ({ title, company, url })),
     groundedAt: now.toISOString().slice(0, 10),
   };
+}
+
+/** Grounded requirements are rebuilt after this long, since postings change. */
+export const REFRESH_AFTER_DAYS = 90;
+/** Ungrounded ones (the search failed or found too few postings) are retried sooner. */
+export const RETRY_UNGROUNDED_AFTER_DAYS = 7;
+/** Most targets refreshed per run, to cap the cost (about $0.30 each). */
+export const MAX_REFRESHES_PER_RUN = 10;
+/** AI usage for refreshes is platform cost, not any one learner's. */
+export const REFRESH_USER_ID = "system:requirements-refresh";
+
+/** The targets due a refresh, oldest first, capped per run. */
+export function dueForRefresh(
+  candidates: { id: string; lastBuilt: Date; grounded: boolean }[],
+  now: Date,
+  limit = MAX_REFRESHES_PER_RUN,
+): string[] {
+  const day = 24 * 60 * 60 * 1000;
+  return candidates
+    .filter((c) => now.getTime() - c.lastBuilt.getTime() >= (c.grounded ? REFRESH_AFTER_DAYS : RETRY_UNGROUNDED_AFTER_DAYS) * day)
+    .sort((a, b) => a.lastBuilt.getTime() - b.lastBuilt.getTime())
+    .slice(0, limit)
+    .map((c) => c.id);
+}
+
+/** The rebuild replaces the cache unless it would swap grounded requirements for ungrounded ones. */
+export function pickRefreshed(previous: TargetRequirements, fresh: TargetRequirements): TargetRequirements | null {
+  return fresh.groundedAt || !previous.groundedAt ? fresh : null;
+}
+
+/** Must-have skills a refresh added and dropped, for the run log. */
+export function mustHaveChanges(previous: TargetRequirements, next: TargetRequirements) {
+  const musts = (r: TargetRequirements) => new Set(r.skills.filter((s) => s.importance === "must").map((s) => s.id));
+  const [before, after] = [musts(previous), musts(next)];
+  return { added: [...after].filter((id) => !before.has(id)), dropped: [...before].filter((id) => !after.has(id)) };
 }
 
 /** Slug the ids and drop repeats, so profiles and gaps can key on them. */

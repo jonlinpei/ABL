@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
@@ -43,6 +43,49 @@ export async function saveRequirements(targetKey: string, requirements: TargetRe
     .onConflictDoNothing({ target: targetRequirements.targetKey })
     .returning({ id: targetRequirements.id, requirements: targetRequirements.requirements });
   return inserted ?? (await findRequirements(targetKey))!;
+}
+
+/**
+ * Cached targets a new learner picked since `since`, with when each was last
+ * built or refreshed and whether it's grounded in postings.
+ */
+export async function loadRefreshCandidates(since: Date) {
+  return getDb()
+    .selectDistinct({
+      id: targetRequirements.id,
+      lastBuilt: sql<Date>`coalesce(${targetRequirements.refreshedAt}, ${targetRequirements.createdAt})`.mapWith(
+        (v) => new Date(v),
+      ),
+      grounded: sql<boolean>`${targetRequirements.requirements}->>'groundedAt' is not null`,
+    })
+    .from(targetRequirements)
+    .innerJoin(learnerProfiles, eq(learnerProfiles.requirementsId, targetRequirements.id))
+    .where(gt(learnerProfiles.createdAt, since));
+}
+
+/** A cached target's requirements, and the newest brief that chose it (for the research prompt). */
+export async function loadRequirementsForRefresh(requirementsId: string) {
+  const [row] = await getDb()
+    .select({ requirements: targetRequirements.requirements, brief: careerBriefs.brief })
+    .from(targetRequirements)
+    .innerJoin(learnerProfiles, eq(learnerProfiles.requirementsId, targetRequirements.id))
+    .innerJoin(careerBriefs, eq(careerBriefs.id, learnerProfiles.briefId))
+    .where(eq(targetRequirements.id, requirementsId))
+    .orderBy(desc(learnerProfiles.createdAt))
+    .limit(1);
+  return row;
+}
+
+/**
+ * Record a refresh attempt, replacing the requirements when there are new
+ * ones. Learners' gaps are snapshots, so only learners who start later see
+ * the change.
+ */
+export async function saveRefreshedRequirements(requirementsId: string, requirements: TargetRequirements | null) {
+  await getDb()
+    .update(targetRequirements)
+    .set({ refreshedAt: new Date(), ...(requirements && { requirements }) })
+    .where(eq(targetRequirements.id, requirementsId));
 }
 
 /** Save the profile for a brief. A retried step returns the row already saved. */

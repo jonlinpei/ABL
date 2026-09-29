@@ -115,6 +115,8 @@ export const targetRequirements = pgTable("target_requirements", {
   targetKey: text("target_key").notNull().unique(),
   requirements: jsonb("requirements").$type<TargetRequirements>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Last refresh attempt, successful or not (see `refreshRequirements`). */
+  refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
 });
 
 /** The profiler's estimate of a learner's skills, for one brief version. */

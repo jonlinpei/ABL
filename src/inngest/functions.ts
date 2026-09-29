@@ -11,10 +11,12 @@ import { computeGap } from "@/lib/specialists/gap";
 import { applySessionEvidence } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
 import { buildProfile } from "@/lib/specialists/profiler";
-import { buildRequirements, researchPostings, targetKey } from "@/lib/specialists/requirements";
+import { buildRequirements, dueForRefresh, researchPostings, targetKey } from "@/lib/specialists/requirements";
+import { refreshTarget } from "@/lib/specialists/requirements-refresh";
 import {
   findRequirements,
   loadGap,
+  loadRefreshCandidates,
   saveFirstPlan,
   saveGap,
   saveProfile,
@@ -22,7 +24,14 @@ import {
 } from "@/lib/specialists/store";
 
 import { inngest } from "./client";
-import { assessmentDone, briefConfirmed, coachCheck, replanRequested, sessionCompleted } from "./events";
+import {
+  assessmentDone,
+  briefConfirmed,
+  coachCheck,
+  replanRequested,
+  requirementsRefreshRequested,
+  sessionCompleted,
+} from "./events";
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -166,4 +175,43 @@ export const huddle = inngest.createFunction(
     runHuddleById(event.data.huddleId, (name, fn) => step.run(name, fn) as never),
 );
 
-export const functions = [learnerLifecycle, masteryKeeper, coach, dailyCoachCheck, huddle];
+/** Targets a learner picked in the last half year are kept fresh; others wait until someone picks them again. */
+const IN_USE_DAYS = 180;
+
+/**
+ * Weekly: find cached targets whose requirements are stale (grounded ones
+ * after 90 days, ungrounded ones after a week) and refresh each.
+ */
+export const weeklyRequirementsRefresh = inngest.createFunction(
+  { id: "weekly-requirements-refresh", triggers: [{ cron: "TZ=America/Los_Angeles 0 3 * * 1" }] },
+  async ({ step }) => {
+    const ids = await step.run("find-due", async () => {
+      const since = new Date(Date.now() - IN_USE_DAYS * 24 * 60 * 60 * 1000);
+      return dueForRefresh(await loadRefreshCandidates(since), new Date());
+    });
+    if (ids.length > 0) {
+      await step.sendEvent("fan-out", ids.map((requirementsId) => requirementsRefreshRequested.create({ requirementsId })));
+    }
+    return { due: ids.length };
+  },
+);
+
+/**
+ * Rebuild one target's requirements from current postings, keeping skill ids
+ * where it can. Two at a time, since each run searches the web for a minute.
+ */
+export const refreshRequirements = inngest.createFunction(
+  { id: "refresh-requirements", triggers: [requirementsRefreshRequested], concurrency: { limit: 2 } },
+  // Step results come back JSON-serialized; everything here is plain JSON.
+  async ({ event, step }) => refreshTarget(event.data.requirementsId, (name, fn) => step.run(name, fn) as never),
+);
+
+export const functions = [
+  learnerLifecycle,
+  masteryKeeper,
+  coach,
+  dailyCoachCheck,
+  huddle,
+  weeklyRequirementsRefresh,
+  refreshRequirements,
+];
