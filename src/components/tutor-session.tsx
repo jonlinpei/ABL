@@ -11,6 +11,7 @@ import { REWORK_OPTION, type Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
 import { ProposalView, ReplanForm } from "./replan";
+import { SidekickPanel } from "./sidekick-panel";
 import { TraceChip } from "./trace-chip";
 
 /**
@@ -223,12 +224,16 @@ function SessionChat({
 }) {
   const { messages, sendMessage, status, error } = useChat<SessionMessage>({ chat });
   const [input, setInput] = useState("");
+  const [sidekickOpen, setSidekickOpen] = useState(false);
+  const [asked, setAsked] = useState<string[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const busy = status === "submitted" || status === "streaming";
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, status]);
+    // The lesson holds its place while a side question is open.
+    if (!sidekickOpen) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, status, sidekickOpen]);
 
   const ended = messages.some((m) =>
     m.parts.some((p) => p.type === "tool-end_session" && p.state === "output-available"),
@@ -303,6 +308,7 @@ function SessionChat({
           className="flex gap-2 rounded-xl border border-foreground/15 bg-background p-2 focus-within:border-foreground/40"
         >
           <textarea
+            ref={inputRef}
             value={input}
             rows={1}
             onChange={(e) => setInput(e.currentTarget.value)}
@@ -324,7 +330,30 @@ function SessionChat({
           </button>
         </form>
       )}
+      {!ended && (
+        <div className="-mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <button onClick={() => setSidekickOpen(true)} className="text-foreground/60 underline hover:text-foreground">
+            Ask a quick question
+          </button>
+          <span className="text-foreground/40">without leaving your lesson</span>
+          {asked.map((term) => (
+            <span key={term} className="rounded-full border border-foreground/15 px-2 py-0.5 text-xs text-foreground/60">
+              {term}
+            </span>
+          ))}
+        </div>
+      )}
       <div ref={bottomRef} />
+      {sidekickOpen && (
+        <SidekickPanel
+          sessionId={info.id}
+          onClose={() => {
+            setSidekickOpen(false);
+            inputRef.current?.focus();
+          }}
+          onTerm={(term) => setAsked((a) => (a.includes(term) ? a : [...a, term]))}
+        />
+      )}
     </section>
   );
 }

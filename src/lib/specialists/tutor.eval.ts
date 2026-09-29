@@ -44,6 +44,8 @@ interface Scenario {
   dueReviews?: MasteryRecord[];
   /** Minutes already gone when the session is joined. */
   startAt?: number;
+  /** Extra per-turn notes, as the route adds them (e.g. this session's side questions). */
+  turnNotes?: string;
   /** Change the fixture's gap, e.g. a level the learner corrected themselves. */
   gap?: (gap: Gap) => Gap;
   maxTurns: number;
@@ -81,7 +83,14 @@ async function runSession(name: string, s: Scenario) {
     // As the route does: the clock rides on the newest learner message only.
     const messages: ModelMessage[] = [
       ...tutor,
-      { role: "user", content: [{ type: "text", text: say }, { type: "text", text: sessionClock(elapsed, plan.sessionMinutes) }] },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: say },
+          { type: "text", text: sessionClock(elapsed, plan.sessionMinutes) },
+          ...(s.turnNotes ? [{ type: "text" as const, text: s.turnNotes }] : []),
+        ],
+      },
     ];
     const r = await generateText({
       model: anthropic(TUTOR_MODEL),
@@ -263,6 +272,25 @@ describe("tutor sessions", () => {
         "After seeing her attempt, the tutor pitches the teaching to what she actually showed",
       ]),
     );
+  }, SESSION_TIMEOUT);
+
+  it("picks up a side question she struggled with, without repeating it or counting it as mastery", async () => {
+    const r = await runSession("sidekick", {
+      fixture: "marketing-ops-to-data-analyst",
+      persona:
+        "You are Maya, a marketing ops coordinator starting SQL. Before the lesson you asked a side question about what GROUP BY does and found it confusing, though the pivot-table comparison half-helped. When you write your first GROUP BY query, leave the grouped column out of the SELECT. Fix it once you get a hint. Reply briefly.",
+      turnNotes:
+        "[Side questions they asked this session, in a separate panel:\n- Asked what GROUP BY does and whether it's like a pivot table; half got it via the pivot comparison. (they struggled with it)]",
+      maxTurns: 12,
+    });
+    expectJudged(
+      await judge(r.log, [
+        "When GROUP BY comes up, the tutor connects to her earlier side question or checks her understanding of it, rather than ignoring it",
+        "The tutor doesn't re-deliver a long explanation she already got in the side panel; it builds on it",
+      ]),
+    );
+    const sql = r.report?.evidence.find((e) => e.skillId === "sql-querying");
+    if (sql) expect(sql.level, "a side question isn't mastery").toBeLessThanOrEqual(2);
   }, SESSION_TIMEOUT);
 
   it("wraps up promptly when the clock is nearly out", async () => {
