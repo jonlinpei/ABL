@@ -1,10 +1,8 @@
 # Terms of Service
 
-**Effective date:** [EFFECTIVE DATE]
+**Effective date:** September 29, 2026
 
-These Terms of Service ("Terms") are an agreement between you and [LEGAL ENTITY NAME] ("ABL", "we", "us") and govern your use of iamabl.com and our related apps and services (the "Service"). By creating an account or using the Service, you agree to these Terms and our [Privacy Policy](/privacy). If you don't agree, don't use the Service.
-
-**Section 12 contains an arbitration agreement and class action waiver** that affect how disputes are resolved.
+These Terms of Service ("Terms") are an agreement between you and ABL ("ABL", "we", "us") and govern your use of iamabl.com and our related apps and services (the "Service"). By creating an account or using the Service, you agree to these Terms and our [Privacy Policy](/privacy). If you don't agree, don't use the Service.
 
 ## 1. Eligibility
 
@@ -12,7 +10,7 @@ You must be at least 18 years old and able to form a binding contract to use the
 
 ## 2. Your account
 
-You're responsible for your account, for keeping your sign-in credentials secure, and for all activity under your account. Provide accurate information and tell us promptly at [SUPPORT EMAIL] about any unauthorized use.
+You're responsible for your account, for keeping your sign-in credentials secure, and for all activity under your account. Provide accurate information and tell us promptly at [CONTACT EMAIL] about any unauthorized use.
 
 ## 3. The Service
 
@@ -60,7 +58,7 @@ We may update these Terms from time to time. We'll post the updated Terms with a
 
 ## 10. Termination
 
-You may stop using the Service at any time. We may suspend or terminate your access at any time, including if you violate these Terms. Sections that by their nature should survive termination will survive, including sections 4, 5, 7, 10, 11, 12 and 13.
+You may stop using the Service at any time. We may suspend or terminate your access at any time, including if you violate these Terms. Sections that by their nature should survive termination will survive, including sections 4, 5, 7, 10, 11 and 12.
 
 ## 11. Disclaimers and limitation of liability
 
@@ -70,20 +68,14 @@ TO THE FULLEST EXTENT PERMITTED BY LAW, ABL WILL NOT BE LIABLE FOR ANY INDIRECT,
 
 You agree to indemnify and hold ABL harmless from claims arising out of your content or your violation of these Terms.
 
-## 12. Dispute resolution
+## 12. Disputes
 
-Before filing a claim, you agree to contact us at [LEGAL EMAIL] and try to resolve the dispute informally for at least 60 days. If we can't, you and ABL agree to resolve any dispute arising out of or relating to the Service or these Terms by binding individual arbitration administered by [ARBITRATION PROVIDER], except that either party may bring an individual claim in small claims court or seek relief in court for infringement of intellectual property. **You and ABL waive the right to a jury trial and to participate in a class, collective or representative action.** You may opt out of this section by emailing [LEGAL EMAIL] within 30 days of first accepting these Terms. If this section is found unenforceable for a claim, that claim will be resolved in the courts described in section 13.
+If you have a concern or dispute about the Service, please contact us first at [CONTACT EMAIL] so we can try to resolve it informally. Nothing in these Terms limits rights you have under the consumer protection laws that apply to you.
 
-## 13. Governing law
-
-These Terms are governed by the laws of the State of [GOVERNING STATE], without regard to its conflict-of-law rules. Subject to section 12, disputes will be resolved in the state or federal courts located in [COUNTY, STATE]. If you're a consumer in a country with mandatory consumer protection laws, you keep the benefit of those laws.
-
-## 14. General
+## 13. General
 
 These Terms and our Privacy Policy are the entire agreement between you and ABL about the Service. If any provision is unenforceable, the rest remain in effect. Our failure to enforce a provision isn't a waiver. You may not assign these Terms without our consent; we may assign them in connection with a merger, acquisition or sale of assets. We aren't liable for delays or failures caused by events beyond our reasonable control.
 
-## 15. Contact us
+## 14. Contact us
 
-[LEGAL ENTITY NAME]
-[MAILING ADDRESS]
-[SUPPORT EMAIL]
+Questions about these Terms: [CONTACT EMAIL].

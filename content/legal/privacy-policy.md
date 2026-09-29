@@ -1,8 +1,8 @@
 # Privacy Policy
 
-**Effective date:** [EFFECTIVE DATE]
+**Effective date:** September 29, 2026
 
-This Privacy Policy explains how [LEGAL ENTITY NAME] ("ABL", "we", "us") collects, uses and shares information when you use iamabl.com and our related apps and services (the "Service"). By using the Service, you agree to this policy. If you have questions, contact us at [PRIVACY EMAIL].
+This Privacy Policy explains how ABL ("ABL", "we", "us") collects, uses and shares information when you use iamabl.com and our related apps and services (the "Service"). By using the Service, you agree to this policy. If you have questions, contact us at [CONTACT EMAIL].
 
 ## Information we collect
 
@@ -55,7 +55,7 @@ We keep information for as long as your account is active or as needed to provid
 
 ## Your choices and rights
 
-You can view, update and delete much of your information in the Service. You can also contact us at [PRIVACY EMAIL] to request access to, correction of or deletion of your personal information, or to exercise other rights you may have under the laws where you live. We'll verify your request before acting on it, and we won't discriminate against you for making one.
+You can view, update and delete much of your information in the Service, on the [What ABL knows about me](/app/about-me) page. You can also contact us at [CONTACT EMAIL] to request access to, correction of or deletion of your personal information, or to exercise other rights you may have under the laws where you live. We'll verify your request before acting on it, and we won't discriminate against you for making one.
 
 If you're in the European Economic Area, the United Kingdom or Switzerland, we process your information to provide the Service to you, for our legitimate interests in operating and improving it, to comply with the law, or with your consent, which you can withdraw at any time. You may have the right to access, correct, delete, restrict or object to our use of your information, to data portability, and to complain to your local data protection authority.
 
@@ -77,6 +77,4 @@ We may update this policy from time to time. We'll post the updated version with
 
 ## Contact us
 
-[LEGAL ENTITY NAME]
-[MAILING ADDRESS]
-[PRIVACY EMAIL]
+Questions or requests about your privacy: [CONTACT EMAIL].
