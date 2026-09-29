@@ -421,7 +421,7 @@ function DeleteData() {
   return (
     <Card title="Delete what ABL knows about you">
       <p className="text-sm text-foreground/70">
-        This permanently deletes your goals, skills picture, plans, sessions and progress. It can&apos;t be undone. Your sign-in account
+        This permanently deletes your goals, skills picture, plans, sessions, glossary and progress. It can&apos;t be undone. Your sign-in account
         stays, so you can start again any time. Anonymous usage analytics (which features were used, and what they cost) aren&apos;t
         deleted.
       </p>

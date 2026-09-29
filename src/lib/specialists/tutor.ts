@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { GoalBrief } from "@/lib/goals/schema";
 
 import type { MasteryRecord } from "./mastery";
-import { SessionReport, type Gap, type Plan } from "./schemas";
+import { GlossaryEntry, SessionReport, type Gap, type Plan } from "./schemas";
 
 /** One past session, as the tutor needs to see it. */
 export interface PastSession {
@@ -129,8 +129,14 @@ export function endSessionSchema(skillIds: string[]) {
           : evidenceItem,
       )
       .describe("Only skills they actually practised this session."),
+    terms: z
+      .array(GlossaryEntry)
+      .describe("Up to 5 key terms you introduced or explained this session, for their glossary. Empty if none."),
   });
 }
+
+/** Terms kept per session, so the glossary gets the key ones, not every word. */
+const MAX_SESSION_TERMS = 5;
 
 /** Clamp levels to 0 to 4 and keep one evidence entry per skill (the last). */
 export function normalizeReport(report: SessionReport): SessionReport {
@@ -144,5 +150,9 @@ export function normalizeReport(report: SessionReport): SessionReport {
     homework: report.homework
       ? { ...report.homework, minutes: Math.max(1, Math.round(report.homework.minutes)) }
       : null,
+    terms: [...new Map((report.terms ?? []).filter((t) => t.term.trim() && t.definition.trim()).map((t) => [t.term.trim().toLowerCase(), t])).values()].slice(
+      0,
+      MAX_SESSION_TERMS,
+    ),
   };
 }

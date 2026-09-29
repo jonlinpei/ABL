@@ -357,3 +357,40 @@ export const sidekicks = pgTable(
 );
 
 export type SidekickRow = typeof sidekicks.$inferSelect;
+
+/**
+ * The learner's glossary (PRD F6): one row per sense, a term in a field, so
+ * "leverage (finance)" and "leverage (physics)" are separate entries under
+ * one headword. Filled from sidekicks, session reports and terms the learner
+ * adds.
+ */
+export const glossaryTerms = pgTable(
+  "glossary_terms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** As first written, e.g. "LEFT JOIN". */
+    headword: text("headword").notNull(),
+    /** Normalized for matching, e.g. "left join". */
+    headKey: text("head_key").notNull(),
+    /** A broad field in a few words, e.g. "finance" or "data analysis". */
+    domain: text("domain").notNull(),
+    domainKey: text("domain_key").notNull(),
+    definition: text("definition").notNull(),
+    skillId: text("skill_id"),
+    /** The brief (goal) the term first came up under. */
+    briefId: uuid("brief_id").references(() => careerBriefs.id, { onDelete: "set null" }),
+    source: text("source").$type<"sidekick" | "session" | "learner">().notNull(),
+    timesSeen: integer("times_seen").notNull().default(1),
+    struggled: boolean("struggled").notNull().default(false),
+    /** The learner marked it as known. */
+    known: boolean("known").notNull().default(false),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("glossary_terms_sense").on(t.userId, t.headKey, t.domainKey)],
+);
+
+export type GlossaryTermRow = typeof glossaryTerms.$inferSelect;

@@ -10,6 +10,7 @@ import { PLAN_REVIEWER_SKILL } from "../specialists/plan-reviewer.generated";
 import { PLANNER_SKILL } from "../specialists/planner.generated";
 import { POSTING_RESEARCHER_SKILL } from "../specialists/posting-researcher.generated";
 import { PROFILER_SKILL } from "../specialists/profiler.generated";
+import { GLOSSARY_SKILL } from "../specialists/glossary.generated";
 import { SIDEKICK_SKILL } from "../specialists/sidekick.generated";
 import { TUTOR_SKILL } from "../specialists/tutor.generated";
 import { REQUIREMENTS_ANALYST_SKILL } from "../specialists/requirements-analyst.generated";
@@ -50,6 +51,7 @@ describe("specialist skills", () => {
     ["plan-reviewer", PLAN_REVIEWER_SKILL],
     ["tutor", TUTOR_SKILL],
     ["sidekick", SIDEKICK_SKILL],
+    ["glossary", GLOSSARY_SKILL],
     ["coach", COACH_SKILL],
   ])("generated prompt for %s matches its SKILL.md (run `pnpm skills:sync` if this fails)", (name, generated) => {
     expect(generated).toBe(skillBody(name));

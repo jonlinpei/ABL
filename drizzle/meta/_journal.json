@@ -78,6 +78,13 @@
       "when": 1790669036007,
       "tag": "0010_sidekicks",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790716137432,
+      "tag": "0011_glossary",
+      "breakpoints": true
     }
   ]
 }

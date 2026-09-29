@@ -238,6 +238,16 @@ export const PlanReviewSchema = z.object({
 export type PlanReview = z.infer<typeof PlanReviewSchema>;
 
 /** What the tutor records when a session ends. */
+/** A term for the learner's glossary, in the field it belongs to. */
+export const GlossaryEntry = z.object({
+  term: z.string().describe('The term as they\'d look it up, e.g. "LEFT JOIN" or "leverage".'),
+  definition: z.string().describe("One plain-English sentence defining it in this field."),
+  domain: z
+    .string()
+    .describe('The broad field this sense belongs to, in 1 to 3 lowercase words, e.g. "data analysis" or "finance": a field, not a skill or topic like "sql querying". Reuse a field from the list you\'re given when it fits.'),
+});
+export type GlossaryEntry = z.infer<typeof GlossaryEntry>;
+
 export const SessionReport = z.object({
   summary: z
     .string()
@@ -265,6 +275,8 @@ export const SessionReport = z.object({
     .boolean()
     .describe("True only when they've achieved the current milestone's visible win."),
   endedEarly: z.boolean().describe("True if the learner stopped before the session's goal."),
+  /** Key terms taught, for the glossary. Reports from before the glossary have none. */
+  terms: z.array(GlossaryEntry).optional(),
 });
 export type SessionReport = z.infer<typeof SessionReport>;
 

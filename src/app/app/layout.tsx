@@ -17,6 +17,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           ABL
         </Link>
         <div className="flex items-center gap-4">
+          <Link href="/app/glossary" className="text-sm text-foreground/70 hover:text-foreground">
+            Glossary
+          </Link>
           <Link href="/app/about-me" className="text-sm text-foreground/70 hover:text-foreground">
             What ABL knows about me
           </Link>

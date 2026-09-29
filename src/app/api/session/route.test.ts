@@ -24,6 +24,8 @@ vi.mock("@/lib/specialists/store", () => ({
   saveSessionMessages: (...a: unknown[]) => saveSessionMessages(...a),
   startSession: (...a: unknown[]) => startSession(...a),
 }));
+const loadGlossary = vi.fn();
+vi.mock("@/lib/specialists/glossary-store", () => ({ loadGlossary: (...a: unknown[]) => loadGlossary(...a) }));
 const loadSessionSidekicks = vi.fn();
 vi.mock("@/lib/specialists/sidekick-store", () => ({ loadSessionSidekicks: (...a: unknown[]) => loadSessionSidekicks(...a) }));
 vi.mock("@/inngest/client", () => ({ inngest: { send: (...a: unknown[]) => send(...a) } }));
@@ -78,6 +80,7 @@ const report = {
 
 beforeEach(() => {
   loadSessionSidekicks.mockReset().mockResolvedValue([]);
+  loadGlossary.mockReset().mockResolvedValue([]);
   auth.mockReset().mockResolvedValue({ userId: "user_1" });
   loadSessionState.mockReset().mockResolvedValue(state());
   endSession.mockReset().mockResolvedValue({ ended: true });
@@ -109,6 +112,18 @@ describe("POST /api/session", () => {
     expect(last).toContain("Asked what a LEFT JOIN is; got it via VLOOKUP. (they struggled with it)");
     expect(last).toContain('Asked: \\"what\'s a CTE?\\" (still open)');
     expect(streamTextOptions!.instructions).not.toContain("got it via VLOOKUP");
+  });
+
+  it("gives the tutor the glossary's fields and this milestone's shaky terms, with other senses", async () => {
+    const sense = (over: Record<string, unknown>) => ({
+      id: "t1", headword: "pivot", headKey: "pivot", domain: "data analysis", definition: "d", skillId: "sql-querying",
+      briefId: null, source: "sidekick", timesSeen: 1, struggled: true, known: false, ...over,
+    });
+    loadGlossary.mockResolvedValueOnce([sense({}), sense({ id: "t2", domain: "spreadsheets", definition: "a pivot table", skillId: null, struggled: false })]);
+    await POST(turn());
+    const last = JSON.stringify(streamTextOptions!.messages.at(-1)!.content);
+    expect(last).toContain("fields in use: data analysis, spreadsheets");
+    expect(last).toContain("pivot (data analysis) is still shaky. They also know it from spreadsheets");
   });
 
   it("refuses a turn for a session that isn't the learner's active one", async () => {
