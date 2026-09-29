@@ -1,3 +1,4 @@
+import { tutorNotesSince } from "./coach-store";
 import { dueForReview } from "./mastery";
 import { loadMastery } from "./mastery-store";
 import { loadLatestBriefAndGap, loadSessions } from "./store";
@@ -23,6 +24,8 @@ export async function loadSessionState(userId: string) {
   const dueReviews = dueForReview(await loadMastery(userId), new Date())
     .filter((r) => !milestoneSkills.has(r.skillId))
     .slice(0, 2);
+  // Notes the coach left for the tutor since the last session.
+  const coachNotes = await tutorNotesSince(state.plan.id, rows.filter((r) => r.endedAt).at(-1)?.endedAt ?? null);
   return {
     brief: state.brief,
     gap: state.gap.gap,
@@ -31,5 +34,6 @@ export async function loadSessionState(userId: string) {
     active,
     milestoneIndex,
     dueReviews,
+    coachNotes,
   };
 }

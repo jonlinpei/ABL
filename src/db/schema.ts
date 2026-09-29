@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -13,6 +14,7 @@ import { sql } from "drizzle-orm";
 
 import type { GoalBrief } from "@/lib/goals/schema";
 import type { EvidenceEntry, StoredCard } from "@/lib/specialists/mastery";
+import type { Signal } from "@/lib/specialists/signals";
 import type {
   AssessedSkill,
   Gap,
@@ -72,6 +74,8 @@ export const LEARNER_EVENT_TYPES = [
   "plan_published",
   "session_completed",
   "mastery_updated",
+  "coach_noted",
+  "replan_suggested",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
@@ -244,3 +248,35 @@ export const skillMastery = pgTable(
 );
 
 export type SkillMasteryRow = typeof skillMastery.$inferSelect;
+
+/**
+ * What the coach decided about a set of signals: a check-in for the learner
+ * (with the options they can tap), a note for the tutor's next session,
+ * and whether to suggest a replan.
+ */
+export const coachNotes = pgTable(
+  "coach_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    signals: jsonb("signals").$type<Signal[]>().notNull(),
+    message: text("message"),
+    options: jsonb("options").$type<string[]>().notNull().default([]),
+    tutorNote: text("tutor_note"),
+    suggestReplan: boolean("suggest_replan").notNull().default(false),
+    reason: text("reason").notNull(),
+    /** The option the learner tapped, if any. */
+    response: text("response"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("coach_notes_user_created").on(t.userId, t.createdAt)],
+);
+
+export type CoachNoteRow = typeof coachNotes.$inferSelect;

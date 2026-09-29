@@ -28,6 +28,8 @@ export function SessionPanel({
   const [session, setSession] = useState<{ chat: Chat<SessionMessage>; info: StartSessionResponse } | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Kept here, not in the card: answering refreshes the status, which removes the card.
+  const [acknowledged, setAcknowledged] = useState<string | null>(null);
 
   const done = progress.milestoneIndex >= plan.milestones.length;
   const milestone = plan.milestones[progress.milestoneIndex];
@@ -71,6 +73,21 @@ export function SessionPanel({
   }
 
   return (
+    <>
+    {progress.checkIn && (
+      <CheckInCard
+        checkIn={progress.checkIn}
+        onAnswered={(choice) => {
+          setAcknowledged(choice);
+          onSessionEnd();
+        }}
+      />
+    )}
+    {!progress.checkIn && acknowledged && (
+      <p className="rounded-xl border border-foreground/15 p-4 text-sm text-foreground/70">
+        Got it: &ldquo;{acknowledged}&rdquo;. Your plan will work with that.
+      </p>
+    )}
     <section className="rounded-xl border border-foreground/20 p-5">
       {done ? (
         <>
@@ -111,6 +128,54 @@ export function SessionPanel({
           {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         </>
       )}
+    </section>
+    </>
+  );
+}
+
+/** A check-in from the coach, with the options the learner can tap. */
+function CheckInCard({
+  checkIn,
+  onAnswered,
+}: {
+  checkIn: NonNullable<PlanProgress["checkIn"]>;
+  onAnswered: (choice: string | null) => void;
+}) {
+  const [sending, setSending] = useState(false);
+
+  async function answer(choice: string | null) {
+    setSending(true);
+    try {
+      await fetch("/api/coach/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noteId: checkIn.id, choice }),
+      });
+      onAnswered(choice);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+      <div className="text-xs uppercase tracking-wide text-foreground/50">From your coach</div>
+      <p className="mt-1 whitespace-pre-wrap leading-relaxed">{checkIn.message}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {checkIn.options.map((o) => (
+          <button
+            key={o}
+            onClick={() => answer(o)}
+            disabled={sending}
+            className="rounded-full border border-foreground/20 bg-background px-3 py-1.5 text-left text-sm hover:border-foreground/50 disabled:opacity-50"
+          >
+            {o}
+          </button>
+        ))}
+        <button onClick={() => answer(null)} disabled={sending} className="px-2 text-sm text-foreground/50 underline">
+          Not now
+        </button>
+      </div>
     </section>
   );
 }
