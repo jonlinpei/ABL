@@ -31,6 +31,7 @@ export function tutorContext({
   milestoneIndex,
   dueReviews = [],
   coachNotes = [],
+  carried = [],
 }: {
   brief: GoalBrief;
   gap: Gap;
@@ -39,6 +40,8 @@ export function tutorContext({
   milestoneIndex: number;
   dueReviews?: MasteryRecord[];
   coachNotes?: string[];
+  /** Sessions on earlier plan versions, when this plan has none of its own yet. */
+  carried?: PastSession[];
 }): string {
   const m = plan.milestones[milestoneIndex]!;
   const byId = new Map(gap.items.map((i) => [i.skillId, i]));
@@ -48,12 +51,16 @@ export function tutorContext({
       return `- ${s.skillId}: ${g?.name ?? s.skillId}. Now ${g?.current ?? "?"} (${g?.basis.replace("_", " ") ?? "unknown"}); this milestone takes it to ${s.toLevel}.`;
     })
     .join("\n");
-  const first = history.length === 0;
-  const last = history.at(-1);
-  const recent = history
+  // Past sessions on this plan, or, right after a replan, on the plan before it.
+  const past = history.length > 0 ? history : carried;
+  const first = past.length === 0;
+  const continuingAfterReplan = history.length === 0 && carried.length > 0;
+  const last = past.at(-1);
+  const recent = past
     .slice(-3)
-    .map((s, i, all) => `- Session ${history.length - all.length + i + 1} (${s.endedAt.slice(0, 10)}): ${s.report.summary}`)
+    .map((s) => `- ${s.endedAt.slice(0, 10)}: ${s.report.summary}`)
     .join("\n");
+  const changes = "whatChanged" in plan ? (plan as { whatChanged: { change: string; because: string }[] }).whatChanged : [];
   return `## The learner
 ${brief.current.role} (${brief.current.industry}) moving to ${brief.target.role}. ${brief.current.work}
 Interests: ${brief.interests.join(", ") || "none listed"}. Tried before: ${brief.pastAttempts ?? "nothing"}.
@@ -71,7 +78,11 @@ ${skills || "- None listed."}
 ${
   first
     ? `This is their first session. Teach the plan's first session: "${plan.firstSession.title}". ${plan.firstSession.whatYouWillDo} They should come away with: ${plan.firstSession.outcome}`
-    : `Session ${history.length + 1}. Pick up from where the last one ended and move toward the milestone's visible win.`
+    : continuingAfterReplan
+      ? `They're continuing after reworking their plan: this is the first session of the reworked plan, not their first session. Acknowledge the change in a sentence, then teach its first session: "${plan.firstSession.title}". ${plan.firstSession.whatYouWillDo} They should come away with: ${plan.firstSession.outcome}${
+          changes.length ? `\nWhat changed in their plan: ${changes.map((c) => `${c.change} (${c.because})`).join("; ")}` : ""
+        }`
+      : `Session ${history.length + 1} on this plan. Pick up from where the last one ended and move toward the milestone's visible win.`
 }
 ${last?.report.homework ? `\nLast session's homework was: "${last.report.homework.task}" Open by asking how it went.` : ""}
 ${

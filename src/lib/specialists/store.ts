@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
@@ -231,4 +231,28 @@ export async function endSession(
     }),
   ]);
   return { ended: true };
+}
+
+/**
+ * The learner's most recent ended sessions on earlier plans, newest last.
+ * A reworked plan starts its own history; these carry homework and context
+ * across the change.
+ */
+export async function loadEarlierSessions(userId: string, currentPlanId: string, limit = 3) {
+  const rows = await getDb()
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), ne(sessions.planId, currentPlanId), isNotNull(sessions.endedAt)))
+    .orderBy(desc(sessions.endedAt))
+    .limit(limit);
+  return rows.filter((r) => r.report).reverse();
+}
+
+/** How many sessions the learner has finished, across all their plans. */
+export async function countEndedSessions(userId: string): Promise<number> {
+  const [row] = await getDb()
+    .select({ n: count() })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), isNotNull(sessions.endedAt)));
+  return row?.n ?? 0;
 }

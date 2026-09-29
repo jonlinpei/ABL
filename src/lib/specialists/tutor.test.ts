@@ -60,9 +60,9 @@ describe("tutorContext", () => {
       ...base,
       history: [past(0, { homework: { task: "Write three queries on the orders table.", minutes: 20 } })],
     });
-    expect(ctx).toContain("Session 2.");
+    expect(ctx).toContain("Session 2 on this plan.");
     expect(ctx).toContain('Last session\'s homework was: "Write three queries on the orders table." Open by asking how it went.');
-    expect(ctx).toContain("Session 1 (2026-09-28): Wrote first SELECT queries.");
+    expect(ctx).toContain("- 2026-09-28: Wrote first SELECT queries.");
   });
 
   it("asks for a quick review of skills that are due", () => {
@@ -88,6 +88,31 @@ describe("tutorContext", () => {
     const ctx = tutorContext({ ...base, history: [], coachNotes: ["Joins aren't sticking: use two small tables from her HubSpot export first."] });
     expect(ctx).toContain("## Note from the coach\n- Joins aren't sticking");
     expect(ctx).toContain("don't mention the note to the learner");
+  });
+
+  it("carries homework and context across a replan instead of starting over", () => {
+    const replanned = { ...samplePlan, whatChanged: [{ change: "Sessions are 30 minutes", because: "a new job" }] };
+    const ctx = tutorContext({
+      ...base,
+      plan: replanned,
+      history: [],
+      carried: [past(0, { summary: "Rebuilt the pivot in SQL.", homework: { task: "Add a WHERE clause to it.", minutes: 10 } })],
+    });
+    expect(ctx).toContain("first session of the reworked plan, not their first session");
+    expect(ctx).toContain("What changed in their plan: Sessions are 30 minutes (a new job)");
+    expect(ctx).toContain('Last session\'s homework was: "Add a WHERE clause to it."');
+    expect(ctx).toContain("Rebuilt the pivot in SQL.");
+    expect(ctx).not.toContain("This is their first session.");
+  });
+
+  it("ignores earlier plans once the current plan has sessions of its own", () => {
+    const ctx = tutorContext({
+      ...base,
+      history: [past(0, { summary: "This plan's session." })],
+      carried: [past(0, { summary: "An old plan's session." })],
+    });
+    expect(ctx).toContain("This plan's session.");
+    expect(ctx).not.toContain("An old plan's session.");
   });
 
   it("stays the same from turn to turn, so it can be cached", () => {
