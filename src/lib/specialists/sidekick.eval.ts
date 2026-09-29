@@ -83,11 +83,16 @@ describe.concurrent("sidekick", () => {
       ui("user", "ok wait so WHERE can't see the count at all?"),
       ui("assistant", "Right: WHERE runs before the counting happens, so the count doesn't exist yet."),
     ];
-    const s = (await summarizeSidekick(chat, ["sql-querying", "spreadsheets"], "eval"))!;
+    const s = (await summarizeSidekick(chat, ["sql-querying", "spreadsheets"], "eval", { domains: ["data analysis"], goal: "Data analyst (B2B SaaS)" }))!;
+    mkdirSync(OUT, { recursive: true });
     writeFileSync(path.join(OUT, "summary.json"), JSON.stringify(s, null, 2));
     expect(s.skillId).toBe("sql-querying");
     expect(s.term).toMatch(/HAVING|WHERE/i);
     expect(s.definition).toBeTruthy();
     expect(s.struggled).toBe(true);
+    expect(s.domain, "reuses the glossary's field").toBe("data analysis");
+    // With an empty glossary, the field comes from their goal, not the skill's name.
+    const fresh = (await summarizeSidekick(chat, ["sql-querying"], "eval", { domains: [], goal: "Data Analyst (B2B SaaS)" }))!;
+    expect(fresh.domain).toMatch(/^data analy/);
   });
 });

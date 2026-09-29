@@ -39,6 +39,15 @@ export async function saveSidekickMessages(id: string, userId: string, sessionId
 export async function closeSidekick(id: string, userId: string, summary: SidekickSummary | null) {
   await getDb()
     .update(sidekicks)
-    .set({ closedAt: new Date(), ...(summary ?? {}) })
+    .set({
+      closedAt: new Date(),
+      ...(summary && {
+        summary: summary.summary,
+        term: summary.term,
+        definition: summary.definition,
+        skillId: summary.skillId,
+        struggled: summary.struggled,
+      }),
+    })
     .where(and(eq(sidekicks.id, id), eq(sidekicks.userId, userId), isNull(sidekicks.closedAt)));
 }

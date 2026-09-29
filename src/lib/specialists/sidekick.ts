@@ -65,6 +65,10 @@ export function sidekickSummarySchema(skillIds: string[]) {
     summary: z.string().describe("One sentence: what they asked and whether the answer landed."),
     term: z.string().nullable().describe("The term or concept explained, or null."),
     definition: z.string().nullable().describe("A one-sentence plain-English definition of the term, or null."),
+    domain: z
+      .string()
+      .nullable()
+      .describe("The broad field this meaning of the term belongs to, in 1 to 3 lowercase words; reuse one from their glossary when it fits. Null when term is null."),
     skillId: (skillIds.length ? z.enum(skillIds as [string, ...string[]]) : z.string())
       .nullable()
       .describe("The session skill the question was about, or null."),
@@ -73,15 +77,31 @@ export function sidekickSummarySchema(skillIds: string[]) {
 }
 export type SidekickSummary = z.infer<ReturnType<typeof sidekickSummarySchema>>;
 
-/** Summarize a finished sidekick. Null when nothing was asked. */
-export async function summarizeSidekick(messages: unknown[], skillIds: string[], userId: string): Promise<SidekickSummary | null> {
+/**
+ * Summarize a finished sidekick. Null when nothing was asked. `glossary`
+ * gives the fields already in their glossary and what they're learning, so
+ * the term lands in a consistent field.
+ */
+export async function summarizeSidekick(
+  messages: unknown[],
+  skillIds: string[],
+  userId: string,
+  glossary: { domains: string[]; goal: string } = { domains: [], goal: "" },
+): Promise<SidekickSummary | null> {
   const transcript = messageLines(messages).join("\n").replaceAll("Tutor:", "Sidekick:");
   if (!transcript) return null;
   const { output } = await generateStructured({
     task: "gap_detect",
     userId,
     instructions: SIDEKICK_SKILL,
-    prompt: `Summarize this finished sidekick for the tutor, as described under "After the sidekick".\n\nSession skill ids: ${skillIds.join(", ") || "none"}\n\n${transcript}`,
+    prompt: `Summarize this finished sidekick for the tutor, as described under "After the sidekick".
+
+Session skill ids (for skillId only, never the domain): ${skillIds.join(", ") || "none"}
+They're learning toward: ${glossary.goal || "not given"}
+Fields already in their glossary: ${glossary.domains.join(", ") || "none yet"}
+Domain: reuse one of those fields if it fits. Otherwise use the broad field of the role they're learning toward (for a data analyst, "data analysis"; for an FP&A analyst, "finance"), unless the question was clearly about another field.
+
+${transcript}`,
     schema: sidekickSummarySchema(skillIds),
   });
   // Only ids from the session count, even from a model that ignored the list.

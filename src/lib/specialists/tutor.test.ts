@@ -146,9 +146,16 @@ describe("normalizeReport", () => {
 });
 
 describe("endSessionSchema", () => {
+  it("keeps up to 5 distinct, non-empty glossary terms", () => {
+    const t = (term: string, definition = "d") => ({ term, definition, domain: "data analysis" });
+    const out = normalizeReport({ ...report(), terms: [t("GROUP BY"), t("group by"), t(" "), t("WHERE", ""), t("A"), t("B"), t("C"), t("D"), t("E")] });
+    expect(out.terms!.map((x) => x.term)).toEqual(["group by", "A", "B", "C", "D"]);
+    expect(normalizeReport(report()).terms).toEqual([]);
+  });
+
   it("only accepts evidence for the milestone's skills, with no numeric bounds for strict mode", () => {
     const schema = endSessionSchema(["sql-querying"]);
-    const ok = { ...report(), evidence: [{ skillId: "sql-querying", level: 2, evidence: "x" }] };
+    const ok = { ...report(), evidence: [{ skillId: "sql-querying", level: 2, evidence: "x" }], terms: [] };
     expect(schema.safeParse(ok).success).toBe(true);
     expect(schema.safeParse({ ...ok, evidence: [{ skillId: "other", level: 2, evidence: "x" }] }).success).toBe(false);
     expect(JSON.stringify(z.toJSONSchema(schema))).not.toMatch(/"(minimum|maximum)"/);

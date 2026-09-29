@@ -51,6 +51,11 @@ const SKILLS = [
     exportName: "TUTOR_SKILL",
   },
   {
+    source: "skills/glossary/SKILL.md",
+    target: "src/lib/specialists/glossary.generated.ts",
+    exportName: "GLOSSARY_SKILL",
+  },
+  {
     source: "skills/sidekick/SKILL.md",
     target: "src/lib/specialists/sidekick.generated.ts",
     exportName: "SIDEKICK_SKILL",

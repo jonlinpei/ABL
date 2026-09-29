@@ -26,7 +26,7 @@ describe("sidekick helpers", () => {
 
   it("limits the summary's skill to the session's skills", () => {
     const schema = sidekickSummarySchema(["sql-querying"]);
-    const ok = { summary: "s", term: null, definition: null, skillId: "sql-querying", struggled: false };
+    const ok = { summary: "s", term: null, definition: null, domain: null, skillId: "sql-querying", struggled: false };
     expect(schema.safeParse(ok).success).toBe(true);
     expect(schema.safeParse({ ...ok, skillId: "made-up" }).success).toBe(false);
   });

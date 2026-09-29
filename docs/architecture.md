@@ -103,6 +103,26 @@ During a session, "Ask a quick question" opens a panel over the lesson. The less
 
 The tutor sees the session's side questions on each turn, in the per-turn part next to the clock, so the instructions stay cacheable. It connects to them and doesn't repeat them. It never counts a side question as mastery, so the session report stays the one way into the graph. PostHog client events `sidekick_opened` and `sidekick_closed` measure the PRD's sidekick metric.
 
+### Glossary (`/app/glossary`)
+
+Each learner's glossary is stored in `glossary_terms`, one row per **sense**: a term in a broad field (`domain`, such as "data analysis" or "finance"). "leverage (finance)" and "leverage (physics)" are separate rows under one headword, and matching uses normalized keys, so "LEFT JOIN" and "left join" are the same term.
+
+Terms arrive three ways:
+- **Sidekicks.** When a sidekick closes, its summary includes the term, a definition and the field.
+- **Tutoring sessions.** The tutor's end-of-session report includes up to five key terms. The mastery keeper adds them in the same batch as the evidence, so each is added once.
+- **The learner.** Terms they add are defined by `glossary_define` (skill: `skills/glossary`). This is the only step with its own model call.
+
+**Keeping fields consistent.** Each writer is shown the fields already in the glossary and reuses one when it fits. A repeat of a known sense counts as seen again, keeps its first definition and records a struggle.
+
+**How well they know a term.** Familiarity is derived, not stored:
+- **Solid** when they mark it known, or its skill has reached the target level.
+- **Shaky** when they struggled with it, or it's come up three or more times before its skill is there.
+- **New** otherwise.
+
+**The tutor's view.** Each turn's notes list the glossary's fields and this milestone's shaky terms. When a term has another sense the learner knows from a different field, the note includes it, so the tutor can use it as a bridge or point out the difference.
+
+**The page** groups senses under headwords, marks terms that mean different things in different fields, and filters by the current goal or shows everything. It makes no AI calls apart from adding a term.
+
 ### What ABL knows about the learner (`/app/about-me`)
 
 Learners see their brief, and every skill with its level, where the level came from and the evidence behind it (profile, skills check, sessions or their own correction). They can change some things in place:

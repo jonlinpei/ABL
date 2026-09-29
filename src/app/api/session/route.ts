@@ -19,6 +19,8 @@ import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
 import type { CallTrace } from "@/lib/ai/trace";
 import { loadSessionState } from "@/lib/specialists/session-state";
+import { glossaryNotes } from "@/lib/specialists/glossary";
+import { loadGlossary } from "@/lib/specialists/glossary-store";
 import { sidekickNotes } from "@/lib/specialists/sidekick";
 import { loadSessionSidekicks } from "@/lib/specialists/sidekick-store";
 import { endSession, saveSessionMessages } from "@/lib/specialists/store";
@@ -64,7 +66,12 @@ export async function POST(req: Request) {
   const elapsed = Math.floor((Date.now() - session.startedAt.getTime()) / 60_000);
 
   // Per-turn notes ride on the newest learner message, so the instructions stay cacheable.
-  const notes = [sessionClock(elapsed, plan.sessionMinutes), sidekickNotes(await loadSessionSidekicks(session.id))];
+  const [sidekicks, glossary] = await Promise.all([loadSessionSidekicks(session.id), loadGlossary(userId)]);
+  const notes = [
+    sessionClock(elapsed, plan.sessionMinutes),
+    sidekickNotes(sidekicks),
+    glossaryNotes(glossary, milestone.skills.map((s) => s.skillId), state.gap),
+  ];
   const modelMessages = withTurnNotes(await convertToModelMessages(messages), notes.filter((n): n is string => !!n));
   // Sessions are long: cache everything up to the newest message.
   const last = modelMessages.at(-1);

@@ -160,6 +160,12 @@ describe("tutor sessions", () => {
     expect(sql?.level).toBeLessThanOrEqual(2);
     expect(r.report!.homework, "sets homework").not.toBeNull();
     expect(r.report!.homework!.minutes).toBeLessThanOrEqual(r.plan.sessionMinutes);
+    // Key terms for her glossary, each defined, in one field.
+    const terms = normalizeReport(r.report!).terms!;
+    expect(terms.length, "records key terms").toBeGreaterThanOrEqual(1);
+    expect(terms.length).toBeLessThanOrEqual(5);
+    expect(terms.some((t) => /group by|select|where/i.test(t.term))).toBe(true);
+    expect(terms.every((t) => t.definition.length > 10 && t.domain.split(/\s+/).length <= 3)).toBe(true);
     // Prose only: a code block with practice data to paste isn't a wall of text.
     const prose = (t: string) => t.replace(/```[\s\S]*?```/g, "").length;
     const longest = Math.max(...r.log.filter((l) => l.role === "tutor").map((l) => prose(l.text)));

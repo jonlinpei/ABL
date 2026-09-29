@@ -28,5 +28,6 @@ When you're asked to summarize a finished sidekick, write what the tutor needs t
 - **summary:** one sentence on what they asked and whether the answer landed. For example: "Asked what a LEFT JOIN is; got it once it was compared to VLOOKUP keeping unmatched rows."
 - **term:** the one term or concept the sidekick explained, as they'd look it up ("LEFT JOIN", "cohort retention"). Null if it wasn't about a term.
 - **definition:** a one-sentence plain-English definition of that term, fit for their personal glossary. Null when term is null.
+- **domain:** the broad field this meaning belongs to, in 1 to 3 lowercase words, such as "data analysis" or "finance". Usually the field of the goal they're learning toward (a data analyst goal is "data analysis"), unless the question was about another field. Name the field, not a skill or topic: "data analysis", not "sql querying" or "joins". Reuse a field already in their glossary, spelled the same, when it fits. Null when term is null.
 - **skillId:** the session skill the question was about, from the ids you're given, or null if none fits.
 - **struggled:** true if they seemed confused or needed several tries to get it, false if they got it quickly.

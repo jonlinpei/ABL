@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
+import { termsInsert } from "./glossary-store";
 import { applyEvidence, applyMasteryToGap, type MasteryRecord } from "./mastery";
 
 const { gaps, learnerEvents, plans, sessions, skillMastery } = schema;
@@ -72,6 +73,8 @@ export async function applySessionEvidence(
     ? [db.update(gaps).set({ gap: applyMasteryToGap(gapRow.gap, records) }).where(eq(gaps.id, gapRow.id))]
     : [];
 
-  await db.batch([markApplied, event, ...upserts, ...gapUpdate]);
+  // Key terms the tutor recorded go to the glossary in the same batch, so they're added exactly once.
+  const terms = termsInsert(userId, plan?.briefId ?? null, "session", session.report.terms ?? []);
+  await db.batch([markApplied, event, ...upserts, ...gapUpdate, ...(terms ? [terms] : [])]);
   return { applied: true, skills: records.map((r) => r.skillId) };
 }

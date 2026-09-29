@@ -18,8 +18,8 @@ vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth() }));
 vi.mock("next/server", () => ({ after: () => {} }));
 vi.mock("@/db", () => ({
   isDatabaseConfigured: () => true,
-  schema: { sessions: {}, plans: {} },
-  getDb: () => ({ select: () => ({ from: () => ({ innerJoin: () => ({ where: async () => [dbRow] }) }) }) }),
+  schema: { sessions: {}, plans: {}, careerBriefs: {} },
+  getDb: () => ({ select: () => ({ from: () => ({ innerJoin: () => ({ innerJoin: () => ({ where: async () => [dbRow] }) }) }) }) }),
 }));
 vi.mock("drizzle-orm", async (orig) => ({ ...(await orig<typeof import("drizzle-orm")>()), eq: () => ({}) }));
 vi.mock("@/lib/specialists/session-state", () => ({ loadSessionState: (...a: unknown[]) => loadSessionState(...a) }));
@@ -33,6 +33,11 @@ vi.mock("@/lib/specialists/sidekick", async (orig) => ({
   summarizeSidekick: (...a: unknown[]) => summarizeSidekick(...a),
 }));
 vi.mock("@/lib/ai/router", () => ({ resolveModel: (...a: unknown[]) => resolveModel(...a) }));
+const recordTerms = vi.fn();
+vi.mock("@/lib/specialists/glossary-store", () => ({
+  loadGlossary: async () => [{ domain: "Data analysis" }],
+  recordTerms: (...a: unknown[]) => recordTerms(...a),
+}));
 vi.mock("@/lib/ai/providers", () => ({ configuredProviders: () => ["anthropic"], toLanguageModel: () => ({}) }));
 vi.mock("ai", async (orig) => ({
   ...(await orig<typeof import("ai")>()),
@@ -69,7 +74,8 @@ beforeEach(() => {
   loadSessionState.mockResolvedValue({ brief: { brief: sampleBrief }, plan: { plan: samplePlan }, active });
   loadSidekick.mockResolvedValue(undefined);
   resolveModel.mockReturnValue({ primary: { model: { id: "claude-haiku-4-5", provider: "anthropic", tier: "fast" }, keySource: "platform" } });
-  dbRow = { milestoneIndex: 0, plan: samplePlan };
+  dbRow = { milestoneIndex: 0, plan: samplePlan, briefId: "b1", brief: sampleBrief };
+  recordTerms.mockReset();
   streamTextOptions = undefined;
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -102,11 +108,16 @@ describe("POST /api/sidekick", () => {
 describe("POST /api/sidekick/close", () => {
   it("summarizes with the session's skill ids and closes", async () => {
     loadSidekick.mockResolvedValueOnce({ id: ID, sessionId: "s1", messages: ["m"], closedAt: null });
-    const summary = { summary: "Asked about LEFT JOIN", term: "LEFT JOIN", definition: "d", skillId: "sql-querying", struggled: false };
+    const summary = { summary: "Asked about LEFT JOIN", term: "LEFT JOIN", definition: "d", domain: "data analysis", skillId: "sql-querying", struggled: true };
     summarizeSidekick.mockResolvedValueOnce(summary);
     expect(await (await CLOSE(close())).json()).toEqual({ closed: true, term: "LEFT JOIN" });
     expect(summarizeSidekick.mock.calls[0]![1]).toEqual(["sql-querying"]);
+    expect(summarizeSidekick.mock.calls[0]![3]).toEqual({ domains: ["Data analysis"], goal: `${sampleBrief.target.role} (${sampleBrief.target.industry})` });
     expect(closeSidekick).toHaveBeenCalledWith(ID, "user_1", summary);
+    // The term goes into the glossary, under the goal the session belongs to.
+    expect(recordTerms).toHaveBeenCalledWith("user_1", "b1", "sidekick", [
+      { term: "LEFT JOIN", definition: "d", domain: "data analysis", skillId: "sql-querying", struggled: true },
+    ]);
   });
 
   it("closes without a summary if summarizing fails, and is a no-op when nothing was asked or it's closed", async () => {
