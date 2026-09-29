@@ -20,7 +20,9 @@ import type {
   Gap,
   LearnerProfile,
   Plan,
+  HuddleMessage,
   PlanReview,
+  ReplanRequest,
   SessionReport,
   TargetRequirements,
 } from "@/lib/specialists/schemas";
@@ -76,6 +78,10 @@ export const LEARNER_EVENT_TYPES = [
   "mastery_updated",
   "coach_noted",
   "replan_suggested",
+  "replan_requested",
+  "plan_proposed",
+  "plan_accepted",
+  "plan_declined",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
@@ -179,6 +185,12 @@ export const plans = pgTable(
     plan: jsonb("plan").$type<Plan>().notNull(),
     /** The final review: code checks plus the reviewer, with anything still open. */
     review: jsonb("review").$type<PlanReview>().notNull(),
+    /**
+     * Only the newest active plan is the learner's. A replan is "proposed"
+     * until they accept it (the old one becomes "superseded") or keep their
+     * current plan ("declined").
+     */
+    status: text("status").$type<"active" | "proposed" | "superseded" | "declined">().notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("plans_brief_version").on(t.briefId, t.version)],
@@ -280,3 +292,33 @@ export const coachNotes = pgTable(
 );
 
 export type CoachNoteRow = typeof coachNotes.$inferSelect;
+
+/**
+ * A replan huddle: what triggered it, every typed message the specialists
+ * exchanged, and the plan it proposed. Kept so any change can be explained.
+ */
+export const huddles = pgTable(
+  "huddles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fromPlanId: uuid("from_plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    proposedPlanId: uuid("proposed_plan_id").references(() => plans.id, { onDelete: "set null" }),
+    request: jsonb("request").$type<ReplanRequest>().notNull(),
+    messages: jsonb("messages").$type<HuddleMessage[]>().notNull().default([]),
+    status: text("status").$type<"running" | "proposed" | "accepted" | "declined" | "failed">().notNull().default("running"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("huddles_user_created").on(t.userId, t.createdAt),
+    // One huddle at a time per plan: a second request waits for the first to be decided.
+    uniqueIndex("huddles_one_open_per_plan").on(t.fromPlanId).where(sql`${t.status} in ('running', 'proposed')`),
+  ],
+);
+
+export type HuddleRow = typeof huddles.$inferSelect;

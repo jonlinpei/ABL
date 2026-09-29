@@ -3,7 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { isDatabaseConfigured } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { openCheckIn } from "@/lib/specialists/coach-store";
-import type { Gap, Plan, SessionReport } from "@/lib/specialists/schemas";
+import { openHuddle } from "@/lib/specialists/huddle-store";
+import type { Gap, Plan, Replan, SessionReport } from "@/lib/specialists/schemas";
 import { loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
 import { currentMilestone } from "@/lib/specialists/tutor";
 
@@ -22,6 +23,8 @@ export interface PlanProgress {
   lastReport: SessionReport | null;
   /** The coach's newest unanswered check-in, if any. */
   checkIn: { id: string; message: string; options: string[] } | null;
+  /** A plan rework in progress, or waiting for the learner's decision. */
+  replan: { huddleId: string; status: "running" } | { huddleId: string; status: "proposed"; proposal: Replan } | null;
 }
 
 /** Where the learner is after discovery, for the app to poll. */
@@ -42,7 +45,7 @@ export async function GET() {
     } else if (!state.plan) {
       status = { stage: "planning", gap: state.gap.gap, assessed };
     } else {
-      const [rows, note] = await Promise.all([loadSessions(state.plan.id), openCheckIn(userId)]);
+      const [rows, note, open] = await Promise.all([loadSessions(state.plan.id), openCheckIn(userId), openHuddle(userId)]);
       const history = rows
         .filter((r) => r.endedAt && r.report)
         .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
@@ -57,6 +60,11 @@ export async function GET() {
           activeSessionId: rows.find((r) => !r.endedAt)?.id ?? null,
           lastReport: history.at(-1)?.report ?? null,
           checkIn: note?.message ? { id: note.id, message: note.message, options: note.options } : null,
+          replan: !open
+            ? null
+            : open.huddle.status === "proposed" && open.proposed
+              ? { huddleId: open.huddle.id, status: "proposed", proposal: open.proposed.plan as Replan }
+              : { huddleId: open.huddle.id, status: "running" },
         },
       };
     }

@@ -75,3 +75,25 @@ export function checkPlan(plan: Plan, gap: Gap, brief: GoalBrief): PlanReview["i
 export function totalWeeks(plan: Plan): number {
   return plan.milestones.reduce((n, m) => n + m.weeks, 0);
 }
+
+/**
+ * A replan must keep the remaining work honest. Fewer hours a week means
+ * more weeks; the total only shrinks if scope is cut in the open (more
+ * skills in notCovered). A quiet cut would make a missed deadline look fine.
+ */
+export function checkReplanWorkload(current: Plan, milestoneIndex: number, replan: Plan): PlanReview["issues"] {
+  const before = current.milestones.slice(milestoneIndex).reduce((n, m) => n + m.weeks, 0) * current.weeklyHours;
+  const after = totalWeeks(replan) * replan.weeklyHours;
+  if (before === 0 || after >= 0.8 * before) return [];
+  const cutInTheOpen = replan.notCovered.length > current.notCovered.length;
+  const message = `The remaining work drops from about ${Math.round(before)} hours to ${Math.round(after)} (${totalWeeks(replan)} weeks at ${replan.weeklyHours} h/week).`;
+  return [
+    cutInTheOpen
+      ? { severity: "should_fix", issue: `${message} Make sure whatChanged says what was cut.`, fix: "Name the scope cut in whatChanged." }
+      : {
+          severity: "must_fix",
+          issue: `${message} Nothing was cut, so the same work is being promised in less time.`,
+          fix: `Keep the work and extend the timeline to about ${Math.ceil(before / replan.weeklyHours)} weeks, updating deadlineFit honestly, or cut scope openly in notCovered and whatChanged.`,
+        },
+  ];
+}

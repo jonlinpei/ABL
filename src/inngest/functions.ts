@@ -5,6 +5,8 @@ import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { runCoach } from "@/lib/specialists/coach-run";
 import { learnersWithPlans } from "@/lib/specialists/coach-store";
+import { runHuddleById } from "@/lib/specialists/huddle-run";
+import { failHuddle } from "@/lib/specialists/huddle-store";
 import { computeGap } from "@/lib/specialists/gap";
 import { applySessionEvidence } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
@@ -20,7 +22,7 @@ import {
 } from "@/lib/specialists/store";
 
 import { inngest } from "./client";
-import { assessmentDone, briefConfirmed, coachCheck, sessionCompleted } from "./events";
+import { assessmentDone, briefConfirmed, coachCheck, replanRequested, sessionCompleted } from "./events";
 
 /**
  * The learner lifecycle after discovery (docs/architecture.md, "Agent
@@ -141,4 +143,23 @@ export const dailyCoachCheck = inngest.createFunction(
   },
 );
 
-export const functions = [learnerLifecycle, masteryKeeper, coach, dailyCoachCheck];
+/**
+ * Replan huddle: the specialists coordinate on a revised plan, saved as a
+ * proposal the learner accepts or declines. If it fails after retries, the
+ * huddle is marked failed so the learner can ask again.
+ */
+export const huddle = inngest.createFunction(
+  {
+    id: "replan-huddle",
+    triggers: [replanRequested],
+    concurrency: { key: "event.data.userId", limit: 1 },
+    onFailure: async ({ event }) => {
+      await failHuddle(event.data.event.data.huddleId);
+    },
+  },
+  async ({ event, step }) =>
+    // Step results come back JSON-serialized; everything here is plain JSON.
+    runHuddleById(event.data.huddleId, (name, fn) => step.run(name, fn) as never),
+);
+
+export const functions = [learnerLifecycle, masteryKeeper, coach, dailyCoachCheck, huddle];

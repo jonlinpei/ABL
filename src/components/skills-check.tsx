@@ -58,7 +58,8 @@ export function SkillsCheck() {
       while (!cancelled) {
         const s = await poll();
         // Keep polling while the lifecycle is working: building the gap, then the plan.
-        if (!s || !["building_gap", "no_brief", "planning"].includes(s.stage)) return;
+        const reworking = s?.stage === "plan_ready" && s.progress.replan?.status === "running";
+        if (!s || (!["building_gap", "no_brief", "planning"].includes(s.stage) && !reworking)) return;
         await new Promise((r) => setTimeout(r, 3000));
       }
     }

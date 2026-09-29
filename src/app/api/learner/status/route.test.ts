@@ -12,6 +12,7 @@ vi.mock("@/lib/specialists/store", () => ({
   loadSessions: async () => [],
 }));
 vi.mock("@/lib/specialists/coach-store", () => ({ openCheckIn: async () => undefined }));
+vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => undefined }));
 
 const { GET } = await import("./route");
 const gap = computeGap(sampleRequirements, sampleProfile);
@@ -45,7 +46,7 @@ describe("GET /api/learner/status", () => {
     expect(await (await GET()).json()).toMatchObject({
       stage: "plan_ready",
       plan: { title: samplePlan.title },
-      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null },
+      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null },
     });
   });
 

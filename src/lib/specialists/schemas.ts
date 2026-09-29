@@ -212,3 +212,43 @@ export const SessionReport = z.object({
   endedEarly: z.boolean().describe("True if the learner stopped before the session's goal."),
 });
 export type SessionReport = z.infer<typeof SessionReport>;
+
+/** A replan: the revised plan for the remaining work, and what changed and why. */
+export const ReplanSchema = PlanSchema.extend({
+  whatChanged: z
+    .array(z.object({ change: z.string(), because: z.string() }))
+    .describe("Each change from the current plan, and the reason, in plain words to the learner."),
+});
+export type Replan = z.infer<typeof ReplanSchema>;
+
+/** What the learner asked for when they asked to rework their plan. All optional. */
+export const ReplanRequestSchema = z.object({
+  weeklyHours: z.number().positive().max(40).nullable(),
+  sessionMinutes: z.number().int().min(10).max(180).nullable(),
+  deadline: z.string().max(200).nullable(),
+  note: z.string().max(1000).nullable().describe("What changed, in their words."),
+});
+export type ReplanRequest = z.infer<typeof ReplanRequestSchema>;
+
+/** The coach's input to a huddle, and its one objection to the proposal. */
+export const CoachInputSchema = z.object({
+  engagement: z.string().describe("How the learner has actually been engaging, in two sentences."),
+  mustRespect: z.array(z.string()).describe("What the new plan must respect to be one they'll keep."),
+});
+export const CoachObjectionSchema = z.object({
+  objection: z.string().nullable().describe("The one change the plan needs to be sustainable for them, or null if none."),
+  severity: z.enum(["must_fix", "should_fix"]).nullable(),
+});
+
+/** One typed, logged message in a huddle. */
+export type HuddleMessage =
+  | { from: "system"; kind: "trigger"; source: "learner" | "coach"; request: ReplanRequest; reason: string }
+  | { from: "mastery"; kind: "input"; progressed: string[]; stuck: string[]; alreadyMet: string[] }
+  | { from: "requirements"; kind: "input"; openMustHaves: string[] }
+  | { from: "coach"; kind: "input"; engagement: string; mustRespect: string[] }
+  | { from: "planner"; kind: "proposal" | "revision"; title: string; weeks: number; weeklyHours: number }
+  | { from: "reviewer" | "coach"; kind: "objection"; severity: "must_fix" | "should_fix"; issue: string }
+  | { from: "planner"; kind: "decision"; whatChanged: Replan["whatChanged"]; openIssues: number };
+
+/** The coach option that opens the replan form. The app recognises it by this exact text. */
+export const REWORK_OPTION = "Rework my plan";

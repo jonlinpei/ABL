@@ -44,11 +44,14 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
 
 - `users`, keyed by the Clerk user id.
 - `career_briefs`: every brief the learner confirmed, versioned per learner.
-- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`, `coach_noted`, `replan_suggested`).
+- `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`, `coach_noted`, `replan_suggested`, `replan_requested`, `plan_proposed`, `plan_accepted`, `plan_declined`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
 - `assessments`: what the skills check recorded per skill, one per brief version.
-- `plans`: learning plans per brief, versioned, each saved with its final review. Replans will add versions.
+- `plans`: learning plans per brief, versioned, each saved with its final review.
+  - `status` is `active`, `proposed`, `superseded` or `declined`. The learner's plan is the newest active one.
+  - A replan is saved as `proposed` until they accept it.
+- `huddles`: replan huddles. Each row holds the request, every typed message (trigger, inputs, proposal, objections, revision, decision), the proposed plan and the outcome. A partial unique index allows one open huddle per plan.
 - `sessions`: tutoring sessions on a plan.
   - Each row records its milestone, the transcript (so a reload resumes the session) and the tutor's end-of-session report.
   - A partial unique index allows only one active session per plan. `mastery_applied_at` marks sessions whose evidence has been applied.
@@ -190,8 +193,15 @@ Settled defaults:
   - **What the Coach decides:** a short check-in with 2–3 tappable options, a Tutor note (used quietly in the next session), and/or a replan suggestion, logged as `replan_suggested` for the huddle.
   - **When it runs:** after each session (debounced 5 minutes per learner, so mastery updates first) and daily at 17:00 Pacific.
   - **Tier:** it moved from the fast tier to standard after evals showed the fast tier breaking tone rules in learner-facing messages.
+- **Replan huddle** (`src/lib/specialists/huddle.ts`, Inngest function `replan-huddle`; routes `/api/replan` and `/api/replan/decide`): level 3 of the escalation ladder.
+  - **How it starts:** the learner asks, from "Life changed? Rework my plan" or the Coach's "Rework my plan" option when it suggests a replan. They can give new hours, a session length, a deadline and what changed. A huddle never starts on its own, since it's several model calls and only matters if the learner wants it.
+  - **Inputs:** Mastery (progressed, stuck, must-haves now met) and requirements (must-haves still open) come from data. The Coach gives engagement and what the plan must respect.
+  - **Proposal:** the Planner writes a replan for the remaining work, with `whatChanged` measured against the learner's current plan.
+  - **Objections, in parallel:** code checks (including `checkReplanWorkload`, which rejects the same work promised in less time unless scope is cut in the open), the plan reviewer and the Coach.
+  - **Decision:** at most one revision, re-checked in code. The result is saved as a proposed plan.
+  - **The learner sees** what changed and why next to their current numbers, then chooses "Use the new plan" or "Keep my current plan".
 - **Tool schemas and strict mode:** schemas for strict tools can't use min/max on numbers, and zod's `.int()` adds them implicitly. Validate ranges in code instead (see `submissionSchema`).
-- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, a quick review of a due skill, running out of time, and stopping early. The coach evals judge decisions on missed sessions, a lapse with a missed deadline, and a stuck topic. They're kept out of `pnpm test` because they call models.
+- **Evals:** live evals on four real discovery briefs run with `pnpm eval:specialists`. They include simulated skills checks, where learners with hidden true levels answer the Assessor, and each assessed level must land within 1 of the truth. The planner evals check each plan against the code rules and a careers expert's expectations, and plant a plan that hides a missed deadline to confirm the reviewer catches it. The tutor evals simulate sessions with a judge model: a first session with a real mistake, a homework follow-up, a quick review of a due skill, running out of time, and stopping early. The coach evals judge decisions on missed sessions, a lapse with a missed deadline, and a stuck topic. The huddle eval reworks a real plan around a new job and judges it on honest change notes, honest deadline maths, kept projects and an easy restart. They're kept out of `pnpm test` because they call models.
 
 **Routine work** follows the learner lifecycle: discover → profile → assess → plan → a learn loop with the coach → milestones → replans. Each step starts from an event on the learner record (`brief_confirmed`, `profile_ready`, `session_missed` and so on) and runs on the background-job runner.
 

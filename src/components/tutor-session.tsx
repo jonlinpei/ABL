@@ -7,9 +7,10 @@ import { useEffect, useRef, useState } from "react";
 import type { PlanProgress } from "@/app/api/learner/status/route";
 import type { SessionMessage } from "@/app/api/session/route";
 import type { StartSessionResponse } from "@/app/api/session/start/route";
-import type { Plan } from "@/lib/specialists/schemas";
+import { REWORK_OPTION, type Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
+import { ProposalView, ReplanForm } from "./replan";
 import { TraceChip } from "./trace-chip";
 
 /**
@@ -30,6 +31,7 @@ export function SessionPanel({
   const [error, setError] = useState<string | null>(null);
   // Kept here, not in the card: answering refreshes the status, which removes the card.
   const [acknowledged, setAcknowledged] = useState<string | null>(null);
+  const [reworking, setReworking] = useState(false);
 
   const done = progress.milestoneIndex >= plan.milestones.length;
   const milestone = plan.milestones[progress.milestoneIndex];
@@ -59,6 +61,32 @@ export function SessionPanel({
     }
   }
 
+  // A plan rework in progress or waiting for a decision takes over the panel.
+  if (progress.replan?.status === "running") {
+    return (
+      <section className="rounded-xl border border-dashed border-foreground/20 p-5 text-sm text-foreground/70">
+        Reworking your plan. Your coach, planner and reviewer are going over it together; this takes a minute or two…
+      </section>
+    );
+  }
+  if (progress.replan?.status === "proposed") {
+    return (
+      <ProposalView huddleId={progress.replan.huddleId} proposal={progress.replan.proposal} current={plan} onDecided={onSessionEnd} />
+    );
+  }
+  if (reworking) {
+    return (
+      <ReplanForm
+        plan={plan}
+        onStarted={() => {
+          setReworking(false);
+          onSessionEnd();
+        }}
+        onCancel={() => setReworking(false)}
+      />
+    );
+  }
+
   if (session) {
     return (
       <SessionChat
@@ -78,7 +106,8 @@ export function SessionPanel({
       <CheckInCard
         checkIn={progress.checkIn}
         onAnswered={(choice) => {
-          setAcknowledged(choice);
+          if (choice === REWORK_OPTION) setReworking(true);
+          else setAcknowledged(choice);
           onSessionEnd();
         }}
       />
@@ -122,10 +151,14 @@ export function SessionPanel({
               : progress.activeSessionId
                 ? "Resume your session"
                 : progress.sessionsDone === 0
-                  ? `Start your first session · ${plan.sessionMinutes} min`
+                  ? // A reworked plan starts fresh, but the learner isn't new.
+                    `Start your ${"whatChanged" in plan ? "next" : "first"} session · ${plan.sessionMinutes} min`
                   : `Start session ${progress.sessionsDone + 1} · ${plan.sessionMinutes} min`}
           </button>
           {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <button onClick={() => setReworking(true)} className="ml-4 text-sm text-foreground/60 underline">
+            Life changed? Rework my plan
+          </button>
         </>
       )}
     </section>

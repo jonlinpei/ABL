@@ -31,3 +31,8 @@ export const sessionCompleted = eventType("learner/session.completed", {
 export const coachCheck = eventType("learner/coach.check", {
   schema: z.object({ userId: z.string() }),
 });
+
+/** A huddle was opened; run it. */
+export const replanRequested = eventType("learner/replan.requested", {
+  schema: z.object({ userId: z.string(), huddleId: z.string() }),
+});
