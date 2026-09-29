@@ -10,10 +10,11 @@ import { PlanReviewSchema, PlanSchema, type Gap, type Plan, type PlanReview } fr
 export function planContext(brief: GoalBrief, gap: Gap, today: string): string {
   const b = brief;
   const items = gap.items
-    .map(
-      (i) =>
-        `- ${i.skillId}: ${i.name} (${i.category}, ${i.importance}). Now ${i.current} (${i.basis.replace("_", " ")}), needs ${i.required}: ${i.status}.`,
-    )
+    .map((i) => {
+      const often = i.frequency ? `, ${i.frequency} in job postings` : "";
+      const show = i.howToShow && i.status !== "met" ? ` Show it: ${i.howToShow}` : "";
+      return `- ${i.skillId}: ${i.name} (${i.category}, ${i.importance}${often}). Now ${i.current} (${i.basis.replace("_", " ")}), needs ${i.required}: ${i.status}.${show}`;
+    })
     .join("\n");
   const credentials = gap.credentials.length
     ? gap.credentials.map((c) => `- ${c.name} (${c.status}): ${c.note}`).join("\n")

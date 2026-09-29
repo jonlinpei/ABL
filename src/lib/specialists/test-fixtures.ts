@@ -39,6 +39,7 @@ export const samplePlan: Plan = {
       skills: [{ skillId: "sql-querying", toLevel: 2 }],
       topics: ["SELECT, WHERE, GROUP BY"],
       project: null,
+      projectShows: [],
       visibleWin: "Recreate your weekly campaign report in SQL.",
     },
     {
@@ -48,6 +49,7 @@ export const samplePlan: Plan = {
       skills: [{ skillId: "sql-querying", toLevel: 3 }],
       topics: ["JOIN", "window functions"],
       project: "A cohort retention analysis",
+      projectShows: ["sql-querying"],
       visibleWin: "Answer a retention question end to end.",
     },
     {
@@ -57,6 +59,7 @@ export const samplePlan: Plan = {
       skills: [{ skillId: "stakeholder-communication", toLevel: 3 }],
       topics: ["one-page write-ups"],
       project: "A one-page recommendation",
+      projectShows: ["stakeholder-communication"],
       visibleWin: "Walk a friend through your analysis in five minutes.",
     },
   ],

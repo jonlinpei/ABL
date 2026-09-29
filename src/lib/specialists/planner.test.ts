@@ -63,4 +63,14 @@ describe("planContext", () => {
     expect(ctx).toContain("3 hours a week, sessions of 45 minutes");
     for (const i of gap.items) expect(ctx).toContain(`- ${i.skillId}:`);
   });
+
+  it("says how often postings ask for a skill and how to show it, for skills still to close", () => {
+    const grounded = {
+      ...gap,
+      items: gap.items.map((i) => ({ ...i, frequency: "core" as const, howToShow: `A project for ${i.name}` })),
+    };
+    const ctx = planContext(brief, grounded, "2026-09-28");
+    expect(ctx).toMatch(/sql-querying: SQL querying \(technical, must, core in job postings\).*Show it: A project for SQL querying/);
+    expect(ctx).not.toContain("Show it: A project for Spreadsheets");
+  });
 });

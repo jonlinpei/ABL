@@ -19,6 +19,8 @@ export function computeGap(requirements: TargetRequirements, profile: LearnerPro
       required: req.level,
       current: has?.level ?? 0,
       basis: has?.basis ?? "inferred",
+      ...(req.frequency && { frequency: req.frequency }),
+      ...(req.howToShow && { howToShow: req.howToShow }),
     });
   });
   return finishGap(items, requirements.credentials, requirements.proofOfSkill);
