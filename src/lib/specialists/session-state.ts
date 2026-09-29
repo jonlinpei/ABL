@@ -1,7 +1,7 @@
 import { tutorNotesSince } from "./coach-store";
 import { dueForReview } from "./mastery";
 import { loadMastery } from "./mastery-store";
-import { loadLatestBriefAndGap, loadSessions } from "./store";
+import { countEndedSessions, loadEarlierSessions, loadLatestBriefAndGap, loadSessions } from "./store";
 import { currentMilestone, type PastSession } from "./tutor";
 
 /**
@@ -24,8 +24,20 @@ export async function loadSessionState(userId: string) {
   const dueReviews = dueForReview(await loadMastery(userId), new Date())
     .filter((r) => !milestoneSkills.has(r.skillId))
     .slice(0, 2);
+  // A reworked plan starts its own history. Until it has one, the last
+  // sessions on earlier plans carry homework and context across the change.
+  const carried: PastSession[] =
+    history.length === 0
+      ? (await loadEarlierSessions(userId, state.plan.id)).map((r) => ({
+          milestoneIndex: r.milestoneIndex,
+          report: r.report!,
+          endedAt: r.endedAt!.toISOString(),
+        }))
+      : [];
+  const lastEnd = rows.filter((r) => r.endedAt).at(-1)?.endedAt ?? (carried.length ? new Date(carried.at(-1)!.endedAt) : null);
   // Notes the coach left for the tutor since the last session.
-  const coachNotes = await tutorNotesSince(state.plan.id, rows.filter((r) => r.endedAt).at(-1)?.endedAt ?? null);
+  const coachNotes = await tutorNotesSince(state.plan.id, lastEnd);
+  const sessionsDone = await countEndedSessions(userId);
   return {
     brief: state.brief,
     gap: state.gap.gap,
@@ -35,5 +47,7 @@ export async function loadSessionState(userId: string) {
     milestoneIndex,
     dueReviews,
     coachNotes,
+    carried,
+    sessionsDone,
   };
 }

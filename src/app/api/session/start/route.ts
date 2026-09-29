@@ -32,7 +32,8 @@ export async function POST() {
     id: session.id,
     milestoneIndex: session.milestoneIndex,
     milestoneTitle: plan.milestones[session.milestoneIndex]!.title,
-    sessionNumber: state.history.length + 1,
+    // Numbered across plan versions: a reworked plan continues, it doesn't restart.
+    sessionNumber: state.sessionsDone + 1,
     messages: session.messages,
   };
   return Response.json(response);

@@ -10,6 +10,8 @@ vi.mock("@/db", () => ({ isDatabaseConfigured: () => true }));
 vi.mock("@/lib/specialists/store", () => ({
   loadLatestBriefAndGap: (...a: unknown[]) => loadLatestBriefAndGap(...a),
   loadSessions: async () => [],
+  loadEarlierSessions: async () => [],
+  countEndedSessions: async () => 0,
 }));
 vi.mock("@/lib/specialists/coach-store", () => ({ openCheckIn: async () => undefined }));
 vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => undefined }));

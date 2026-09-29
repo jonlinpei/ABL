@@ -5,7 +5,7 @@ import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { openCheckIn } from "@/lib/specialists/coach-store";
 import { openHuddle } from "@/lib/specialists/huddle-store";
 import type { Gap, Plan, Replan, SessionReport } from "@/lib/specialists/schemas";
-import { loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
+import { countEndedSessions, loadEarlierSessions, loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
 import { currentMilestone } from "@/lib/specialists/tutor";
 
 export type LearnerStatus =
@@ -45,7 +45,12 @@ export async function GET() {
     } else if (!state.plan) {
       status = { stage: "planning", gap: state.gap.gap, assessed };
     } else {
-      const [rows, note, open] = await Promise.all([loadSessions(state.plan.id), openCheckIn(userId), openHuddle(userId)]);
+      const [rows, note, open, sessionsDone] = await Promise.all([
+        loadSessions(state.plan.id),
+        openCheckIn(userId),
+        openHuddle(userId),
+        countEndedSessions(userId),
+      ]);
       const history = rows
         .filter((r) => r.endedAt && r.report)
         .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
@@ -56,9 +61,13 @@ export async function GET() {
         plan: state.plan.plan,
         progress: {
           milestoneIndex: currentMilestone(state.plan.plan, history),
-          sessionsDone: history.length,
+          // Counted across plan versions, so a reworked plan doesn't read as a fresh start.
+          sessionsDone,
           activeSessionId: rows.find((r) => !r.endedAt)?.id ?? null,
-          lastReport: history.at(-1)?.report ?? null,
+          lastReport:
+            history.at(-1)?.report ??
+            (await loadEarlierSessions(userId, state.plan.id, 1)).at(-1)?.report ??
+            null,
           checkIn: note?.message ? { id: note.id, message: note.message, options: note.options } : null,
           replan: !open
             ? null

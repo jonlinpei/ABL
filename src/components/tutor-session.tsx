@@ -151,8 +151,7 @@ export function SessionPanel({
               : progress.activeSessionId
                 ? "Resume your session"
                 : progress.sessionsDone === 0
-                  ? // A reworked plan starts fresh, but the learner isn't new.
-                    `Start your ${"whatChanged" in plan ? "next" : "first"} session · ${plan.sessionMinutes} min`
+                  ? `Start your first session · ${plan.sessionMinutes} min`
                   : `Start session ${progress.sessionsDone + 1} · ${plan.sessionMinutes} min`}
           </button>
           {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}

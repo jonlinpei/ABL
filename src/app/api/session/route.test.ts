@@ -57,6 +57,9 @@ const state = (over: Record<string, unknown> = {}) => ({
   active,
   milestoneIndex: 0,
   dueReviews: [],
+  coachNotes: [],
+  carried: [],
+  sessionsDone: 0,
   ...over,
 });
 const turn = (id = "s1") =>
