@@ -16,6 +16,11 @@ const SKILLS = [
     exportName: "GOAL_CLARIFICATION_SKILL",
   },
   {
+    source: "skills/posting-researcher/SKILL.md",
+    target: "src/lib/specialists/posting-researcher.generated.ts",
+    exportName: "POSTING_RESEARCHER_SKILL",
+  },
+  {
     source: "skills/requirements-analyst/SKILL.md",
     target: "src/lib/specialists/requirements-analyst.generated.ts",
     exportName: "REQUIREMENTS_ANALYST_SKILL",

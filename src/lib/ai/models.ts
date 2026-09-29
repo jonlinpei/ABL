@@ -27,6 +27,8 @@ export interface ModelCapabilities {
   toolUse: boolean;
   /** Max input tokens. */
   contextWindow: number;
+  /** Has a provider web search tool wired up in `webSearchTools`. */
+  webSearch?: boolean;
 }
 
 export interface ModelPricing {
@@ -41,14 +43,22 @@ export interface ModelPricing {
    */
   cacheReadPerMTok?: number;
   cacheWritePerMTok?: number;
+  /** USD per web search request. */
+  webSearchPerRequest?: number;
 }
 
 /**
  * Anthropic's prompt cache: reads at 10% of the input price, writes (5-minute
- * cache) at 125%.
+ * cache) at 125%. Web search is $10 per 1,000 searches.
  */
 function anthropicPricing(inputPerMTok: number, outputPerMTok: number): ModelPricing {
-  return { inputPerMTok, outputPerMTok, cacheReadPerMTok: inputPerMTok * 0.1, cacheWritePerMTok: inputPerMTok * 1.25 };
+  return {
+    inputPerMTok,
+    outputPerMTok,
+    cacheReadPerMTok: inputPerMTok * 0.1,
+    cacheWritePerMTok: inputPerMTok * 1.25,
+    webSearchPerRequest: 0.01,
+  };
 }
 
 export interface ModelSpec {
@@ -73,7 +83,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     id: "claude-haiku-4-5",
     provider: "anthropic",
     tier: "fast",
-    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 200_000 },
+    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 200_000, webSearch: true },
     pricing: anthropicPricing(1, 5),
     status: "stable",
   },
@@ -81,7 +91,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     id: "claude-sonnet-5",
     provider: "anthropic",
     tier: "standard",
-    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000 },
+    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000, webSearch: true },
     pricing: anthropicPricing(2, 10),
     status: "stable",
   },
@@ -91,7 +101,7 @@ export const MODEL_REGISTRY: readonly ModelSpec[] = [
     id: "claude-opus-5-5",
     provider: "anthropic",
     tier: "deep",
-    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000 },
+    capabilities: { structuredOutput: true, toolUse: true, contextWindow: 1_000_000, webSearch: true },
     pricing: anthropicPricing(4, 20),
     status: "stable",
   },

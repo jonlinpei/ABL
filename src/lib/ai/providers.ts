@@ -1,8 +1,8 @@
 // Server-only: reads provider API keys from the environment.
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModel } from "ai";
+import type { LanguageModel, ProviderMetadata, ToolSet } from "ai";
 
 import type { Provider } from "./models";
 import type { RoutedModel, UserPrefs } from "./router";
@@ -45,4 +45,24 @@ export function toLanguageModel(routed: RoutedModel, prefs: UserPrefs = {}): Lan
     case "google":
       return createGoogleGenerativeAI({ apiKey })(id);
   }
+}
+
+/**
+ * The provider's own web search tool, for tasks that require `webSearch`.
+ * Anthropic's basic search: the newer versions filter results with code
+ * execution, which took 150s+ against 40s for the same job-posting research.
+ */
+export function webSearchTools(routed: RoutedModel, maxUses: number): ToolSet {
+  switch (routed.model.provider) {
+    case "anthropic":
+      return { web_search: anthropic.tools.webSearch_20250305({ maxUses }) };
+    default:
+      throw new Error(`No web search tool wired up for ${routed.model.provider}`);
+  }
+}
+
+/** How many web searches a call ran, from the provider's usage report. */
+export function webSearchCount(metadata: ProviderMetadata | undefined): number {
+  const usage = metadata?.anthropic?.usage as { server_tool_use?: { web_search_requests?: number } } | undefined;
+  return usage?.server_tool_use?.web_search_requests ?? 0;
 }
