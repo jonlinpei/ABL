@@ -95,6 +95,14 @@ Wiring:
 
 Clerk owns identity. Our `users` row holds only the Clerk id so that domain tables have a local foreign key. Every learner table cascades from it, so "Delete what ABL knows about you" on `/app/about-me` deletes that row. It first sends `learner/data.deleted`, which cancels the learner's Inngest runs (`cancelOn`). The Clerk account and PostHog analytics stay. A Clerk `user.created` webhook (or lazy upsert on first request) will create the row. This is not built yet.
 
+### Sidekicks (quick side questions)
+
+During a session, "Ask a quick question" opens a panel over the lesson. The lesson stays mounted, keeping its place, scroll and focus. The panel is a separate chat on `sidekick_answer`, the fast tier, with its own skill (`skills/sidekick`). It sees the milestone and the lesson's last few messages, answers briefly in the learner's world, and won't hand over exercise answers. It's capped at 8 learner turns. Its usage shares the session's trace in PostHog.
+
+"Back to the lesson" closes it. `gap_detect` then summarizes it into `sidekicks`: a one-line summary, the term and a glossary-ready definition (for F6 later), the session skill, and whether they struggled.
+
+The tutor sees the session's side questions on each turn, in the per-turn part next to the clock, so the instructions stay cacheable. It connects to them and doesn't repeat them. It never counts a side question as mastery, so the session report stays the one way into the graph. PostHog client events `sidekick_opened` and `sidekick_closed` measure the PRD's sidekick metric.
+
 ### What ABL knows about the learner (`/app/about-me`)
 
 Learners see their brief, and every skill with its level, where the level came from and the evidence behind it (profile, skills check, sessions or their own correction). They can change some things in place:

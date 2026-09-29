@@ -71,6 +71,13 @@
       "when": 1790661331306,
       "tag": "0009_requirements_refresh",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790669036007,
+      "tag": "0010_sidekicks",
+      "breakpoints": true
     }
   ]
 }

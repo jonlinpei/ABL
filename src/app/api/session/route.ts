@@ -19,6 +19,8 @@ import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
 import type { CallTrace } from "@/lib/ai/trace";
 import { loadSessionState } from "@/lib/specialists/session-state";
+import { sidekickNotes } from "@/lib/specialists/sidekick";
+import { loadSessionSidekicks } from "@/lib/specialists/sidekick-store";
 import { endSession, saveSessionMessages } from "@/lib/specialists/store";
 import { endSessionSchema, normalizeReport, sessionClock, tutorContext } from "@/lib/specialists/tutor";
 import { TUTOR_SKILL } from "@/lib/specialists/tutor.generated";
@@ -61,7 +63,9 @@ export async function POST(req: Request) {
   const usage = trackChatUsage({ task: "tutor_session", routed, userId, traceId: session.id });
   const elapsed = Math.floor((Date.now() - session.startedAt.getTime()) / 60_000);
 
-  const modelMessages = withClock(await convertToModelMessages(messages), sessionClock(elapsed, plan.sessionMinutes));
+  // Per-turn notes ride on the newest learner message, so the instructions stay cacheable.
+  const notes = [sessionClock(elapsed, plan.sessionMinutes), sidekickNotes(await loadSessionSidekicks(session.id))];
+  const modelMessages = withTurnNotes(await convertToModelMessages(messages), notes.filter((n): n is string => !!n));
   // Sessions are long: cache everything up to the newest message.
   const last = modelMessages.at(-1);
   if (last) last.providerOptions = { anthropic: { cacheControl: { type: "ephemeral" } } };
@@ -100,14 +104,14 @@ async function startMasteryUpdate(userId: string, sessionId: string) {
   }
 }
 
-/** Add the session clock to the newest learner message, as a separate text part. */
-function withClock(messages: ModelMessage[], clock: string): ModelMessage[] {
+/** Add the clock and other per-turn notes to the newest learner message, as separate text parts. */
+function withTurnNotes(messages: ModelMessage[], notes: string[]): ModelMessage[] {
   const i = messages.findLastIndex((m) => m.role === "user");
   if (i === -1) return messages;
   const m = messages[i]!;
   if (m.role !== "user") return messages;
   const content = typeof m.content === "string" ? [{ type: "text" as const, text: m.content }] : m.content;
   const copy = [...messages];
-  copy[i] = { ...m, content: [...content, { type: "text", text: clock }] };
+  copy[i] = { ...m, content: [...content, ...notes.map((text) => ({ type: "text" as const, text }))] };
   return copy;
 }

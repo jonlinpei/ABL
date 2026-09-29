@@ -327,3 +327,33 @@ export const huddles = pgTable(
 );
 
 export type HuddleRow = typeof huddles.$inferSelect;
+
+/**
+ * Sidekicks (PRD F3): quick side questions during a session, kept out of the
+ * lesson's transcript. When one closes it's summarized for the tutor, with
+ * the term it explained (for the glossary later) and whether they struggled.
+ */
+export const sidekicks = pgTable(
+  "sidekicks",
+  {
+    /** The client's chat id. */
+    id: uuid("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    messages: jsonb("messages").$type<unknown[]>().notNull().default([]),
+    summary: text("summary"),
+    term: text("term"),
+    definition: text("definition"),
+    skillId: text("skill_id"),
+    struggled: boolean("struggled"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [index("sidekicks_session_created").on(t.sessionId, t.createdAt)],
+);
+
+export type SidekickRow = typeof sidekicks.$inferSelect;

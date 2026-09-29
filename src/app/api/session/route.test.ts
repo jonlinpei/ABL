@@ -24,6 +24,8 @@ vi.mock("@/lib/specialists/store", () => ({
   saveSessionMessages: (...a: unknown[]) => saveSessionMessages(...a),
   startSession: (...a: unknown[]) => startSession(...a),
 }));
+const loadSessionSidekicks = vi.fn();
+vi.mock("@/lib/specialists/sidekick-store", () => ({ loadSessionSidekicks: (...a: unknown[]) => loadSessionSidekicks(...a) }));
 vi.mock("@/inngest/client", () => ({ inngest: { send: (...a: unknown[]) => send(...a) } }));
 vi.mock("@/lib/ai/providers", () => ({ configuredProviders: () => ["anthropic"], toLanguageModel: () => ({}) }));
 vi.mock("ai", async (importOriginal) => ({
@@ -75,6 +77,7 @@ const report = {
 };
 
 beforeEach(() => {
+  loadSessionSidekicks.mockReset().mockResolvedValue([]);
   auth.mockReset().mockResolvedValue({ userId: "user_1" });
   loadSessionState.mockReset().mockResolvedValue(state());
   endSession.mockReset().mockResolvedValue({ ended: true });
@@ -94,6 +97,18 @@ describe("POST /api/session", () => {
     expect(JSON.stringify(last.content)).toMatch(/Session clock: 12 of 45 minutes/);
     expect(last.providerOptions).toEqual({ anthropic: { cacheControl: { type: "ephemeral" } } });
     expect(JSON.stringify(streamTextOptions!.messages[0]!.content)).not.toMatch(/Session clock/);
+  });
+
+  it("tells the tutor about this session's side questions on the newest message only", async () => {
+    loadSessionSidekicks.mockResolvedValueOnce([
+      { summary: "Asked what a LEFT JOIN is; got it via VLOOKUP.", struggled: true, messages: [] },
+      { summary: null, struggled: null, messages: [{ role: "user", parts: [{ type: "text", text: "what's a CTE?" }] }] },
+    ]);
+    await POST(turn());
+    const last = JSON.stringify(streamTextOptions!.messages.at(-1)!.content);
+    expect(last).toContain("Asked what a LEFT JOIN is; got it via VLOOKUP. (they struggled with it)");
+    expect(last).toContain('Asked: \\"what\'s a CTE?\\" (still open)');
+    expect(streamTextOptions!.instructions).not.toContain("got it via VLOOKUP");
   });
 
   it("refuses a turn for a session that isn't the learner's active one", async () => {
