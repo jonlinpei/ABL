@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SidekickMessage } from "@/app/api/sidekick/route";
 
 import { ChatText } from "./chat-text";
+import { isWaiting, THINKING, ThinkingWords } from "./thinking-words";
 
 /**
  * A sidekick (PRD F3): a quick side question in a panel over the lesson. The
@@ -119,7 +120,7 @@ export function SidekickPanel({
             )}
           </div>
         ))}
-        {status === "submitted" && <div className="text-sm text-foreground/50">Thinking…</div>}
+        {isWaiting(status, messages) && <ThinkingWords words={THINKING.sidekick} className="text-sm" />}
         {error && <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">{errorText(error)}</div>}
         <div ref={bottomRef} />
       </div>

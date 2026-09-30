@@ -12,6 +12,7 @@ import { ChatText } from "./chat-text";
 import { BASIS_LABEL, LEVEL_LABEL, LevelBar } from "./skill-labels";
 import { TraceChip } from "./trace-chip";
 import { SessionPanel } from "./tutor-session";
+import { isWaiting, THINKING, ThinkingWords } from "./thinking-words";
 
 /**
  * What happens after discovery on a goal (docs/architecture.md, "Agent
@@ -66,9 +67,9 @@ export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; read
   if (!status || status.stage === "building_gap" || status.stage === "no_brief") {
     return (
       <Panel>
-        <p className="text-foreground/70">
-          Working out what your target role asks for and what you already bring. This takes about a
-          minute…
+        <ThinkingWords words={THINKING.skillsPicture} className="font-medium" />
+        <p className="mt-1 text-sm text-foreground/70">
+          Working out what your target role asks for and what you already bring. This takes a minute or two.
         </p>
       </Panel>
     );
@@ -89,9 +90,10 @@ export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; read
     return (
       <>
         <Panel>
-          <p className="text-foreground/70">
-            Building your roadmap from your skills check. The planner drafts it and a reviewer checks it
-            against your week and your deadline. This takes a minute or two…
+          <ThinkingWords words={THINKING.roadmap} className="font-medium" />
+          <p className="mt-1 text-sm text-foreground/70">
+            The planner drafts your roadmap from your skills check, and a reviewer checks it against your week and your deadline.
+            This takes a minute or two.
           </p>
         </Panel>
         <GapView gap={status.gap} assessed={status.assessed} />
@@ -180,10 +182,12 @@ function UpdateBanner({
   const building = progress.update?.status === "building" || (progress.replan?.status === "running" && progress.replan.kind === "update");
   if (building) {
     return (
-      <p className="rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 p-4 text-sm text-foreground/80">
-        Preparing the plan for your updated goal. When it&apos;s ready you&apos;ll see it next to this one to compare. Until then, keep
-        going with your current plan.
-      </p>
+      <div className="rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 p-4 text-sm text-foreground/80">
+        <ThinkingWords words={THINKING.update} className="font-medium" />
+        <p className="mt-1">
+          When it&apos;s ready you&apos;ll see it next to this one to compare. Until then, keep going with your current plan.
+        </p>
+      </div>
     );
   }
   if (progress.update?.status !== "check" || checking) return null;
@@ -268,7 +272,7 @@ function CheckChat({
           {m.role === "assistant" && m.metadata && <TraceChip trace={m.metadata} />}
         </div>
       ))}
-      {status === "submitted" && <div className="text-sm text-foreground/50">Thinking…</div>}
+      {isWaiting(status, messages) && <ThinkingWords words={THINKING.skillsCheck} className="text-sm" />}
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
           {error.message || "Something went wrong."}

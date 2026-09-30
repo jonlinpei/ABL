@@ -14,6 +14,7 @@ import type { Gap } from "@/lib/specialists/schemas";
 import { BriefCard, GuessTag, PRIORITY_LABEL } from "./brief-card";
 import { ReplanForm } from "./replan";
 import { BASIS_LABEL, LEVEL_LABEL, LevelBar } from "./skill-labels";
+import { WorkingLabel } from "./thinking-words";
 
 type GapItem = Gap["items"][number];
 
@@ -89,7 +90,7 @@ export function AboutMe({ initialGoalId }: { initialGoalId: string | null }) {
       </p>
       {goals && goals.length > 1 && <GoalPicker goals={goals} selected={goalId} onChoose={choose} />}
       {record === null || !goal ? (
-        <p className="text-sm text-foreground/60">Loading…</p>
+        <p className="text-sm"><WorkingLabel label="Loading" /></p>
       ) : (
         <>
           <section>
@@ -328,7 +329,7 @@ function AboutYou({ goalId, brief, onSaved }: { goalId: string; brief: GoalBrief
           disabled={saving || Object.keys(changes).length === 0}
           className="rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-40"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? <WorkingLabel label="Saving" onDark /> : "Save changes"}
         </button>
         {message && <span className="text-sm text-foreground/70">{message}</span>}
       </div>
@@ -499,7 +500,7 @@ function CorrectSkill({
           disabled={saving || level === item.current}
           className="rounded-lg bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-40"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? <WorkingLabel label="Saving" onDark /> : "Save"}
         </button>
         <button onClick={onCancel} className="text-sm text-foreground/60 underline">
           Cancel
@@ -554,7 +555,7 @@ function DeleteData() {
           disabled={deleting || confirm.trim().toLowerCase() !== "delete"}
           className="rounded-lg border border-red-500/60 px-4 py-2 text-sm text-red-700 disabled:opacity-40 dark:text-red-300"
         >
-          {deleting ? "Deleting…" : "Delete everything"}
+          {deleting ? <WorkingLabel label="Deleting" /> : "Delete everything"}
         </button>
       </div>
       {error && <ErrorBox message={error} />}

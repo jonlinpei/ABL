@@ -16,6 +16,7 @@ import { goalAction } from "./goal-actions";
 import { ProposalView, ReplanForm } from "./replan";
 import { SidekickPanel } from "./sidekick-panel";
 import { TraceChip } from "./trace-chip";
+import { isWaiting, THINKING, ThinkingWords, WorkingLabel } from "./thinking-words";
 
 /**
  * The learner's next step on their roadmap: start (or resume) a tutoring
@@ -77,7 +78,8 @@ export function SessionPanel({
   if (progress.replan?.status === "running" && progress.replan.kind === "rework") {
     return (
       <section className="rounded-xl border border-dashed border-foreground/20 p-5 text-sm text-foreground/70">
-        Reworking your plan. Your coach, planner and reviewer are going over it together; this takes a minute or two…
+        <ThinkingWords words={THINKING.rework} className="font-medium" />
+        <p className="mt-1">Your coach, planner and reviewer are going over it together. This takes a minute or two.</p>
       </section>
     );
   }
@@ -165,7 +167,7 @@ export function SessionPanel({
             className="mt-4 rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
           >
             {starting
-              ? "Starting…"
+              ? <WorkingLabel label="Starting" onDark />
               : progress.activeSessionId
                 ? "Resume your session"
                 : progress.sessionsDone === 0
@@ -245,6 +247,8 @@ function SessionChat({
   const [asked, setAsked] = useState<string[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const busy = status === "submitted" || status === "streaming";
+  // The end-of-session tool shows its own "Wrapping up" words.
+  const wrappingUp = messages.some((m) => m.parts.some((p) => p.type === "tool-end_session" && p.state !== "output-available"));
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -289,15 +293,15 @@ function SessionChat({
                 {m.role === "user" ? part.text : <ChatText text={part.text} />}
               </div>
             ) : part.type === "tool-end_session" && part.state !== "output-available" ? (
-              <div key={i} className="text-sm text-foreground/50">
-                Wrapping up your session…
+              <div key={i} className="text-sm">
+                <ThinkingWords words={THINKING.wrapUp} />
               </div>
             ) : null,
           )}
           {m.role === "assistant" && m.metadata && <TraceChip trace={m.metadata} />}
         </div>
       ))}
-      {status === "submitted" && <div className="text-sm text-foreground/50">Thinking…</div>}
+      {isWaiting(status, messages) && !wrappingUp && <ThinkingWords words={THINKING.tutor} className="text-sm" />}
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
           {error.message || "Something went wrong."}
@@ -406,7 +410,7 @@ function FinishedPath({ goalId }: { goalId: string }) {
           disabled={saving}
           className="rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Mark goal complete"}
+          {saving ? <WorkingLabel label="Saving" onDark /> : "Mark goal complete"}
         </button>
         <Link href={`/app/goals/${goalId}/change`} className="text-sm text-foreground/60 underline">
           Keep going: take this goal further

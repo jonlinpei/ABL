@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { GoalSummary } from "@/lib/goals/goal-store";
 
 import { deleteGoalNow, DELETE_NOW_CONFIRM, goalAction } from "./goal-actions";
+import { WorkingLabel } from "./thinking-words";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -91,7 +92,9 @@ function ActiveCard({ goal }: { goal: GoalSummary }) {
     >
       <span className="text-xs uppercase tracking-wide text-foreground/50">{goal.industry || "Goal"}</span>
       <span className="mt-1 text-lg font-medium">{goal.title}</span>
-      <span className="mt-1 text-sm text-foreground/70">{progressLine(goal)}</span>
+      <span className="mt-1 text-sm text-foreground/70">
+        {goal.progress ? progressLine(goal) : <WorkingLabel label="Building your path" />}
+      </span>
       {goal.progress && goal.progress.total > 0 && (
         <span className="mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/10" aria-hidden="true">
           <span
