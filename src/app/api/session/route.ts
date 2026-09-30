@@ -18,12 +18,13 @@ import { trackChatUsage } from "@/lib/ai/chat-usage";
 import { configuredProviders, toLanguageModel } from "@/lib/ai/providers";
 import { resolveModel } from "@/lib/ai/router";
 import type { CallTrace } from "@/lib/ai/trace";
+import { goalForRequest } from "@/lib/goals/request-goal";
 import { loadSessionState } from "@/lib/specialists/session-state";
 import { glossaryNotes } from "@/lib/specialists/glossary";
 import { loadGlossary } from "@/lib/specialists/glossary-store";
 import { sidekickNotes } from "@/lib/specialists/sidekick";
 import { loadSessionSidekicks } from "@/lib/specialists/sidekick-store";
-import { endSession, saveSessionMessages } from "@/lib/specialists/store";
+import { endSession, goalOfSession, saveSessionMessages } from "@/lib/specialists/store";
 import { endSessionSchema, normalizeReport, sessionClock, tutorContext } from "@/lib/specialists/tutor";
 import { TUTOR_SKILL } from "@/lib/specialists/tutor.generated";
 
@@ -38,9 +39,16 @@ export async function POST(req: Request) {
   if (!isDatabaseConfigured()) return Response.json({ error: "No database is configured." }, { status: 503 });
 
   const { id: sessionId, messages }: { id?: unknown; messages: SessionMessage[] } = await req.json();
-  const state = await loadSessionState(userId);
+  // The session says which goal it's on.
+  const goalId = typeof sessionId === "string" ? await goalOfSession(userId, sessionId) : undefined;
+  if (goalId) {
+    // A goal paused, completed or removed mid-session stops taking turns.
+    const resolved = await goalForRequest(userId, goalId, { learning: true });
+    if ("error" in resolved) return resolved.error;
+  }
+  const state = goalId ? await loadSessionState(userId, goalId) : undefined;
   const session = state?.active;
-  if (!state || !session || session.id !== sessionId) {
+  if (!goalId || !state || !session || session.id !== sessionId) {
     return Response.json({ error: "This session isn't active. Start a new one." }, { status: 409 });
   }
 
@@ -55,7 +63,7 @@ export async function POST(req: Request) {
       execute: async (input) => {
         const report = normalizeReport(input);
         const { ended } = await endSession(session.id, userId, report);
-        if (ended) await startMasteryUpdate(userId, session.id);
+        if (ended) await startMasteryUpdate(userId, session.id, goalId);
         return { status: ended ? ("ended" as const) : ("already_ended" as const), milestoneComplete: report.milestoneComplete };
       },
     }),
@@ -103,9 +111,9 @@ export async function POST(req: Request) {
 }
 
 /** The session's report is the record; if the job runner is down, the evidence can be applied later. */
-async function startMasteryUpdate(userId: string, sessionId: string) {
+async function startMasteryUpdate(userId: string, sessionId: string, goalId: string) {
   try {
-    await inngest.send(sessionCompleted.create({ userId, sessionId }));
+    await inngest.send(sessionCompleted.create({ userId, sessionId, goalId }));
   } catch (err) {
     console.error("[session] couldn't start the mastery update", err);
   }

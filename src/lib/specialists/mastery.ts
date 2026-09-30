@@ -105,6 +105,18 @@ export function applyMasteryToGap(gap: Gap, records: MasteryRecord[]): Gap {
   return finishGap(items, gap.credentials, gap.proofOfSkill);
 }
 
+/**
+ * Carry mastery into every gap that has any of the skills, since a learner's
+ * skills are shared across their goals. Gaps with none of them are left out,
+ * so only changed gaps are saved.
+ */
+export function spreadMastery<T extends { gap: Gap }>(gaps: T[], records: MasteryRecord[]): T[] {
+  const ids = new Set(records.map((r) => r.skillId));
+  return gaps
+    .filter((g) => g.gap.items.some((i) => ids.has(i.skillId)))
+    .map((g) => ({ ...g, gap: applyMasteryToGap(g.gap, records) }));
+}
+
 function toCard(c: StoredCard): Card {
   return { ...c, due: new Date(c.due), last_review: c.last_review ? new Date(c.last_review) : undefined };
 }

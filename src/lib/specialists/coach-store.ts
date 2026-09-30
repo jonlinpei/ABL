@@ -5,7 +5,7 @@ import { getDb, schema } from "@/db";
 import type { CoachDecision } from "./coach";
 import type { Signal } from "./signals";
 
-const { coachNotes, learnerEvents, plans } = schema;
+const { coachNotes, learnerEvents } = schema;
 
 /** The learner's coach notes on a plan, oldest first. */
 export async function loadCoachNotes(planId: string) {
@@ -48,14 +48,15 @@ export async function saveCoachNote(
   return { id };
 }
 
-/** The newest check-in the learner hasn't answered or dismissed. */
-export async function openCheckIn(userId: string) {
+/** The newest check-in on this plan the learner hasn't answered or dismissed. */
+export async function openCheckIn(userId: string, planId: string) {
   const [row] = await getDb()
     .select()
     .from(coachNotes)
     .where(
       and(
         eq(coachNotes.userId, userId),
+        eq(coachNotes.planId, planId),
         isNotNull(coachNotes.message),
         isNull(coachNotes.respondedAt),
         isNull(coachNotes.dismissedAt),
@@ -84,10 +85,4 @@ export async function tutorNotesSince(planId: string, since: Date | null) {
     .from(coachNotes)
     .where(and(eq(coachNotes.planId, planId), isNotNull(coachNotes.tutorNote), since ? gt(coachNotes.createdAt, since) : undefined));
   return rows.map((r) => r.tutorNote!);
-}
-
-/** Every learner with a plan, for the daily coach check. */
-export async function learnersWithPlans(): Promise<string[]> {
-  const rows = await getDb().selectDistinct({ userId: plans.userId }).from(plans);
-  return rows.map((r) => r.userId);
 }

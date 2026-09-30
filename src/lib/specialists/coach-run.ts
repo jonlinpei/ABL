@@ -1,16 +1,22 @@
+import { loadGoal } from "@/lib/goals/goal-store";
+import { isLearnable } from "@/lib/goals/lifecycle";
+
 import { coachContext, decide, mayCheckIn } from "./coach";
 import { loadCoachNotes, saveCoachNote } from "./coach-store";
 import { loadMastery } from "./mastery-store";
 import { detectSignals, requirementsChangedSignal } from "./signals";
-import { loadLatestBriefAndGap, loadRequirementsChanges, loadSessions } from "./store";
+import { loadGoalState, loadRequirementsChanges, loadSessions } from "./store";
 import { currentMilestone } from "./tutor";
 
 /**
- * One coach check for a learner: detect signals in code, and only when there
- * are some (and no session is running), ask the coach what to do and save it.
+ * One coach check on one of a learner's goals: detect signals in code, and
+ * only when there are some (and no session is running), ask the coach what to
+ * do and save it. Paused, completed and removed goals are left alone.
  */
-export async function runCoach(userId: string, now = new Date()) {
-  const state = await loadLatestBriefAndGap(userId);
+export async function runCoach(userId: string, goalId: string, now = new Date()) {
+  const goal = await loadGoal(userId, goalId);
+  if (!goal || !isLearnable(goal.status)) return { outcome: "goal_not_active" as const };
+  const state = await loadGoalState(userId, goalId);
   if (!state?.plan) return { outcome: "no_plan" as const };
   const plan = state.plan.plan;
   const rows = await loadSessions(state.plan.id);
@@ -31,7 +37,7 @@ export async function runCoach(userId: string, now = new Date()) {
   // Requirement changes since the coach last looked (or since this plan, which was built after earlier ones).
   const notes = await loadCoachNotes(state.plan.id);
   const lastLook = notes.at(-1)?.createdAt ?? state.plan.createdAt;
-  const changed = requirementsChangedSignal(await loadRequirementsChanges(userId, lastLook));
+  const changed = requirementsChangedSignal(await loadRequirementsChanges(userId, goalId, lastLook));
   if (changed) signals.push(changed);
   if (signals.length === 0) return { outcome: "on_track" as const };
 

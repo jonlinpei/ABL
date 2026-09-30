@@ -5,10 +5,18 @@ import { selectSkillsToCheck } from "@/lib/specialists/assessment";
 import { openCheckIn } from "@/lib/specialists/coach-store";
 import { openHuddle } from "@/lib/specialists/huddle-store";
 import type { Gap, Plan, Replan, SessionReport } from "@/lib/specialists/schemas";
-import { countEndedSessions, loadEarlierSessions, loadLatestBriefAndGap, loadSessions } from "@/lib/specialists/store";
+import type { GoalStatus } from "@/db/schema";
+import { currentGoal } from "@/lib/goals/goal-store";
+import { goalForRequest, goalIdParam } from "@/lib/goals/request-goal";
+import { countEndedSessions, loadEarlierSessions, loadGoalState, loadSessions } from "@/lib/specialists/store";
 import { currentMilestone } from "@/lib/specialists/tutor";
 
-export type LearnerStatus =
+export type LearnerStatus = GoalStage & {
+  /** The goal this status is for; null only before the learner has any goal. */
+  goal: { id: string; status: GoalStatus; completedAt: string | null } | null;
+};
+
+type GoalStage =
   | { stage: "no_brief" }
   | { stage: "building_gap" }
   | { stage: "ready_to_check"; skills: { skillId: string; name: string }[] }
@@ -27,14 +35,24 @@ export interface PlanProgress {
   replan: { huddleId: string; status: "running" } | { huddleId: string; status: "proposed"; proposal: Replan } | null;
 }
 
-/** Where the learner is after discovery, for the app to poll. */
-export async function GET() {
+/** Where the learner is on a goal (`?goalId=`, or their current goal), for the app to poll. */
+export async function GET(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   if (!isDatabaseConfigured()) return Response.json({ error: "No database is configured." }, { status: 503 });
 
-  const state = await loadLatestBriefAndGap(userId);
-  let status: LearnerStatus;
+  const requested = goalIdParam(req);
+  let goal;
+  if (requested) {
+    const resolved = await goalForRequest(userId, requested);
+    if ("error" in resolved) return resolved.error;
+    goal = resolved.goal;
+  } else {
+    goal = await currentGoal(userId);
+    if (!goal) return Response.json({ stage: "no_brief", goal: null } satisfies LearnerStatus);
+  }
+  const state = await loadGoalState(userId, goal.id);
+  let status: GoalStage;
   if (!state) status = { stage: "no_brief" };
   else if (!state.gap) status = { stage: "building_gap" };
   else {
@@ -47,9 +65,9 @@ export async function GET() {
     } else {
       const [rows, note, open, sessionsDone] = await Promise.all([
         loadSessions(state.plan.id),
-        openCheckIn(userId),
-        openHuddle(userId),
-        countEndedSessions(userId),
+        openCheckIn(userId, state.plan.id),
+        openHuddle(userId, state.plan.id),
+        countEndedSessions(userId, goal.id),
       ]);
       const history = rows
         .filter((r) => r.endedAt && r.report)
@@ -66,7 +84,7 @@ export async function GET() {
           activeSessionId: rows.find((r) => !r.endedAt)?.id ?? null,
           lastReport:
             history.at(-1)?.report ??
-            (await loadEarlierSessions(userId, state.plan.id, 1)).at(-1)?.report ??
+            (await loadEarlierSessions(userId, goal.id, state.plan.id, 1)).at(-1)?.report ??
             null,
           checkIn: note?.message ? { id: note.id, message: note.message, options: note.options } : null,
           replan: !open
@@ -78,5 +96,8 @@ export async function GET() {
       };
     }
   }
-  return Response.json(status);
+  return Response.json({
+    ...status,
+    goal: { id: goal.id, status: goal.status, completedAt: goal.completedAt?.toISOString() ?? null },
+  } satisfies LearnerStatus);
 }

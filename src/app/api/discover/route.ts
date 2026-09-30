@@ -15,7 +15,10 @@ import { trackChatUsage } from "@/lib/ai/chat-usage";
 import type { CallTrace } from "@/lib/ai/trace";
 import { invalidAttachments } from "@/lib/goals/attachments";
 import { DISCOVERY_SYSTEM_PROMPT } from "@/lib/goals/prompts";
-import { GoalBriefSchema } from "@/lib/goals/schema";
+import { isDatabaseConfigured } from "@/db";
+import { goalForRequest } from "@/lib/goals/request-goal";
+import { GoalBriefSchema, type GoalBrief } from "@/lib/goals/schema";
+import { loadGoalState } from "@/lib/specialists/store";
 
 export const maxDuration = 60;
 
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
-  const { id: chatId, messages }: { id?: unknown; messages: DiscoveryMessage[] } =
+  const { id: chatId, messages, goalId }: { id?: unknown; messages: DiscoveryMessage[]; goalId?: unknown } =
     await req.json();
   // One PostHog trace per conversation. The client sends the chat id, so bound it.
   const traceId =
@@ -48,6 +51,14 @@ export async function POST(req: Request) {
 
   const attachmentError = invalidAttachments(messages);
   if (attachmentError) return Response.json({ error: attachmentError }, { status: 400 });
+
+  // Changing an existing goal: discovery starts from its current brief.
+  let existing: GoalBrief | null = null;
+  if (goalId != null && isDatabaseConfigured()) {
+    const resolved = await goalForRequest(userId, goalId);
+    if ("error" in resolved) return resolved.error;
+    existing = (await loadGoalState(userId, resolved.goal.id))?.brief.brief ?? null;
+  }
 
   let resolution;
   try {
@@ -75,7 +86,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: toLanguageModel(routed),
-    instructions: `${DISCOVERY_SYSTEM_PROMPT}\n\nToday is ${today}.`,
+    instructions: `${DISCOVERY_SYSTEM_PROMPT}\n\nToday is ${today}.${existing ? changingGoalContext(existing) : ""}`,
     messages: modelMessages,
     tools,
     stopWhen: hasToolCall("propose_goal_brief"),
@@ -92,4 +103,15 @@ export async function POST(req: Request) {
       onError: usage.onError,
     }),
   });
+}
+
+/** For "Change this goal": the brief as it stands, to update rather than start over. */
+function changingGoalContext(brief: GoalBrief): string {
+  return `
+
+The learner is changing a goal they already have. Their current brief is below. Ask what's changed, update the brief, and don't start over or re-ask what it already answers.
+
+<current_brief>
+${JSON.stringify(brief, null, 2)}
+</current_brief>`;
 }

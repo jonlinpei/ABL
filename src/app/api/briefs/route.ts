@@ -4,14 +4,19 @@ import { isDatabaseConfigured } from "@/db";
 import { inngest } from "@/inngest/client";
 import { briefConfirmed } from "@/inngest/events";
 import { saveConfirmedBrief } from "@/lib/goals/brief-store";
+import { goalForRequest } from "@/lib/goals/request-goal";
 import { GoalBriefSchema } from "@/lib/goals/schema";
 
 export interface SaveBriefResponse {
   id: string;
   version: number;
+  goalId: string;
 }
 
-/** Save the brief the learner just confirmed to their learner record. */
+/**
+ * Save the brief the learner just confirmed: a new goal, or with `goalId`,
+ * the next version of that goal.
+ */
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
@@ -28,8 +33,15 @@ export async function POST(req: Request) {
     );
   }
 
+  let goalId: string | undefined;
+  if (body?.goalId != null) {
+    const resolved = await goalForRequest(userId, body.goalId);
+    if ("error" in resolved) return resolved.error;
+    goalId = resolved.goal.id;
+  }
+
   try {
-    const saved: SaveBriefResponse = await saveConfirmedBrief(userId, parsed.data);
+    const saved: SaveBriefResponse = await saveConfirmedBrief(userId, parsed.data, goalId);
     await startLifecycle(userId, saved);
     return Response.json(saved);
   } catch (err) {
@@ -45,7 +57,7 @@ export async function POST(req: Request) {
  */
 async function startLifecycle(userId: string, saved: SaveBriefResponse) {
   try {
-    await inngest.send(briefConfirmed.create({ userId, briefId: saved.id, version: saved.version }));
+    await inngest.send(briefConfirmed.create({ userId, briefId: saved.id, version: saved.version, goalId: saved.goalId }));
   } catch (err) {
     console.error("[briefs] couldn't start the learner lifecycle", err);
   }

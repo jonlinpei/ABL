@@ -7,18 +7,24 @@ import { learnerDataDeleted } from "@/inngest/events";
 import { deleteLearner, loadLearnerRecord } from "@/lib/specialists/learner-record-store";
 import type { MasteryRecord } from "@/lib/specialists/mastery";
 import { loadMastery } from "@/lib/specialists/mastery-store";
+import { goalForRequest, goalIdParam } from "@/lib/goals/request-goal";
 
 export type LearnerRecord = NonNullable<Awaited<ReturnType<typeof loadLearnerRecord>>> & {
   /** Evidence from sessions and corrections, per skill; review schedules left out. */
   mastery: Pick<MasteryRecord, "skillId" | "name" | "level" | "evidence">[];
 };
 
-/** Everything ABL holds about the learner, for "What ABL knows about me". */
-export async function GET() {
+/**
+ * What ABL holds about the learner for a goal (`?goalId=`, or their current
+ * goal), with their skills across all goals, for "What ABL knows about me".
+ */
+export async function GET(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   if (!isDatabaseConfigured()) return Response.json({ error: "No database is configured." }, { status: 503 });
-  const record = await loadLearnerRecord(userId);
+  const resolved = await goalForRequest(userId, goalIdParam(req));
+  if ("error" in resolved) return Response.json({ error: "No goal yet." }, { status: 404 });
+  const record = await loadLearnerRecord(userId, resolved.goal.id);
   if (!record) return Response.json({ error: "No goal yet." }, { status: 404 });
   const mastery = (await loadMastery(userId)).map(({ skillId, name, level, evidence }) => ({ skillId, name, level, evidence }));
   return Response.json({ ...record, mastery } satisfies LearnerRecord);

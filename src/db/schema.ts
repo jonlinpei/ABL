@@ -47,10 +47,45 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
+export const GOAL_STATUSES = ["active", "paused", "completed", "removed"] as const;
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
+
 /**
- * Every career brief the learner confirmed, newest version last. A changed
- * goal adds a version rather than editing the old one, so plans can say which
- * brief they were built from.
+ * One thing the learner is working toward, like a course on Duolingo. A
+ * learner can pursue several at once and switch between them; their skills
+ * (`skill_mastery`) are shared across all of them. A goal's title comes from
+ * its newest brief.
+ *
+ * A removed goal waits 30 days before it's purged (with everything built for
+ * it), so it can be restored. Purging never touches skills.
+ */
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<GoalStatus>().notNull().default("active"),
+    /** What a removed goal was before, so restoring puts it back. */
+    statusBefore: text("status_before").$type<Exclude<GoalStatus, "removed">>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastOpenedAt: timestamp("last_opened_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("goals_user_opened").on(t.userId, t.lastOpenedAt),
+    index("goals_status_removed").on(t.status, t.removedAt),
+  ],
+);
+
+export type GoalRow = typeof goals.$inferSelect;
+
+/**
+ * Every career brief the learner confirmed for a goal, newest version last.
+ * Changing a goal adds a version rather than editing the old one, so plans
+ * can say which brief they were built from.
  */
 export const careerBriefs = pgTable(
   "career_briefs",
@@ -59,11 +94,14 @@ export const careerBriefs = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
     version: integer("version").notNull(),
     brief: jsonb("brief").$type<GoalBrief>().notNull(),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("career_briefs_user_version").on(t.userId, t.version)],
+  (t) => [uniqueIndex("career_briefs_goal_version").on(t.goalId, t.version)],
 );
 
 export type CareerBriefRow = typeof careerBriefs.$inferSelect;
@@ -85,6 +123,8 @@ export const LEARNER_EVENT_TYPES = [
   "requirements_changed",
   "brief_edited",
   "skill_corrected",
+  "goal_status_changed",
+  "goal_purged",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 

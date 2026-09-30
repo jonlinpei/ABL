@@ -24,13 +24,14 @@ import {
   submissionSchema,
 } from "@/lib/specialists/assessment";
 import { ASSESSOR_SKILL } from "@/lib/specialists/assessor.generated";
-import { loadLatestBriefAndGap, saveAssessment } from "@/lib/specialists/store";
+import { goalForRequest } from "@/lib/goals/request-goal";
+import { loadGoalState, saveAssessment } from "@/lib/specialists/store";
 
 export const maxDuration = 60;
 
 export type AssessMessage = UIMessage<CallTrace>;
 
-/** The skills check for the learner's newest brief (the Assessor specialist). */
+/** The skills check for a goal's newest brief (the Assessor specialist). */
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
@@ -38,11 +39,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "No database is configured." }, { status: 503 });
   }
 
-  const { id: chatId, messages }: { id?: unknown; messages: AssessMessage[] } = await req.json();
+  const { id: chatId, messages, goalId }: { id?: unknown; messages: AssessMessage[]; goalId?: unknown } = await req.json();
   const traceId =
     typeof chatId === "string" && chatId.length > 0 && chatId.length <= 100 ? chatId : crypto.randomUUID();
 
-  const state = await loadLatestBriefAndGap(userId);
+  const resolved = await goalForRequest(userId, goalId, { learning: true });
+  if ("error" in resolved) return resolved.error;
+  const state = await loadGoalState(userId, resolved.goal.id);
   if (!state?.gap) {
     return Response.json({ error: "Your skills picture is still being built." }, { status: 409 });
   }

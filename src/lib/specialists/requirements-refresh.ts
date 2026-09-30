@@ -15,7 +15,7 @@ import { loadGapsOnRequirements, loadRequirementsForRefresh, saveRebasedGap, sav
  * Rebuild one cached target's requirements from current postings, keeping
  * skill ids where it can, then rebase the gaps of learners on that target.
  * Each model call is a step, so a retry doesn't search again. Returns the
- * learners whose open must-haves changed, for the coach.
+ * goals whose open must-haves changed, for the coach.
  */
 export async function refreshTarget(requirementsId: string, run: StepRunner) {
   const loaded = await run("load", () => loadRequirementsForRefresh(requirementsId));
@@ -38,21 +38,21 @@ export async function refreshTarget(requirementsId: string, run: StepRunner) {
 }
 
 /**
- * Rebase each learner's current gap on the target's refreshed requirements.
- * Their plan doesn't change: learners with an active plan whose open
- * must-haves changed get a `requirements_changed` event, and the coach
- * decides how to tell them. Returns those learners.
+ * Rebase each live goal's current gap on the target's refreshed requirements.
+ * Its plan doesn't change: goals with an active plan whose open must-haves
+ * changed get a `requirements_changed` event, and the coach decides how to
+ * tell the learner. Returns those goals.
  */
-export async function rebaseLearnerGaps(requirementsId: string): Promise<string[]> {
+export async function rebaseLearnerGaps(requirementsId: string): Promise<{ userId: string; goalId: string }[]> {
   const loaded = await loadRequirementsForRefresh(requirementsId);
   if (!loaded) return [];
-  const notify: string[] = [];
+  const notify: { userId: string; goalId: string }[] = [];
   for (const learner of await loadGapsOnRequirements(requirementsId)) {
     const rebased = applyMasteryToGap(rebaseGap(learner.gap, loaded.requirements), await loadMastery(learner.userId));
     const change = openMustHaveChanges(learner.gap, rebased);
     const tell = learner.hasActivePlan && (change.added.length > 0 || change.dropped.length > 0);
-    await saveRebasedGap(learner.gapId, learner.userId, rebased, tell ? { requirementsId, ...change } : null);
-    if (tell) notify.push(learner.userId);
+    await saveRebasedGap(learner.gapId, learner.userId, rebased, tell ? { requirementsId, goalId: learner.goalId, ...change } : null);
+    if (tell) notify.push({ userId: learner.userId, goalId: learner.goalId });
   }
   return notify;
 }

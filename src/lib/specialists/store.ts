@@ -1,4 +1,5 @@
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { getDb, schema } from "@/db";
 
@@ -16,6 +17,7 @@ import type { RequirementsChange } from "./signals";
 const {
   assessments,
   careerBriefs,
+  goals,
   targetRequirements,
   learnerProfiles,
   gaps,
@@ -90,29 +92,37 @@ export async function saveRefreshedRequirements(requirementsId: string, requirem
 }
 
 /**
- * The current gaps built on a cached target: one per learner whose newest
- * brief chose it, with whether they have an active plan.
+ * The current gaps built on a cached target: one per live goal (active or
+ * paused) whose newest brief chose it, with whether it has an active plan.
  */
 export async function loadGapsOnRequirements(requirementsId: string) {
   const db = getDb();
   const rows = await db
-    .select({ gapId: gaps.id, userId: gaps.userId, briefId: gaps.briefId, version: careerBriefs.version, gap: gaps.gap })
+    .select({
+      gapId: gaps.id,
+      userId: gaps.userId,
+      briefId: gaps.briefId,
+      goalId: careerBriefs.goalId,
+      version: careerBriefs.version,
+      gap: gaps.gap,
+    })
     .from(gaps)
     .innerJoin(learnerProfiles, eq(learnerProfiles.id, gaps.profileId))
     .innerJoin(careerBriefs, eq(careerBriefs.id, gaps.briefId))
-    .where(eq(learnerProfiles.requirementsId, requirementsId));
+    .innerJoin(goals, eq(goals.id, careerBriefs.goalId))
+    .where(and(eq(learnerProfiles.requirementsId, requirementsId), inArray(goals.status, ["active", "paused"])));
   if (rows.length === 0) return [];
-  const userIds = [...new Set(rows.map((r) => r.userId))];
+  const goalIds = [...new Set(rows.map((r) => r.goalId))];
   const newest = new Map(
     (
       await db
-        .select({ userId: careerBriefs.userId, version: max(careerBriefs.version) })
+        .select({ goalId: careerBriefs.goalId, version: max(careerBriefs.version) })
         .from(careerBriefs)
-        .where(inArray(careerBriefs.userId, userIds))
-        .groupBy(careerBriefs.userId)
-    ).map((r) => [r.userId, r.version]),
+        .where(inArray(careerBriefs.goalId, goalIds))
+        .groupBy(careerBriefs.goalId)
+    ).map((r) => [r.goalId, r.version]),
   );
-  const current = rows.filter((r) => newest.get(r.userId) === r.version);
+  const current = rows.filter((r) => newest.get(r.goalId) === r.version);
   const active = new Set(
     current.length
       ? (
@@ -123,7 +133,14 @@ export async function loadGapsOnRequirements(requirementsId: string) {
         ).map((p) => p.briefId)
       : [],
   );
-  return current.map((r) => ({ gapId: r.gapId, userId: r.userId, briefId: r.briefId, gap: r.gap, hasActivePlan: active.has(r.briefId) }));
+  return current.map((r) => ({
+    gapId: r.gapId,
+    userId: r.userId,
+    goalId: r.goalId,
+    briefId: r.briefId,
+    gap: r.gap,
+    hasActivePlan: active.has(r.briefId),
+  }));
 }
 
 /** Save a learner's gap rebased on refreshed requirements, and log the change when they should hear about it. */
@@ -131,7 +148,7 @@ export async function saveRebasedGap(
   gapId: string,
   userId: string,
   gap: Gap,
-  change: (RequirementsChange & { requirementsId: string }) | null,
+  change: (RequirementsChange & { requirementsId: string; goalId: string }) | null,
 ) {
   const db = getDb();
   const update = db.update(gaps).set({ gap }).where(eq(gaps.id, gapId));
@@ -140,8 +157,8 @@ export async function saveRebasedGap(
     : update);
 }
 
-/** Requirement changes logged for a learner after `since`, oldest first. */
-export async function loadRequirementsChanges(userId: string, since: Date | null): Promise<RequirementsChange[]> {
+/** Requirement changes logged for one of a learner's goals after `since`, oldest first. */
+export async function loadRequirementsChanges(userId: string, goalId: string, since: Date | null): Promise<RequirementsChange[]> {
   const rows = await getDb()
     .select({ payload: learnerEvents.payload })
     .from(learnerEvents)
@@ -149,6 +166,7 @@ export async function loadRequirementsChanges(userId: string, since: Date | null
       and(
         eq(learnerEvents.userId, userId),
         eq(learnerEvents.type, "requirements_changed"),
+        sql`${learnerEvents.payload}->>'goalId' = ${goalId}`,
         ...(since ? [gt(learnerEvents.createdAt, since)] : []),
       ),
     )
@@ -195,16 +213,16 @@ export async function saveGap(userId: string, briefId: string, profileId: string
 }
 
 /**
- * The learner's newest brief and, once the lifecycle has built them, its gap
- * and newest plan.
- * The skills check always works on the newest brief.
+ * A goal's newest brief and, once the lifecycle has built them, its gap and
+ * newest active plan. Undefined before the goal has a brief (or if it isn't
+ * the learner's).
  */
-export async function loadLatestBriefAndGap(userId: string) {
+export async function loadGoalState(userId: string, goalId: string) {
   const db = getDb();
   const [brief] = await db
     .select()
     .from(careerBriefs)
-    .where(eq(careerBriefs.userId, userId))
+    .where(and(eq(careerBriefs.goalId, goalId), eq(careerBriefs.userId, userId)))
     .orderBy(desc(careerBriefs.version))
     .limit(1);
   if (!brief) return undefined;
@@ -344,26 +362,54 @@ export async function endSession(
   return { ended: true };
 }
 
+/** Plans built for a goal, across its brief versions: sessions on them are that goal's history. */
+function goalPlanIds(goalId: string) {
+  return getDb()
+    .select({ id: plans.id })
+    .from(plans)
+    .innerJoin(careerBriefs, eq(careerBriefs.id, plans.briefId))
+    .where(eq(careerBriefs.goalId, goalId));
+}
+
 /**
- * The learner's most recent ended sessions on earlier plans, newest last.
- * A reworked plan starts its own history; these carry homework and context
- * across the change.
+ * The learner's most recent ended sessions on this goal's earlier plans,
+ * newest last. A reworked plan starts its own history; these carry homework
+ * and context across the change. Other goals' sessions never carry over.
  */
-export async function loadEarlierSessions(userId: string, currentPlanId: string, limit = 3) {
+export async function loadEarlierSessions(userId: string, goalId: string, currentPlanId: string, limit = 3) {
   const rows = await getDb()
     .select()
     .from(sessions)
-    .where(and(eq(sessions.userId, userId), ne(sessions.planId, currentPlanId), isNotNull(sessions.endedAt)))
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        inArray(sessions.planId, goalPlanIds(goalId)),
+        ne(sessions.planId, currentPlanId),
+        isNotNull(sessions.endedAt),
+      ),
+    )
     .orderBy(desc(sessions.endedAt))
     .limit(limit);
   return rows.filter((r) => r.report).reverse();
 }
 
-/** How many sessions the learner has finished, across all their plans. */
-export async function countEndedSessions(userId: string): Promise<number> {
+/** How many sessions the learner has finished on this goal, across its plans. */
+export async function countEndedSessions(userId: string, goalId: string): Promise<number> {
   const [row] = await getDb()
     .select({ n: count() })
     .from(sessions)
-    .where(and(eq(sessions.userId, userId), isNotNull(sessions.endedAt)));
+    .where(and(eq(sessions.userId, userId), inArray(sessions.planId, goalPlanIds(goalId)), isNotNull(sessions.endedAt)));
   return row?.n ?? 0;
+}
+
+/** The goal a learner's session belongs to, through its plan and brief. */
+export async function goalOfSession(userId: string, sessionId: string): Promise<string | undefined> {
+  if (!z.uuid().safeParse(sessionId).success) return undefined;
+  const [row] = await getDb()
+    .select({ goalId: careerBriefs.goalId })
+    .from(sessions)
+    .innerJoin(plans, eq(plans.id, sessions.planId))
+    .innerJoin(careerBriefs, eq(careerBriefs.id, plans.briefId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  return row?.goalId;
 }

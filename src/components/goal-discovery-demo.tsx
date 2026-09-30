@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type FileUIPart } from "ai";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import type { SaveBriefResponse } from "@/app/api/briefs/route";
@@ -10,7 +11,6 @@ import type { CallTrace } from "@/lib/ai/trace";
 import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
 
 import { BriefCard } from "./brief-card";
-import { SkillsCheck } from "./skills-check";
 import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
 import { GoalBriefSchema, type GoalBrief } from "@/lib/goals/schema";
@@ -28,27 +28,24 @@ type Mode = "resume" | "linkedin" | "talk" | null;
 /**
  * Demo of the first learner-facing flow (docs/content.md, "Goal discovery"):
  * a discovery conversation, often starting from a resume or LinkedIn profile,
- * that ends in a career brief the learner confirms. Every AI call shows what
+ * that ends in a career brief the learner confirms. With a `goalId` it
+ * changes that goal instead of starting a new one. Every AI call shows what
  * the router chose and what it cost.
  */
-export function GoalDiscoveryDemo() {
+export function GoalDiscoveryDemo({ goalId, currentTitle }: { goalId?: string; currentTitle?: string } = {}) {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<Mode>(null);
   const [pending, setPending] = useState<{ part: FileUIPart; size: number }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<GoalBrief | null>(null);
-  const [save, setSave] = useState<
-    | { state: "saving" }
-    | { state: "saved"; version: number }
-    | { state: "failed"; error: string }
-    | null
-  >(null);
+  const [save, setSave] = useState<{ state: "saving" } | { state: "saved" } | { state: "failed"; error: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   const { messages, sendMessage, status, error, clearError, setMessages } =
     useChat<DiscoveryMessage>({
-      transport: new DefaultChatTransport({ api: "/api/discover" }),
+      transport: new DefaultChatTransport({ api: "/api/discover", body: goalId ? { goalId } : undefined }),
     });
 
   const busy = status === "submitted" || status === "streaming";
@@ -102,11 +99,13 @@ export function GoalDiscoveryDemo() {
       const res = await fetch("/api/briefs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief }),
+        body: JSON.stringify({ brief, goalId }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
-      setSave({ state: "saved", version: (data as SaveBriefResponse).version });
+      setSave({ state: "saved" });
+      // The goal's page picks up from here: the skills picture, then the plan.
+      router.push(`/app/goals/${(data as SaveBriefResponse).goalId}`);
     } catch (err) {
       setSave({ state: "failed", error: err instanceof Error ? err.message : String(err) });
     }
@@ -123,19 +122,32 @@ export function GoalDiscoveryDemo() {
   }
 
   const placeholder =
-    messages.length > 0
-      ? latestBriefId
-        ? "Tell me what to change…"
-        : "Type your answer…"
-      : mode === "linkedin"
-        ? "Paste your LinkedIn profile text here…"
-        : mode === "resume"
-          ? "Anything to add? Where do you want to go next?"
-          : "e.g. I've been a high school science teacher for 8 years and want to get into UX research";
+    goalId && messages.length === 0
+      ? "e.g. I got a new job and can only do 3 hours a week now"
+      : messages.length > 0
+        ? latestBriefId
+          ? "Tell me what to change…"
+          : "Type your answer…"
+        : mode === "linkedin"
+          ? "Paste your LinkedIn profile text here…"
+          : mode === "resume"
+            ? "Anything to add? Where do you want to go next?"
+            : "e.g. I've been a high school science teacher for 8 years and want to get into UX research";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      {messages.length === 0 && (
+      {messages.length === 0 && goalId && (
+        <section>
+          <h1 className="text-2xl font-semibold tracking-tight">What&apos;s changed?</h1>
+          <p className="mt-2 text-foreground/70">
+            Tell me what&apos;s different about {currentTitle ? <span className="font-medium">{currentTitle}</span> : "this goal"}: where
+            you&apos;re aiming, your week, your deadline, or where you&apos;re starting from. I&apos;ll update your brief, and you&apos;ll
+            get a plan built for it. Your skills and progress carry over.
+          </p>
+        </section>
+      )}
+
+      {messages.length === 0 && !goalId && (
         <section>
           <h1 className="text-2xl font-semibold tracking-tight">
             Where are you now, and where do you want to go?
@@ -251,12 +263,7 @@ export function GoalDiscoveryDemo() {
       {confirmed && (
         <div className="rounded-lg border border-dashed border-foreground/20 p-4 text-sm text-foreground/70">
           {save?.state === "saving" && <p>Saving your brief…</p>}
-          {save?.state === "saved" && (
-            <p>
-              Saved to your learner record
-              {save.version > 1 ? ` (version ${save.version})` : ""}.
-            </p>
-          )}
+          {save?.state === "saved" && <p>Saved. Taking you to your goal…</p>}
           {save?.state === "failed" && (
             <p className="text-red-600 dark:text-red-400">
               {save.error}{" "}
@@ -272,7 +279,6 @@ export function GoalDiscoveryDemo() {
           </p>
         </div>
       )}
-      {save?.state === "saved" && <SkillsCheck />}
 
       {!confirmed && (
         <div className="sticky bottom-4 flex flex-col gap-2">

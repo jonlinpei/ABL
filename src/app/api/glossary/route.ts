@@ -5,7 +5,8 @@ import { isDatabaseConfigured } from "@/db";
 import { familiarity, glossaryKey, groupByHeadword, type Familiarity, type GlossarySense } from "@/lib/specialists/glossary";
 import { defineTerm } from "@/lib/specialists/glossary-define";
 import { deleteTerm, loadGlossary, recordTerms, setTermKnown } from "@/lib/specialists/glossary-store";
-import { loadLatestBriefAndGap } from "@/lib/specialists/store";
+import { currentGoal } from "@/lib/goals/goal-store";
+import { loadGoalState } from "@/lib/specialists/store";
 
 export const maxDuration = 30;
 
@@ -22,8 +23,14 @@ export interface GlossaryView {
   }[];
 }
 
+/** The learner's current goal's brief and gap: "this goal" in the glossary. */
+async function currentState(userId: string) {
+  const goal = await currentGoal(userId);
+  return goal ? loadGoalState(userId, goal.id) : undefined;
+}
+
 async function view(userId: string): Promise<GlossaryView> {
-  const [senses, state] = await Promise.all([loadGlossary(userId), loadLatestBriefAndGap(userId)]);
+  const [senses, state] = await Promise.all([loadGlossary(userId), currentState(userId)]);
   const gap = state?.gap?.gap ?? null;
   const currentBriefId = state?.brief.id ?? null;
   const names = new Map(gap?.items.map((i) => [i.skillId, i.name]));
@@ -75,7 +82,7 @@ export async function POST(req: Request) {
   if (!parsed.success || !glossaryKey(parsed.data.term)) {
     return Response.json({ error: "Enter a term to add." }, { status: 400 });
   }
-  const [existing, state] = await Promise.all([loadGlossary(s.userId), loadLatestBriefAndGap(s.userId)]);
+  const [existing, state] = await Promise.all([loadGlossary(s.userId), currentState(s.userId)]);
   const brief = state?.brief.brief;
   let entry;
   try {

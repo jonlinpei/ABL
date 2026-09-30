@@ -39,13 +39,13 @@ export async function loadHuddle(huddleId: string) {
   return row;
 }
 
-/** The learner's newest open huddle, with its proposed plan once there is one. */
-export async function openHuddle(userId: string) {
+/** The open huddle on this plan, with its proposed plan once there is one. */
+export async function openHuddle(userId: string, planId: string) {
   const db = getDb();
   const [row] = await db
     .select()
     .from(huddles)
-    .where(and(eq(huddles.userId, userId), inArray(huddles.status, ["running", "proposed"])))
+    .where(and(eq(huddles.userId, userId), eq(huddles.fromPlanId, planId), inArray(huddles.status, ["running", "proposed"])))
     .orderBy(desc(huddles.createdAt))
     .limit(1);
   if (!row) return undefined;

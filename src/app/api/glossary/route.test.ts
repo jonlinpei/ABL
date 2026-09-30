@@ -10,7 +10,8 @@ const recordTerms = vi.fn();
 const setTermKnown = vi.fn();
 const deleteTerm = vi.fn();
 const defineTerm = vi.fn();
-const loadLatestBriefAndGap = vi.fn();
+const loadGoalState = vi.fn();
+const currentGoal = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth() }));
 vi.mock("@/db", () => ({ isDatabaseConfigured: () => true }));
 vi.mock("@/lib/specialists/glossary-store", () => ({
@@ -20,7 +21,8 @@ vi.mock("@/lib/specialists/glossary-store", () => ({
   deleteTerm: (...a: unknown[]) => deleteTerm(...a),
 }));
 vi.mock("@/lib/specialists/glossary-define", () => ({ defineTerm: (...a: unknown[]) => defineTerm(...a) }));
-vi.mock("@/lib/specialists/store", () => ({ loadLatestBriefAndGap: (...a: unknown[]) => loadLatestBriefAndGap(...a) }));
+vi.mock("@/lib/specialists/store", () => ({ loadGoalState: (...a: unknown[]) => loadGoalState(...a) }));
+vi.mock("@/lib/goals/goal-store", () => ({ currentGoal: (...a: unknown[]) => currentGoal(...a) }));
 
 const { DELETE, GET, PATCH, POST } = await import("./route");
 
@@ -35,7 +37,8 @@ const req = (method: string, body: unknown) => new Request("http://t", { method,
 beforeEach(() => {
   for (const m of [loadGlossary, recordTerms, setTermKnown, deleteTerm, defineTerm]) m.mockReset();
   auth.mockResolvedValue({ userId: "user_1" });
-  loadLatestBriefAndGap.mockResolvedValue({ brief: { id: "b1", brief: sampleBrief }, gap: { gap } });
+  currentGoal.mockReset().mockResolvedValue({ id: "g1", status: "active" });
+  loadGoalState.mockReset().mockResolvedValue({ brief: { id: "b1", brief: sampleBrief }, gap: { gap } });
   loadGlossary.mockResolvedValue([sense({}), sense({ id: "t2", domain: "spreadsheets", skillId: null, briefId: "old", struggled: false })]);
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -49,6 +52,15 @@ describe("GET /api/glossary", () => {
       expect.objectContaining({ domain: "spreadsheets", familiarity: "new", inCurrentGoal: false, skillName: null }),
       expect.objectContaining({ domain: "sql", familiarity: "shaky", inCurrentGoal: true, skillName: "SQL querying" }),
     ]);
+    expect(loadGoalState).toHaveBeenCalledWith("user_1", "g1");
+  });
+
+  it("has no current goal before the learner has one", async () => {
+    currentGoal.mockResolvedValueOnce(undefined);
+    const body = await (await GET()).json();
+    expect(body.currentBriefId).toBeNull();
+    expect(body.headwords[0].senses.every((s: { inCurrentGoal: boolean }) => !s.inCurrentGoal)).toBe(true);
+    expect(loadGoalState).not.toHaveBeenCalled();
   });
 });
 

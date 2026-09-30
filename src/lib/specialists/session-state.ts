@@ -1,16 +1,17 @@
 import { tutorNotesSince } from "./coach-store";
 import { dueForReview } from "./mastery";
 import { loadMastery } from "./mastery-store";
-import { countEndedSessions, loadEarlierSessions, loadLatestBriefAndGap, loadSessions } from "./store";
+import { countEndedSessions, loadEarlierSessions, loadGoalState, loadSessions } from "./store";
 import { currentMilestone, type PastSession } from "./tutor";
 
 /**
- * Everything a tutoring session is built from: the learner's newest brief,
- * gap and plan, the plan's sessions, and which milestone they're on.
- * Undefined until a plan exists.
+ * Everything a tutoring session on one goal is built from: the goal's newest
+ * brief, gap and plan, the plan's sessions, and which milestone they're on.
+ * Reviews come from all the learner's skills, since those are shared across
+ * goals. Undefined until the goal has a plan.
  */
-export async function loadSessionState(userId: string) {
-  const state = await loadLatestBriefAndGap(userId);
+export async function loadSessionState(userId: string, goalId: string) {
+  const state = await loadGoalState(userId, goalId);
   if (!state?.gap || !state.plan) return undefined;
   const rows = await loadSessions(state.plan.id);
   const history: PastSession[] = rows
@@ -28,7 +29,7 @@ export async function loadSessionState(userId: string) {
   // sessions on earlier plans carry homework and context across the change.
   const carried: PastSession[] =
     history.length === 0
-      ? (await loadEarlierSessions(userId, state.plan.id)).map((r) => ({
+      ? (await loadEarlierSessions(userId, goalId, state.plan.id)).map((r) => ({
           milestoneIndex: r.milestoneIndex,
           report: r.report!,
           endedAt: r.endedAt!.toISOString(),
@@ -37,7 +38,7 @@ export async function loadSessionState(userId: string) {
   const lastEnd = rows.filter((r) => r.endedAt).at(-1)?.endedAt ?? (carried.length ? new Date(carried.at(-1)!.endedAt) : null);
   // Notes the coach left for the tutor since the last session.
   const coachNotes = await tutorNotesSince(state.plan.id, lastEnd);
-  const sessionsDone = await countEndedSessions(userId);
+  const sessionsDone = await countEndedSessions(userId, goalId);
   return {
     brief: state.brief,
     gap: state.gap.gap,

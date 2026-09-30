@@ -9,6 +9,7 @@ import {
   MAX_EVIDENCE,
   nextLevel,
   reviewRating,
+  spreadMastery,
   type EvidenceEntry,
 } from "./mastery";
 import { sampleProfile, sampleRequirements } from "./test-fixtures";
@@ -98,5 +99,47 @@ describe("applyMasteryToGap", () => {
     const sql = updated.items.find((i) => i.skillId === "sql-querying")!;
     expect(sql).toMatchObject({ current: 3, basis: "practiced", status: "met", verify: false });
     expect(updated.counts.met).toBe(gap.counts.met + 1);
+  });
+});
+
+describe("spreadMastery", () => {
+  const gap = computeGap(sampleRequirements, sampleProfile);
+  const withoutSql = computeGap(
+    { ...sampleRequirements, skills: sampleRequirements.skills.filter((s) => s.id !== "sql-querying") },
+    sampleProfile,
+  );
+
+  it("carries mastery into every gap with the skill, marking matching items practiced", () => {
+    const other = computeGap(sampleRequirements, { ...sampleProfile, skills: [] });
+    const spread = spreadMastery(
+      [
+        { id: "g1", briefId: "b1", gap },
+        { id: "g2", briefId: "b2", gap: other },
+      ],
+      [apply(undefined, 3)],
+    );
+    expect(spread.map((g) => g.id)).toEqual(["g1", "g2"]);
+    for (const g of spread) {
+      expect(g.gap.items.find((i) => i.skillId === "sql-querying")).toMatchObject({ current: 3, basis: "practiced", status: "met" });
+    }
+    // Other fields ride along, and the other items are left alone.
+    expect(spread[0]!.briefId).toBe("b1");
+    expect(spread[0]!.gap.items.find((i) => i.skillId === "dashboards")).toEqual(gap.items.find((i) => i.skillId === "dashboards"));
+  });
+
+  it("leaves out gaps without any of the skills", () => {
+    const spread = spreadMastery(
+      [
+        { id: "g1", gap },
+        { id: "g2", gap: withoutSql },
+      ],
+      [apply(undefined, 3)],
+    );
+    expect(spread.map((g) => g.id)).toEqual(["g1"]);
+  });
+
+  it("returns nothing with no records or no gaps", () => {
+    expect(spreadMastery([{ id: "g1", gap }], [])).toEqual([]);
+    expect(spreadMastery([], [apply(undefined, 3)])).toEqual([]);
   });
 });

@@ -10,6 +10,7 @@ export const briefConfirmed = eventType("learner/brief.confirmed", {
     userId: z.string(),
     briefId: z.string(),
     version: z.number(),
+    goalId: z.string(),
   }),
 });
 
@@ -24,12 +25,13 @@ export const sessionCompleted = eventType("learner/session.completed", {
   schema: z.object({
     userId: z.string(),
     sessionId: z.string(),
+    goalId: z.string(),
   }),
 });
 
-/** Ask the coach to look at one learner's signals. */
+/** Ask the coach to look at the signals on one of a learner's goals. */
 export const coachCheck = eventType("learner/coach.check", {
-  schema: z.object({ userId: z.string() }),
+  schema: z.object({ userId: z.string(), goalId: z.string() }),
 });
 
 /** The learner deleted their data; running and waiting work for them stops. */

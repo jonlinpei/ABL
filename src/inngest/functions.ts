@@ -3,12 +3,13 @@ import { NonRetriableError } from "inngest";
 
 import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
+import { activeGoalPlans, purgeExpiredGoals } from "@/lib/goals/goal-store";
 import { runCoach } from "@/lib/specialists/coach-run";
-import { learnersWithPlans } from "@/lib/specialists/coach-store";
 import { runHuddleById } from "@/lib/specialists/huddle-run";
 import { failHuddle } from "@/lib/specialists/huddle-store";
 import { computeGap } from "@/lib/specialists/gap";
-import { applySessionEvidence } from "@/lib/specialists/mastery-store";
+import { applyMasteryToGap } from "@/lib/specialists/mastery";
+import { applySessionEvidence, loadMastery } from "@/lib/specialists/mastery-store";
 import { planWithReview } from "@/lib/specialists/planner";
 import { buildProfile } from "@/lib/specialists/profiler";
 import { buildRequirements, dueForRefresh, researchPostings, targetKey } from "@/lib/specialists/requirements";
@@ -77,9 +78,14 @@ export const learnerLifecycle = inngest.createFunction(
       saveProfile(userId, briefId, requirementsRow.id, profile),
     );
 
-    // Gap: deterministic, so it's computed and saved in one step.
-    const gap = computeGap(requirements, profile);
-    const gapRow = await step.run("save-gap", () => saveGap(userId, briefId, profileRow.id, gap));
+    // Gap: deterministic, so it's computed and saved in one step. Skills the
+    // learner already practised for another goal start at their mastery
+    // level, so the skills check doesn't ask about them again.
+    const { gap, gapRow } = await step.run("save-gap", async () => {
+      const computed = computeGap(requirements, profile);
+      const seeded = applyMasteryToGap(computed, await loadMastery(userId, computed.items.map((i) => i.skillId)));
+      return { gap: seeded, gapRow: await saveGap(userId, briefId, profileRow.id, seeded) };
+    });
 
     // Assessor: the learner takes the skills check in the app (/api/assess).
     // Wait for it before planning, unless there's nothing to check. After two
@@ -136,30 +142,39 @@ export const masteryKeeper = inngest.createFunction(
 );
 
 /**
- * Coach: looks at a learner's signals after each session and on the daily
- * check. Debounced per learner, so the mastery keeper has applied the
- * session first and a burst of events makes one decision.
+ * Coach: looks at the signals on one of a learner's goals after each session
+ * and on the daily check. Debounced per goal, so the mastery keeper has
+ * applied the session first and a burst of events makes one decision.
  */
 export const coach = inngest.createFunction(
   {
     id: "coach",
     triggers: [coachCheck, sessionCompleted],
-    debounce: { key: "event.data.userId", period: "5m" },
+    debounce: { key: "event.data.userId + '-' + event.data.goalId", period: "5m" },
     cancelOn: cancelOnDelete,
   },
-  async ({ event, step }) => step.run("run-coach", () => runCoach(event.data.userId)),
+  async ({ event, step }) => step.run("run-coach", () => runCoach(event.data.userId, event.data.goalId)),
 );
 
-/** Once a day, ask the coach to check on every learner with a plan. */
+/** Once a day, ask the coach to check on every active goal with a plan. */
 export const dailyCoachCheck = inngest.createFunction(
   { id: "daily-coach-check", triggers: [{ cron: "TZ=America/Los_Angeles 0 17 * * *" }] },
   async ({ step }) => {
-    const userIds = await step.run("list-learners", () => learnersWithPlans());
-    if (userIds.length > 0) {
-      await step.sendEvent("fan-out", userIds.map((userId) => coachCheck.create({ userId })));
+    const targets = await step.run("list-goals", () => activeGoalPlans());
+    if (targets.length > 0) {
+      await step.sendEvent("fan-out", targets.map((t) => coachCheck.create(t)));
     }
-    return { learners: userIds.length };
+    return { goals: targets.length };
   },
+);
+
+/**
+ * Once a day, purge goals the learner removed more than 30 days ago, with
+ * everything built for them. Their skills stay.
+ */
+export const purgeRemovedGoals = inngest.createFunction(
+  { id: "purge-removed-goals", triggers: [{ cron: "TZ=America/Los_Angeles 0 4 * * *" }] },
+  async ({ step }) => ({ purged: await step.run("purge", () => purgeExpiredGoals()) }),
 );
 
 /**
@@ -213,7 +228,7 @@ export const refreshRequirements = inngest.createFunction(
     // Step results come back JSON-serialized; everything here is plain JSON.
     const result = await refreshTarget(event.data.requirementsId, (name, fn) => step.run(name, fn) as never);
     if ("notify" in result && result.notify.length > 0) {
-      await step.sendEvent("tell-coach", result.notify.map((userId) => coachCheck.create({ userId })));
+      await step.sendEvent("tell-coach", result.notify.map((t) => coachCheck.create(t)));
     }
     return result;
   },
@@ -224,6 +239,7 @@ export const functions = [
   masteryKeeper,
   coach,
   dailyCoachCheck,
+  purgeRemovedGoals,
   huddle,
   weeklyRequirementsRefresh,
   refreshRequirements,
