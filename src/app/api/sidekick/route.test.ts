@@ -10,6 +10,8 @@ const saveSidekickMessages = vi.fn();
 const closeSidekick = vi.fn();
 const summarizeSidekick = vi.fn();
 const resolveModel = vi.fn();
+const goalOfSession = vi.fn();
+const resolveGoal = vi.fn();
 let streamTextOptions: { instructions: string; maxOutputTokens: number } | undefined;
 let uiStreamOptions: { onEnd: (e: { messages: unknown[] }) => Promise<void> } | undefined;
 let dbRow: unknown;
@@ -22,6 +24,9 @@ vi.mock("@/db", () => ({
   getDb: () => ({ select: () => ({ from: () => ({ innerJoin: () => ({ innerJoin: () => ({ where: async () => [dbRow] }) }) }) }) }),
 }));
 vi.mock("drizzle-orm", async (orig) => ({ ...(await orig<typeof import("drizzle-orm")>()), eq: () => ({}) }));
+vi.mock("@/lib/specialists/store", () => ({ goalOfSession: (...a: unknown[]) => goalOfSession(...a) }));
+// The real goalForRequest runs over a mocked goal store.
+vi.mock("@/lib/goals/goal-store", () => ({ resolveGoal: (...a: unknown[]) => resolveGoal(...a) }));
 vi.mock("@/lib/specialists/session-state", () => ({ loadSessionState: (...a: unknown[]) => loadSessionState(...a) }));
 vi.mock("@/lib/specialists/sidekick-store", () => ({
   loadSidekick: (...a: unknown[]) => loadSidekick(...a),
@@ -51,6 +56,7 @@ const { POST } = await import("./route");
 const { POST: CLOSE } = await import("./close/route");
 
 const ID = "3f1c2b8e-4a5d-4c6e-9f7a-1b2c3d4e5f60";
+const GOAL_ID = "8b1c2f7e-3d4a-4e5f-9a6b-7c8d9e0f1a2b";
 const lesson = [
   { role: "assistant", parts: [{ type: "text", text: "Now join leads to campaigns on campaign_id." }] },
   { role: "user", parts: [{ type: "text", text: "ok trying it" }] },
@@ -69,8 +75,10 @@ const ask = (n = 1, over: Record<string, unknown> = {}) =>
 const close = () => new Request("http://t", { method: "POST", body: JSON.stringify({ id: ID }) });
 
 beforeEach(() => {
-  for (const m of [loadSessionState, loadSidekick, saveSidekickMessages, closeSidekick, summarizeSidekick, resolveModel]) m.mockReset();
+  for (const m of [loadSessionState, loadSidekick, saveSidekickMessages, closeSidekick, summarizeSidekick, resolveModel, goalOfSession]) m.mockReset();
+  goalOfSession.mockImplementation(async (_userId: string, sessionId: string) => (sessionId === "s1" ? GOAL_ID : undefined));
   auth.mockResolvedValue({ userId: "user_1" });
+  resolveGoal.mockReset().mockResolvedValue({ id: GOAL_ID, status: "active" });
   loadSessionState.mockResolvedValue({ brief: { brief: sampleBrief }, plan: { plan: samplePlan }, active });
   loadSidekick.mockResolvedValue(undefined);
   resolveModel.mockReturnValue({ primary: { model: { id: "claude-haiku-4-5", provider: "anthropic", tier: "fast" }, keySource: "platform" } });
@@ -83,6 +91,8 @@ beforeEach(() => {
 describe("POST /api/sidekick", () => {
   it("answers on the fast sidekick task, knowing where the lesson is, and saves the chat", async () => {
     expect((await POST(ask())).status).toBe(200);
+    expect(goalOfSession).toHaveBeenCalledWith("user_1", "s1");
+    expect(loadSessionState).toHaveBeenCalledWith("user_1", GOAL_ID);
     expect(resolveModel.mock.calls[0]![0]).toBe("sidekick_answer");
     expect(streamTextOptions!.instructions).toContain("# Sidekick");
     expect(streamTextOptions!.instructions).toContain("Tutor: Now join leads to campaigns on campaign_id.");
@@ -93,10 +103,19 @@ describe("POST /api/sidekick", () => {
 
   it("only works during the learner's active session, and not on a closed sidekick", async () => {
     expect((await POST(ask(1, { sessionId: "other" }))).status).toBe(409);
+    expect(loadSessionState).not.toHaveBeenCalled();
     loadSidekick.mockResolvedValueOnce({ sessionId: "s1", closedAt: new Date() });
     expect((await POST(ask())).status).toBe(409);
     loadSessionState.mockResolvedValueOnce({ ...(await loadSessionState()), active: undefined });
     expect((await POST(ask())).status).toBe(409);
+  });
+
+  it("stops once the session's goal is paused, completed or removed", async () => {
+    resolveGoal.mockResolvedValueOnce({ id: GOAL_ID, status: "paused" });
+    expect((await POST(ask())).status).toBe(409);
+    resolveGoal.mockResolvedValueOnce(undefined);
+    expect((await POST(ask())).status).toBe(404);
+    expect(streamTextOptions).toBeUndefined();
   });
 
   it("stops a side question that's grown past quick", async () => {

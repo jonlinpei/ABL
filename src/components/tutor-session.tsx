@@ -2,6 +2,8 @@
 
 import { Chat, useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import type { PlanProgress } from "@/app/api/learner/status/route";
@@ -10,6 +12,7 @@ import type { StartSessionResponse } from "@/app/api/session/start/route";
 import { REWORK_OPTION, type Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
+import { goalAction } from "./goal-actions";
 import { ProposalView, ReplanForm } from "./replan";
 import { SidekickPanel } from "./sidekick-panel";
 import { TraceChip } from "./trace-chip";
@@ -19,10 +22,12 @@ import { TraceChip } from "./trace-chip";
  * session, see how the last one went, and any homework.
  */
 export function SessionPanel({
+  goalId,
   plan,
   progress,
   onSessionEnd,
 }: {
+  goalId: string;
   plan: Plan;
   progress: PlanProgress;
   onSessionEnd: () => void;
@@ -42,7 +47,11 @@ export function SessionPanel({
     setStarting(true);
     setError(null);
     try {
-      const res = await fetch("/api/session/start", { method: "POST" });
+      const res = await fetch("/api/session/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goalId }),
+      });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
       const info = data as StartSessionResponse;
@@ -78,6 +87,7 @@ export function SessionPanel({
   if (reworking) {
     return (
       <ReplanForm
+        goalId={goalId}
         plan={plan}
         onStarted={() => {
           setReworking(false);
@@ -120,10 +130,7 @@ export function SessionPanel({
     )}
     <section className="rounded-xl border border-foreground/20 p-5">
       {done ? (
-        <>
-          <h2 className="text-lg font-medium">You&apos;ve finished your roadmap</h2>
-          <p className="mt-1 text-foreground/70">Every milestone is complete. That&apos;s real, visible progress.</p>
-        </>
+        <FinishedPath goalId={goalId} />
       ) : (
         <>
           <div className="text-xs uppercase tracking-wide text-foreground/50">
@@ -355,5 +362,47 @@ function SessionChat({
         />
       )}
     </section>
+  );
+}
+
+/** Every milestone done: mark the goal complete, or keep going by changing it. */
+function FinishedPath({ goalId }: { goalId: string }) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function complete() {
+    setSaving(true);
+    setError(null);
+    try {
+      await goalAction(goalId, "complete");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <h2 className="text-lg font-medium">You finished your path</h2>
+      <p className="mt-1 text-foreground/70">
+        Every milestone is complete. That&apos;s real, visible progress. What you learned stays in your skills, and it&apos;ll keep
+        coming up for review in your other goals.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={complete}
+          disabled={saving}
+          className="rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Mark goal complete"}
+        </button>
+        <Link href={`/app/goals/${goalId}/change`} className="text-sm text-foreground/60 underline">
+          Keep going: take this goal further
+        </Link>
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </>
   );
 }

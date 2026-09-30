@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import type { GoalsResponse } from "@/app/api/goals/route";
 import type { LearnerRecord } from "@/app/api/learner/route";
 import type { SkillCorrectionResponse } from "@/app/api/learner/skill/route";
+import type { GoalSummary } from "@/lib/goals/goal-store";
 import type { GoalBrief } from "@/lib/goals/schema";
 import type { Gap } from "@/lib/specialists/schemas";
 
@@ -16,28 +18,59 @@ import { BASIS_LABEL, LEVEL_LABEL, LevelBar } from "./skill-labels";
 type GapItem = Gap["items"][number];
 
 /**
- * "What ABL knows about me": the learner's brief, skills and the evidence
- * behind each level, with ways to correct them or delete it all.
+ * "What ABL knows about me": for each of the learner's goals, its brief,
+ * skills and the evidence behind each level, with ways to correct them or
+ * delete it all. Skills are shared across goals, so a correction on one goal
+ * carries to the others.
  */
-export function AboutMe() {
-  const [record, setRecord] = useState<LearnerRecord | null | "none">(null);
+export function AboutMe({ initialGoalId }: { initialGoalId: string | null }) {
+  const router = useRouter();
+  const [goals, setGoals] = useState<GoalSummary[] | null>(null);
+  const [goalId, setGoalId] = useState<string | null>(initialGoalId);
+  // Keyed by goal, so switching goals shows "Loading…" rather than the last goal's record.
+  const [loaded, setLoaded] = useState<{ goalId: string; record: LearnerRecord | "none" } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The learner's goals, and which one to show: the one asked for, or the one they opened last.
   useEffect(() => {
     let cancelled = false;
-    fetchRecord().then(
-      (r) => !cancelled && setRecord(r),
+    fetchGoals().then(
+      (all) => {
+        if (cancelled) return;
+        const visible = all.filter((g) => g.status !== "removed");
+        setGoals(visible);
+        setGoalId((id) => (id && visible.some((g) => g.id === id) ? id : (visible.find((g) => g.status === "active") ?? visible[0])?.id ?? null));
+      },
       (err) => !cancelled && setError(err instanceof Error ? err.message : String(err)),
     );
     return () => {
       cancelled = true;
     };
   }, []);
-  const load = useCallback(async () => setRecord(await fetchRecord()), []);
+
+  useEffect(() => {
+    if (!goalId) return;
+    let cancelled = false;
+    fetchRecord(goalId).then(
+      (record) => !cancelled && setLoaded({ goalId, record }),
+      (err) => !cancelled && setError(err instanceof Error ? err.message : String(err)),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [goalId]);
+  const load = useCallback(async () => {
+    if (goalId) setLoaded({ goalId, record: await fetchRecord(goalId) });
+  }, [goalId]);
+  const record = loaded && loaded.goalId === goalId ? loaded.record : null;
+
+  function choose(id: string) {
+    setGoalId(id);
+    router.replace(`/app/about-me?goal=${id}`, { scroll: false });
+  }
 
   if (error) return <Page><ErrorBox message={error} /></Page>;
-  if (record === null) return <Page><p className="text-sm text-foreground/60">Loading…</p></Page>;
-  if (record === "none") {
+  if (record === "none" || goals?.length === 0) {
     return (
       <Page>
         <p className="text-foreground/70">
@@ -46,37 +79,102 @@ export function AboutMe() {
       </Page>
     );
   }
+  const goal = goals?.find((g) => g.id === goalId);
+  const completed = goals?.filter((g) => g.status === "completed") ?? [];
   return (
     <Page>
       <p className="text-sm text-foreground/70">
         This is everything ABL uses to teach and coach you. Fix anything that&apos;s wrong: your tutor and coach use the changes
         from your next session.
       </p>
-      <section>
-        <h2 className="text-lg font-medium">Your goal</h2>
-        <BriefCard brief={record.brief} />
-        <p className="mt-2 text-sm text-foreground/60">
-          To change where you&apos;re going or where you&apos;re starting from, choose <span className="font-medium">Set a new goal</span> on{" "}
-          <Link href="/app" className="underline">your home page</Link>. You&apos;ll get a new plan built for it.
-        </p>
-      </section>
-      <YourWeek record={record} />
-      <AboutYou brief={record.brief} onSaved={load} />
-      {record.gap && <YourSkills record={record} gap={record.gap} onSaved={load} />}
+      {goals && goals.length > 1 && <GoalPicker goals={goals} selected={goalId} onChoose={choose} />}
+      {record === null || !goal ? (
+        <p className="text-sm text-foreground/60">Loading…</p>
+      ) : (
+        <>
+          <section>
+            <h2 className="text-lg font-medium">{goals && goals.length > 1 ? "This goal" : "Your goal"}</h2>
+            <BriefCard brief={record.brief} />
+            <p className="mt-2 text-sm text-foreground/60">
+              To change where you&apos;re going or where you&apos;re starting from, choose{" "}
+              <span className="font-medium">Change this goal</span> on{" "}
+              <Link href={`/app/goals/${record.goalId}`} className="underline">its page</Link>. You&apos;ll get a new plan built for it,
+              and your skills carry over.
+            </p>
+          </section>
+          <YourWeek record={record} canRework={goal.status === "active"} />
+          <AboutYou goalId={record.goalId} brief={record.brief} onSaved={load} />
+          {record.gap && <YourSkills record={record} gap={record.gap} canRework={goal.status === "active"} onSaved={load} />}
+        </>
+      )}
+      {completed.length > 0 && <CompletedGoals goals={completed} />}
       <DeleteData />
     </Page>
   );
 }
 
-async function fetchRecord(): Promise<LearnerRecord | "none"> {
-  const res = await fetch("/api/learner");
+async function fetchGoals(): Promise<GoalSummary[]> {
+  const res = await fetch("/api/goals");
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+  return (data as GoalsResponse).goals;
+}
+
+async function fetchRecord(goalId: string): Promise<LearnerRecord | "none"> {
+  const res = await fetch(`/api/learner?goalId=${encodeURIComponent(goalId)}`);
   if (res.status === 404) return "none";
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
   return data as LearnerRecord;
 }
 
-function YourWeek({ record }: { record: LearnerRecord }) {
+const STATUS_TAG: Record<string, string> = { paused: "paused", completed: "completed" };
+
+/** Which goal the page is about. Skills are shared, but each goal has its own brief, week and target levels. */
+function GoalPicker({ goals, selected, onChoose }: { goals: GoalSummary[]; selected: string | null; onChoose: (id: string) => void }) {
+  return (
+    <div role="tablist" aria-label="Your goals" className="flex flex-wrap gap-2">
+      {goals.map((g) => (
+        <button
+          key={g.id}
+          role="tab"
+          aria-selected={g.id === selected}
+          onClick={() => onChoose(g.id)}
+          className={`rounded-full border px-3 py-1.5 text-sm ${
+            g.id === selected ? "border-foreground bg-foreground text-background" : "border-foreground/15 hover:border-foreground/40"
+          }`}
+        >
+          {g.title}
+          {STATUS_TAG[g.status] && <span className="ml-1.5 opacity-60">· {STATUS_TAG[g.status]}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CompletedGoals({ goals }: { goals: GoalSummary[] }) {
+  return (
+    <Card title="Completed goals">
+      <p className="text-sm text-foreground/60">What you learned for these stays in your skills and keeps coming up for review.</p>
+      <ul className="mt-2 flex flex-col divide-y divide-foreground/10">
+        {goals.map((g) => (
+          <li key={g.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm">
+            <Link href={`/app/goals/${g.id}`} className="font-medium hover:underline">
+              {g.title}
+            </Link>
+            {g.completedAt && (
+              <span className="text-foreground/60">
+                Completed {new Date(g.completedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function YourWeek({ record, canRework }: { record: LearnerRecord; canRework: boolean }) {
   const [editing, setEditing] = useState(false);
   const [started, setStarted] = useState(false);
   const week = record.week ?? { weeklyHours: record.brief.weeklyHours, sessionMinutes: record.brief.sessionMinutes };
@@ -88,20 +186,23 @@ function YourWeek({ record }: { record: LearnerRecord }) {
       </p>
       {started ? (
         <p className="mt-2 text-sm text-foreground/70">
-          Reworking your plan. You&apos;ll see the proposal on <Link href="/app" className="underline">your home page</Link> in a minute or two.
+          Reworking your plan. You&apos;ll see the proposal on{" "}
+          <Link href={`/app/goals/${record.goalId}`} className="underline">this goal&apos;s page</Link> in a minute or two.
         </p>
+      ) : !canRework ? (
+        <p className="mt-2 text-sm text-foreground/60">Resume this goal to change your week for it.</p>
       ) : !record.hasPlan ? (
         <p className="mt-2 text-sm text-foreground/60">Your plan will be built around this. You can change it once it&apos;s ready.</p>
       ) : editing ? (
         <div className="mt-3">
-          <ReplanForm plan={week} onStarted={() => setStarted(true)} onCancel={() => setEditing(false)} />
+          <ReplanForm goalId={record.goalId} plan={week} onStarted={() => setStarted(true)} onCancel={() => setEditing(false)} />
         </div>
       ) : (
         <button onClick={() => setEditing(true)} className="mt-2 text-sm underline">
           Change my hours, sessions or deadline
         </button>
       )}
-      {record.hasPlan && !editing && !started && (
+      {canRework && record.hasPlan && !editing && !started && (
         <p className="mt-1 text-xs text-foreground/50">Changing these reworks your plan, and you&apos;ll see the changes before anything switches.</p>
       )}
     </Card>
@@ -146,7 +247,7 @@ function changedDetails(brief: GoalBrief, draft: DetailsDraft): Record<string, u
   return out;
 }
 
-function AboutYou({ brief, onSaved }: { brief: GoalBrief; onSaved: () => Promise<void> }) {
+function AboutYou({ goalId, brief, onSaved }: { goalId: string; brief: GoalBrief; onSaved: () => Promise<void> }) {
   const [draft, setDraft] = useState(() => draftOf(brief));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -162,7 +263,7 @@ function AboutYou({ brief, onSaved }: { brief: GoalBrief; onSaved: () => Promise
       const res = await fetch("/api/learner/brief", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details: changes }),
+        body: JSON.stringify({ details: changes, goalId }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
@@ -247,7 +348,17 @@ function evidenceFor(item: GapItem, record: LearnerRecord): string | null {
   return record.profile?.skills.find((s) => s.skillId === item.skillId)?.evidence ?? null;
 }
 
-function YourSkills({ record, gap, onSaved }: { record: LearnerRecord; gap: Gap; onSaved: () => Promise<void> }) {
+function YourSkills({
+  record,
+  gap,
+  canRework,
+  onSaved,
+}: {
+  record: LearnerRecord;
+  gap: Gap;
+  canRework: boolean;
+  onSaved: () => Promise<void>;
+}) {
   const [editing, setEditing] = useState<string | null>(null);
   const [rework, setRework] = useState<{ name: string; from: number; to: number } | null>(null);
   const [reworkStarted, setReworkStarted] = useState(false);
@@ -265,6 +376,7 @@ function YourSkills({ record, gap, onSaved }: { record: LearnerRecord; gap: Gap;
           </p>
           <div className="mt-3">
             <ReplanForm
+              goalId={record.goalId}
               plan={week}
               initialNote={`I corrected my ${rework.name} level from ${LEVEL_LABEL[rework.from]} to ${LEVEL_LABEL[rework.to]}.`}
               onStarted={() => setReworkStarted(true)}
@@ -275,7 +387,8 @@ function YourSkills({ record, gap, onSaved }: { record: LearnerRecord; gap: Gap;
       )}
       {reworkStarted && (
         <p className="mt-3 text-sm text-foreground/70">
-          Reworking your plan. You&apos;ll see the proposal on <Link href="/app" className="underline">your home page</Link>.
+          Reworking your plan. You&apos;ll see the proposal on{" "}
+          <Link href={`/app/goals/${record.goalId}`} className="underline">this goal&apos;s page</Link>.
         </p>
       )}
       <ul className="mt-4 flex flex-col divide-y divide-foreground/10">
@@ -303,11 +416,12 @@ function YourSkills({ record, gap, onSaved }: { record: LearnerRecord; gap: Gap;
             )}
             {editing === item.skillId ? (
               <CorrectSkill
+                goalId={record.goalId}
                 item={item}
                 onCancel={() => setEditing(null)}
                 onSaved={async (to, planAffected) => {
                   setEditing(null);
-                  if (planAffected) setRework({ name: item.name, from: item.current, to });
+                  if (planAffected && canRework) setRework({ name: item.name, from: item.current, to });
                   await onSaved();
                 }}
               />
@@ -324,10 +438,12 @@ function YourSkills({ record, gap, onSaved }: { record: LearnerRecord; gap: Gap;
 }
 
 function CorrectSkill({
+  goalId,
   item,
   onCancel,
   onSaved,
 }: {
+  goalId: string;
   item: GapItem;
   onCancel: () => void;
   onSaved: (level: number, planAffected: boolean) => Promise<void>;
@@ -344,7 +460,7 @@ function CorrectSkill({
       const res = await fetch("/api/learner/skill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skillId: item.skillId, level, note: note.trim() || null }),
+        body: JSON.stringify({ skillId: item.skillId, level, note: note.trim() || null, goalId }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);

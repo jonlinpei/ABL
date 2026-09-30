@@ -28,19 +28,19 @@ beforeEach(() => {
 });
 
 describe("rebaseLearnerGaps", () => {
-  it("rebases every learner's gap, and tells only those with a plan whose must-haves changed", async () => {
+  it("rebases every live goal's gap, and tells only goals with a plan whose must-haves changed", async () => {
     const easy = computeGap({ ...harder }, { ...sampleProfile, skills: sampleProfile.skills.map((s) => ({ ...s, level: 4 })) });
     loadGapsOnRequirements.mockResolvedValue([
-      { gapId: "g1", userId: "planned", briefId: "b1", gap, hasActivePlan: true },
-      { gapId: "g2", userId: "onboarding", briefId: "b2", gap, hasActivePlan: false },
-      { gapId: "g3", userId: "all-met", briefId: "b3", gap: easy, hasActivePlan: true },
+      { gapId: "g1", userId: "planned", briefId: "b1", goalId: "goal1", gap, hasActivePlan: true },
+      { gapId: "g2", userId: "onboarding", briefId: "b2", goalId: "goal2", gap, hasActivePlan: false },
+      { gapId: "g3", userId: "all-met", briefId: "b3", goalId: "goal3", gap: easy, hasActivePlan: true },
     ]);
-    expect(await rebaseLearnerGaps("r1")).toEqual(["planned"]);
+    expect(await rebaseLearnerGaps("r1")).toEqual([{ userId: "planned", goalId: "goal1" }]);
     expect(saveRebasedGap).toHaveBeenCalledTimes(3);
     const [gapId, userId, rebased, change] = saveRebasedGap.mock.calls[0]!;
     expect([gapId, userId]).toEqual(["g1", "planned"]);
     expect(rebased.items.find((i: { skillId: string }) => i.skillId === "dashboards")).toMatchObject({ importance: "must", status: "partial" });
-    expect(change).toEqual({ requirementsId: "r1", added: [{ skillId: "dashboards", name: "Dashboards" }], dropped: [] });
+    expect(change).toEqual({ requirementsId: "r1", goalId: "goal1", added: [{ skillId: "dashboards", name: "Dashboards" }], dropped: [] });
     expect(saveRebasedGap.mock.calls[1]![3]).toBeNull();
     expect(saveRebasedGap.mock.calls[2]![3]).toBeNull();
   });

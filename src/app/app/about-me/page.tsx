@@ -1,5 +1,6 @@
 import { AboutMe } from "@/components/about-me";
 
-export default function AboutMePage() {
-  return <AboutMe />;
+export default async function AboutMePage({ searchParams }: PageProps<"/app/about-me">) {
+  const { goal } = await searchParams;
+  return <AboutMe initialGoalId={typeof goal === "string" ? goal : null} />;
 }

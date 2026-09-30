@@ -43,7 +43,10 @@ Postgres is the one store for user data, plans, the mastery graph and later embe
 The schema holds the start of the learner record (see [Agent architecture](#agent-architecture)):
 
 - `users`, keyed by the Clerk user id.
-- `career_briefs`: every brief the learner confirmed, versioned per learner.
+- `goals`: what the learner is working toward. A learner can have several at once and switch between them, like courses on Duolingo.
+  - `status` is `active`, `paused`, `completed` or `removed`. Only active goals get sessions, replans and coach check-ins.
+  - A removed goal can be restored for 30 days. After that a daily job deletes it, with its briefs, plans and sessions. Skills are never deleted with a goal.
+- `career_briefs`: every brief the learner confirmed for a goal, versioned per goal. "Change this goal" adds a version; "New goal" starts a new goal.
 - `learner_events`: an append-only event log (`brief_confirmed`, `gap_ready`, `assessment_done`, `plan_published`, `session_completed`, `mastery_updated`, `coach_noted`, `replan_suggested`, `replan_requested`, `plan_proposed`, `plan_accepted`, `plan_declined`).
 - `target_requirements`: the requirements analyst's cache, one row per target key (role, market and industry, normalized). It's shared by every learner with that target.
 - `learner_profiles` and `gaps`: the profiler's estimate and the resulting gap, one each per brief version. `gaps.assessed_at` is set once the skills check has replaced estimates with checked levels.
@@ -57,6 +60,7 @@ The schema holds the start of the learner record (see [Agent architecture](#agen
   - A partial unique index allows only one active session per plan. `mastery_applied_at` marks sessions whose evidence has been applied.
 - `coach_notes`: what the Coach decided. Each row holds the signals it saw, the check-in and its options, any Tutor note and a replan flag, plus the learner's answer or dismissal.
 - `skill_mastery`: what the learner knows, per skill and across goals. Each row holds the level, recent evidence and an FSRS review card, and `due` is indexed for "due for review" queries.
+  - Skills are shared across goals by skill id. Session evidence and the learner's corrections update the gap of every active or paused goal with that skill, and a new goal's gap starts from the learner's existing mastery.
 
 Tables for plans and mastery arrive with the specialists that write them.
 

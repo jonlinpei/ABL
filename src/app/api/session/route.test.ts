@@ -10,6 +10,8 @@ const endSession = vi.fn();
 const saveSessionMessages = vi.fn();
 const startSession = vi.fn();
 const send = vi.fn();
+const goalOfSession = vi.fn();
+const resolveGoal = vi.fn();
 type Tool = { execute: (input: unknown) => Promise<unknown> };
 type ModelMessage = { role: string; content: unknown; providerOptions?: unknown };
 let streamTextOptions: { instructions: string; messages: ModelMessage[]; tools: Record<string, Tool> } | undefined;
@@ -23,7 +25,10 @@ vi.mock("@/lib/specialists/store", () => ({
   endSession: (...a: unknown[]) => endSession(...a),
   saveSessionMessages: (...a: unknown[]) => saveSessionMessages(...a),
   startSession: (...a: unknown[]) => startSession(...a),
+  goalOfSession: (...a: unknown[]) => goalOfSession(...a),
 }));
+// The real goalForRequest runs over a mocked goal store.
+vi.mock("@/lib/goals/goal-store", () => ({ resolveGoal: (...a: unknown[]) => resolveGoal(...a) }));
 const loadGlossary = vi.fn();
 vi.mock("@/lib/specialists/glossary-store", () => ({ loadGlossary: (...a: unknown[]) => loadGlossary(...a) }));
 const loadSessionSidekicks = vi.fn();
@@ -51,6 +56,10 @@ vi.mock("ai", async (importOriginal) => ({
 const { POST } = await import("./route");
 const { POST: START } = await import("./start/route");
 
+const GOAL_ID = "8b1c2f7e-3d4a-4e5f-9a6b-7c8d9e0f1a2b";
+const OTHER_ID = "1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b";
+const start = (body: Record<string, unknown> = {}) =>
+  START(new Request("http://test/api/session/start", { method: "POST", body: JSON.stringify(body) }));
 const gap = computeGap(sampleRequirements, sampleProfile);
 const active = { id: "s1", milestoneIndex: 0, startedAt: new Date(Date.now() - 12 * 60_000), messages: [] };
 const state = (over: Record<string, unknown> = {}) => ({
@@ -87,6 +96,8 @@ beforeEach(() => {
   saveSessionMessages.mockReset().mockResolvedValue(undefined);
   startSession.mockReset().mockResolvedValue({ ...active, id: "s2" });
   send.mockReset().mockResolvedValue({ ids: ["e1"] });
+  goalOfSession.mockReset().mockImplementation(async (_userId: string, sessionId: string) => (sessionId === "s1" ? GOAL_ID : undefined));
+  resolveGoal.mockReset().mockResolvedValue({ id: GOAL_ID, status: "active" });
   streamTextOptions = undefined;
   uiStreamOptions = undefined;
 });
@@ -94,6 +105,8 @@ beforeEach(() => {
 describe("POST /api/session", () => {
   it("teaches the current milestone with a cache-friendly prompt and the clock on the newest message", async () => {
     expect((await POST(turn())).status).toBe(200);
+    expect(goalOfSession).toHaveBeenCalledWith("user_1", "s1");
+    expect(loadSessionState).toHaveBeenCalledWith("user_1", GOAL_ID);
     expect(streamTextOptions!.instructions).toContain("# Tutor");
     expect(streamTextOptions!.instructions).not.toContain("Session clock");
     const last = streamTextOptions!.messages.at(-1)!;
@@ -128,9 +141,18 @@ describe("POST /api/session", () => {
 
   it("refuses a turn for a session that isn't the learner's active one", async () => {
     expect((await POST(turn("someone-elses"))).status).toBe(409);
+    expect(loadSessionState).not.toHaveBeenCalled();
     loadSessionState.mockResolvedValueOnce(state({ active: undefined }));
     expect((await POST(turn())).status).toBe(409);
     expect(streamTextOptions).toBeUndefined();
+  });
+
+  it("stops taking turns once the session's goal is paused, completed or removed", async () => {
+    resolveGoal.mockResolvedValueOnce({ id: GOAL_ID, status: "completed" });
+    expect((await POST(turn())).status).toBe(409);
+    resolveGoal.mockResolvedValueOnce(undefined);
+    expect((await POST(turn())).status).toBe(404);
+    expect(loadSessionState).not.toHaveBeenCalled();
   });
 
   it("saves the transcript after each turn, and the report when the tutor ends the session", async () => {
@@ -143,7 +165,7 @@ describe("POST /api/session", () => {
     expect(out).toEqual({ status: "ended", milestoneComplete: false });
     expect(send.mock.calls[0]![0]).toMatchObject({
       name: "learner/session.completed",
-      data: { userId: "user_1", sessionId: "s1" },
+      data: { userId: "user_1", sessionId: "s1", goalId: GOAL_ID },
     });
   });
 
@@ -158,23 +180,57 @@ describe("POST /api/session", () => {
 describe("POST /api/session/start", () => {
   it("resumes the active session with its transcript", async () => {
     loadSessionState.mockResolvedValueOnce(state({ active: { ...active, messages: [{ id: "m1" }] } }));
-    const res = await (await START()).json();
+    const res = await (await start()).json();
     expect(res).toMatchObject({ id: "s1", sessionNumber: 1, messages: [{ id: "m1" }] });
     expect(startSession).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the current goal when no goalId is given", async () => {
+    await start();
+    expect(resolveGoal).toHaveBeenCalledWith("user_1", null);
+    expect(loadSessionState).toHaveBeenCalledWith("user_1", GOAL_ID);
+  });
+
+  it("starts on the goal it names", async () => {
+    resolveGoal.mockResolvedValueOnce({ id: OTHER_ID, status: "active" });
+    expect((await start({ goalId: OTHER_ID })).status).toBe(200);
+    expect(resolveGoal).toHaveBeenCalledWith("user_1", OTHER_ID);
+    expect(loadSessionState).toHaveBeenCalledWith("user_1", OTHER_ID);
+  });
+
+  it("is 404 for a goal that isn't the learner's, or a malformed id", async () => {
+    resolveGoal.mockResolvedValueOnce(undefined);
+    expect((await start({ goalId: OTHER_ID })).status).toBe(404);
+    expect((await start({ goalId: "not-a-uuid" })).status).toBe(404);
+    expect(loadSessionState).not.toHaveBeenCalled();
+    expect(startSession).not.toHaveBeenCalled();
+  });
+
+  it("is 409 for a paused or completed goal", async () => {
+    resolveGoal.mockResolvedValueOnce({ id: GOAL_ID, status: "paused" });
+    expect((await start({ goalId: GOAL_ID })).status).toBe(409);
+    resolveGoal.mockResolvedValueOnce({ id: GOAL_ID, status: "completed" });
+    expect((await start({ goalId: GOAL_ID })).status).toBe(409);
+    expect(loadSessionState).not.toHaveBeenCalled();
+  });
+
+  it("is 409 when the learner has no goal at all", async () => {
+    resolveGoal.mockResolvedValueOnce(undefined);
+    expect((await start()).status).toBe(409);
   });
 
   it("starts a session on the current milestone when none is active", async () => {
     loadSessionState.mockResolvedValueOnce(state({ active: undefined, milestoneIndex: 1 }));
     startSession.mockResolvedValueOnce({ ...active, id: "s2", milestoneIndex: 1 });
-    const res = await (await START()).json();
+    const res = await (await start()).json();
     expect(startSession).toHaveBeenCalledWith("user_1", "p1", 1);
     expect(res).toMatchObject({ id: "s2", milestoneTitle: samplePlan.milestones[1]!.title });
   });
 
   it("refuses when there's no plan yet or every milestone is done", async () => {
     loadSessionState.mockResolvedValueOnce(undefined);
-    expect((await START()).status).toBe(409);
+    expect((await start()).status).toBe(409);
     loadSessionState.mockResolvedValueOnce(state({ active: undefined, milestoneIndex: samplePlan.milestones.length }));
-    expect((await START()).status).toBe(409);
+    expect((await start()).status).toBe(409);
   });
 });

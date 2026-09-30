@@ -6,11 +6,13 @@ import type { Plan, Replan, ReplanRequest } from "@/lib/specialists/schemas";
 
 /** "Life changed? Rework my plan": new hours, session length, deadline, and what changed. */
 export function ReplanForm({
+  goalId,
   plan,
   onStarted,
   onCancel,
   initialNote = "",
 }: {
+  goalId: string;
   plan: Pick<Plan, "weeklyHours" | "sessionMinutes">;
   onStarted: () => void;
   onCancel: () => void;
@@ -40,7 +42,7 @@ export function ReplanForm({
       const res = await fetch("/api/replan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request }),
+        body: JSON.stringify({ request, goalId }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);

@@ -11,6 +11,8 @@ import { learnerTurns, MAX_SIDEKICK_TURNS, sidekickContext } from "@/lib/special
 import { SIDEKICK_SKILL } from "@/lib/specialists/sidekick.generated";
 import { loadSidekick, saveSidekickMessages } from "@/lib/specialists/sidekick-store";
 import { loadSessionState } from "@/lib/specialists/session-state";
+import { goalOfSession } from "@/lib/specialists/store";
+import { goalForRequest } from "@/lib/goals/request-goal";
 
 export const maxDuration = 30;
 
@@ -28,7 +30,12 @@ export async function POST(req: Request) {
   const { id, sessionId } = parsed.data;
   const messages = parsed.data.messages as SidekickMessage[];
 
-  const state = await loadSessionState(userId);
+  const goalId = await goalOfSession(userId, sessionId);
+  if (goalId) {
+    const resolved = await goalForRequest(userId, goalId, { learning: true });
+    if ("error" in resolved) return resolved.error;
+  }
+  const state = goalId ? await loadSessionState(userId, goalId) : undefined;
   const session = state?.active;
   if (!state || !session || session.id !== sessionId) {
     return Response.json({ error: "Side questions work during an active session." }, { status: 409 });

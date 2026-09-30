@@ -3,23 +3,24 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import type { GoalBrief } from "@/lib/goals/schema";
 
-import type { EditableBriefField } from "./corrections";
+import { correctGap, type EditableBriefField } from "./corrections";
 import type { MasteryRecord } from "./mastery";
+import { loadLiveGaps } from "./mastery-store";
 import type { Gap } from "./schemas";
 
 const { assessments, careerBriefs, gaps, learnerEvents, learnerProfiles, plans, skillMastery, users } = schema;
 
 /**
- * What ABL holds about a learner, for them to see: their newest brief, the
- * profile and gap built from it, and their skills check. Undefined before
- * any brief.
+ * What ABL holds about a learner for one goal, for them to see: the goal's
+ * newest brief, the profile and gap built from it, and their skills check.
+ * Undefined before the goal has a brief.
  */
-export async function loadLearnerRecord(userId: string) {
+export async function loadLearnerRecord(userId: string, goalId: string) {
   const db = getDb();
   const [brief] = await db
     .select()
     .from(careerBriefs)
-    .where(eq(careerBriefs.userId, userId))
+    .where(and(eq(careerBriefs.goalId, goalId), eq(careerBriefs.userId, userId)))
     .orderBy(desc(careerBriefs.version))
     .limit(1);
   if (!brief) return undefined;
@@ -45,6 +46,7 @@ export async function loadLearnerRecord(userId: string) {
     if (p.briefId === brief.id) corrections.set(p.skillId, p.note);
   }
   return {
+    goalId,
     briefId: brief.id,
     brief: brief.brief,
     profile: profile?.profile ?? null,
@@ -67,7 +69,11 @@ export async function saveBriefDetails(userId: string, briefId: string, brief: G
   ]);
 }
 
-/** Save a learner's correction to a skill level: the gap, their mastery record if they have one, and the event. */
+/**
+ * Save a learner's correction to a skill level: this goal's gap, the gap of
+ * every other live goal with the skill (their skills are shared), their
+ * mastery record if they have one, and the event.
+ */
 export async function saveSkillCorrection(
   userId: string,
   briefId: string,
@@ -77,17 +83,20 @@ export async function saveSkillCorrection(
 ) {
   const db = getDb();
   const saveGap = db.update(gaps).set({ gap }).where(and(eq(gaps.briefId, briefId), eq(gaps.userId, userId)));
+  const others = (await loadLiveGaps(userId)).flatMap((g) => {
+    const corrected = g.briefId !== briefId && correctGap(g.gap, change.skillId, change.to);
+    return corrected ? [db.update(gaps).set({ gap: corrected }).where(eq(gaps.id, g.id))] : [];
+  });
   const logIt = db.insert(learnerEvents).values({ userId, type: "skill_corrected", payload: { briefId, ...change } });
-  await (mastery
-    ? db.batch([
-        saveGap,
-        logIt,
+  const saveMastery = mastery
+    ? [
         db
           .update(skillMastery)
           .set({ level: mastery.level, evidence: mastery.evidence, updatedAt: new Date() })
           .where(and(eq(skillMastery.userId, userId), eq(skillMastery.skillId, mastery.skillId))),
-      ])
-    : db.batch([saveGap, logIt]));
+      ]
+    : [];
+  await db.batch([saveGap, logIt, ...others, ...saveMastery]);
 }
 
 /** Delete everything ABL holds about a learner: every learner table cascades from their user row. */

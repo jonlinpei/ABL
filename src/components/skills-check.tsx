@@ -14,11 +14,12 @@ import { TraceChip } from "./trace-chip";
 import { SessionPanel } from "./tutor-session";
 
 /**
- * What happens after discovery (docs/architecture.md, "Agent architecture"):
- * wait for the skills picture, run the short skills check, then show the gap
- * the roadmap will close.
+ * What happens after discovery on a goal (docs/architecture.md, "Agent
+ * architecture"): wait for the skills picture, run the short skills check,
+ * then show the gap the roadmap will close. A paused or completed goal shows
+ * its path without sessions (`readOnly`).
  */
-export function SkillsCheck() {
+export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; readOnly?: boolean }) {
   const [status, setStatus] = useState<LearnerStatus | { stage: "error"; error: string } | null>(null);
   const [started, setStarted] = useState(false);
   // Bumped to restart polling, e.g. once the skills check is saved.
@@ -26,12 +27,12 @@ export function SkillsCheck() {
   // Stable, so the chat's "submitted" effect fires it once, not on every render.
   const restartPolling = useCallback(() => setPollKey((k) => k + 1), []);
   const chat = useChat<AssessMessage>({
-    transport: new DefaultChatTransport({ api: "/api/assess" }),
+    transport: new DefaultChatTransport({ api: "/api/assess", body: { goalId } }),
   });
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch("/api/learner/status");
+      const res = await fetch(`/api/learner/status?goalId=${encodeURIComponent(goalId)}`);
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
       setStatus(data as LearnerStatus);
@@ -40,7 +41,7 @@ export function SkillsCheck() {
       setStatus({ stage: "error", error: err instanceof Error ? err.message : String(err) });
       return null;
     }
-  }, []);
+  }, [goalId]);
 
   // Poll while the lifecycle builds requirements, profile and gap.
   useEffect(() => {
@@ -98,7 +99,7 @@ export function SkillsCheck() {
   if (status.stage === "plan_ready") {
     return (
       <>
-        <SessionPanel plan={status.plan} progress={status.progress} onSessionEnd={restartPolling} />
+        {!readOnly && <SessionPanel goalId={goalId} plan={status.plan} progress={status.progress} onSessionEnd={restartPolling} />}
         <PlanView plan={status.plan} gap={status.gap} />
         <details className="rounded-xl border border-foreground/15">
           <summary className="cursor-pointer p-4 text-sm text-foreground/70">Where you stand, skill by skill</summary>
@@ -110,6 +111,13 @@ export function SkillsCheck() {
     );
   }
 
+  if (readOnly) {
+    return (
+      <Panel>
+        <p className="text-foreground/70">Resume this goal to take the skills check and get your roadmap.</p>
+      </Panel>
+    );
+  }
   if (!started) {
     return (
       <Panel>
