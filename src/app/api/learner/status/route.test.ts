@@ -22,7 +22,8 @@ vi.mock("@/lib/specialists/store", () => ({
   countEndedSessions: async () => 0,
 }));
 vi.mock("@/lib/specialists/coach-store", () => ({ openCheckIn: async () => undefined }));
-vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => undefined }));
+let openHuddleRow: unknown;
+vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => openHuddleRow }));
 
 const { GET } = await import("./route");
 const gap = computeGap(sampleRequirements, sampleProfile);
@@ -46,6 +47,7 @@ const get = (goalId?: string) =>
 beforeEach(() => {
   auth.mockReset().mockResolvedValue({ userId: "user_1" });
   loadGoalState.mockReset();
+  openHuddleRow = undefined;
   currentGoal.mockReset().mockResolvedValue(goal());
   resolveGoal.mockReset();
 });
@@ -77,9 +79,32 @@ describe("GET /api/learner/status", () => {
     expect(await (await get()).json()).toMatchObject({
       stage: "plan_ready",
       plan: { title: samplePlan.title },
-      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null },
+      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null, update: null },
     });
     expect(loadGoalState).toHaveBeenCalledWith("user_1", GOAL_ID);
+  });
+
+  it("keeps the current plan while an updated goal is prepared, then shows its proposal", async () => {
+    const current = { brief: {}, gap: { gap, assessedAt: "2026-09-28" }, plan: { id: "plan_1", plan: samplePlan } };
+    const progress = async () => (await (await get()).json()).progress;
+
+    loadGoalState.mockResolvedValueOnce({ ...current, pending: { brief: {}, gap: undefined } });
+    expect(await progress()).toMatchObject({ update: { status: "building" }, replan: null });
+
+    loadGoalState.mockResolvedValueOnce({ ...current, pending: { brief: {}, gap: { gap, assessedAt: null } } });
+    expect((await progress()).update).toEqual({ status: "check", skills: [{ skillId: "dashboards", name: "Dashboards" }] });
+
+    loadGoalState.mockResolvedValueOnce({ ...current, pending: { brief: {}, gap: { gap, assessedAt: "2026-09-29" } } });
+    expect((await progress()).update).toEqual({ status: "building" });
+
+    // Once there's a proposal it's the replan, marked as an update.
+    openHuddleRow = { huddle: { id: "h1", status: "proposed", toBriefId: "b2" }, proposed: { plan: samplePlan } };
+    loadGoalState.mockResolvedValueOnce({ ...current, pending: { brief: {}, gap: { gap, assessedAt: "2026-09-29" } } });
+    expect(await progress()).toMatchObject({ update: null, replan: { huddleId: "h1", kind: "update", status: "proposed" } });
+
+    openHuddleRow = { huddle: { id: "h2", status: "running", toBriefId: null } };
+    loadGoalState.mockResolvedValueOnce(current);
+    expect((await progress()).replan).toEqual({ huddleId: "h2", kind: "rework", status: "running" });
   });
 
   it("falls back to the current goal when no goalId is given", async () => {

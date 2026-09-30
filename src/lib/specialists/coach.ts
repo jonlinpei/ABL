@@ -4,9 +4,9 @@ import { generateStructured } from "@/lib/ai/structured";
 import type { GoalBrief } from "@/lib/goals/schema";
 
 import { COACH_SKILL } from "./coach.generated";
-import { REWORK_OPTION, type Plan, type SessionReport } from "./schemas";
+import { REVISIT_OPTION, REWORK_OPTION, type Plan, type SessionReport } from "./schemas";
 
-export { REWORK_OPTION };
+export { REVISIT_OPTION, REWORK_OPTION };
 import type { Signal } from "./signals";
 
 const DAY = 86_400_000;
@@ -15,6 +15,9 @@ export const CoachDecisionSchema = z.object({
   message: z.string().nullable().describe("A short check-in to the learner, or null if one wouldn't help now."),
   options: z.array(z.string()).describe("2 or 3 next steps they can tap, written from their side. Empty when there's no message."),
   tutorNote: z.string().nullable().describe("What the tutor should try differently next session, or null."),
+  suggestGoalRevisit: z
+    .boolean()
+    .describe("True only when the goal itself may no longer fit them, not just the plan: reworks that haven't stuck, or signs their direction has changed."),
   suggestReplan: z
     .boolean()
     .describe("True only when the plan no longer fits: the deadline will clearly be missed, a long lapse, or employers now require something the plan doesn't cover."),
@@ -110,8 +113,10 @@ export async function decide(context: string, allowCheckIn: boolean, userId: str
 export function enforce(decision: CoachDecision, allowCheckIn: boolean): CoachDecision {
   const message = allowCheckIn ? decision.message : null;
   if (!message) return { ...decision, message, options: [] };
-  // When the coach suggests a replan, the learner gets the one-tap way to start it.
-  const others = decision.options.filter((o) => !/rework|replan|rebuild.*plan|adjust.*plan/i.test(o));
-  const options = decision.suggestReplan ? [...others.slice(0, 2), REWORK_OPTION] : decision.options.slice(0, 3);
+  // When the coach suggests a replan or rethinking the goal, the learner gets
+  // the one-tap way to start it.
+  const others = decision.options.filter((o) => !/rework|replan|rebuild.*plan|adjust.*plan|rethink|change.*goal|new goal/i.test(o));
+  const actions = [...(decision.suggestReplan ? [REWORK_OPTION] : []), ...(decision.suggestGoalRevisit ? [REVISIT_OPTION] : [])];
+  const options = actions.length ? [...others.slice(0, 3 - actions.length), ...actions] : decision.options.slice(0, 3);
   return { ...decision, message, options };
 }

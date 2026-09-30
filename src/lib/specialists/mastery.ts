@@ -94,15 +94,28 @@ export function dueForReview(records: MasteryRecord[], now: Date): MasteryRecord
 
 /**
  * The gap with mastery levels in place of earlier estimates, for skills the
- * learner has practised in sessions. Other skills are unchanged.
+ * learner has practised, been checked on or corrected. Other skills are
+ * unchanged.
  */
 export function applyMasteryToGap(gap: Gap, records: MasteryRecord[]): Gap {
   const byId = new Map(records.map((r) => [r.skillId, r]));
   const items = gap.items.map((item) => {
     const r = byId.get(item.skillId);
-    return r ? scoreItem({ ...item, current: r.level, basis: "practiced" }) : item;
+    return r ? scoreItem({ ...item, current: r.level, basis: masteryBasis(r) }) : item;
   });
   return finishGap(items, gap.credentials, gap.proofOfSkill);
+}
+
+/**
+ * Where a mastery level comes from, as the gap labels it: the learner's own
+ * correction if that's the latest word, practice if any session showed it,
+ * otherwise a skills check.
+ */
+export function masteryBasis(record: MasteryRecord): Gap["items"][number]["basis"] {
+  const sources = record.evidence.map((e) => e.source);
+  if (sources.at(-1) === "learner") return "self_reported";
+  // Records from before evidence kept its source count as practice.
+  return sources.length === 0 || sources.includes("session") ? "practiced" : "assessed";
 }
 
 /**

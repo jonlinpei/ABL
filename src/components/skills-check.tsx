@@ -49,9 +49,11 @@ export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; read
     async function loop() {
       while (!cancelled) {
         const s = await poll();
-        // Keep polling while the lifecycle is working: building the gap, then the plan.
-        const reworking = s?.stage === "plan_ready" && s.progress.replan?.status === "running";
-        if (!s || (!["building_gap", "no_brief", "planning"].includes(s.stage) && !reworking)) return;
+        // Keep polling while the lifecycle is working: building the gap, then
+        // the plan, or a rework or an updated goal's plan being prepared.
+        const preparing =
+          s?.stage === "plan_ready" && (s.progress.replan?.status === "running" || s.progress.update?.status === "building");
+        if (!s || (!["building_gap", "no_brief", "planning"].includes(s.stage) && !preparing)) return;
         await new Promise((r) => setTimeout(r, 3000));
       }
     }
@@ -99,6 +101,17 @@ export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; read
   if (status.stage === "plan_ready") {
     return (
       <>
+        {!readOnly && (
+          <UpdateBanner
+            progress={status.progress}
+            checking={started}
+            onStartCheck={() => {
+              setStarted(true);
+              chat.sendMessage({ text: "I'm ready." });
+            }}
+          />
+        )}
+        {!readOnly && started && status.progress.update?.status === "check" && <CheckChat chat={chat} onDone={restartPolling} />}
         {!readOnly && <SessionPanel goalId={goalId} plan={status.plan} progress={status.progress} onSessionEnd={restartPolling} />}
         <PlanView plan={status.plan} gap={status.gap} />
         <details className="rounded-xl border border-foreground/15">
@@ -148,6 +161,51 @@ export function SkillsCheck({ goalId, readOnly = false }: { goalId: string; read
     );
   }
   return <CheckChat chat={chat} onDone={restartPolling} />;
+}
+
+/**
+ * An updated version of the goal being prepared next to the current plan,
+ * which stays usable: its skills picture and plan being built, or a short
+ * skills check it needs first.
+ */
+function UpdateBanner({
+  progress,
+  checking,
+  onStartCheck,
+}: {
+  progress: Extract<LearnerStatus, { stage: "plan_ready" }>["progress"];
+  checking: boolean;
+  onStartCheck: () => void;
+}) {
+  const building = progress.update?.status === "building" || (progress.replan?.status === "running" && progress.replan.kind === "update");
+  if (building) {
+    return (
+      <p className="rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 p-4 text-sm text-foreground/80">
+        Preparing the plan for your updated goal. When it&apos;s ready you&apos;ll see it next to this one to compare. Until then, keep
+        going with your current plan.
+      </p>
+    );
+  }
+  if (progress.update?.status !== "check" || checking) return null;
+  return (
+    <section className="rounded-xl border border-sky-500/40 bg-sky-500/5 p-4">
+      <h2 className="font-medium">A quick skills check for your updated goal</h2>
+      <p className="mt-1 text-sm text-foreground/70">
+        Your updated goal needs a few skills your current plan doesn&apos;t cover yet. A short check lets me build its plan around what you
+        already know. Your current plan stays as it is until you choose.
+      </p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {progress.update.skills.map((s) => (
+          <li key={s.skillId} className="rounded-full border border-foreground/15 bg-background px-3 py-1 text-sm">
+            {s.name}
+          </li>
+        ))}
+      </ul>
+      <button onClick={onStartCheck} className="mt-3 rounded-lg bg-foreground px-4 py-2 text-sm text-background">
+        Start the skills check
+      </button>
+    </section>
+  );
 }
 
 function CheckChat({

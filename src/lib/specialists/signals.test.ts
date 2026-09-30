@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MasteryRecord } from "./mastery";
 import type { SessionReport } from "./schemas";
-import { detectSignals, expectedSessionsPerWeek, requirementsChangedSignal, type SessionFact } from "./signals";
+import { detectSignals, expectedSessionsPerWeek, repeatedReplansSignal, requirementsChangedSignal, type SessionFact } from "./signals";
 import { samplePlan } from "./test-fixtures";
 
 const DAY = 86_400_000;
@@ -103,5 +103,14 @@ describe("requirementsChangedSignal", () => {
     // Added, then dropped again: nothing to tell.
     expect(requirementsChangedSignal([{ added: [py], dropped: [] }, { added: [], dropped: [py] }])).toBeNull();
     expect(requirementsChangedSignal([])).toBeNull();
+  });
+});
+
+describe("repeatedReplansSignal", () => {
+  it("fires on two or more accepted reworks in the last 90 days", () => {
+    const now = new Date("2027-01-01T00:00:00Z");
+    const ago = (d: number) => new Date(now.getTime() - d * 86_400_000);
+    expect(repeatedReplansSignal([ago(100), ago(20)], now)).toBeNull();
+    expect(repeatedReplansSignal([ago(60), ago(20), ago(5)], now)).toEqual({ kind: "repeated_replans", accepted: 3, days: 90 });
   });
 });

@@ -45,7 +45,13 @@ export async function POST(req: Request) {
 
   const resolved = await goalForRequest(userId, goalId, { learning: true });
   if ("error" in resolved) return resolved.error;
-  const state = await loadGoalState(userId, resolved.goal.id);
+  const goalState = await loadGoalState(userId, resolved.goal.id);
+  // The check is for the version being set up: a pending new version, or the
+  // goal's first version before it has a plan.
+  const state = goalState?.pending ?? (goalState && !goalState.plan ? goalState : null);
+  if (goalState && !state) {
+    return Response.json({ error: "There's nothing to check for this goal." }, { status: 409 });
+  }
   if (!state?.gap) {
     return Response.json({ error: "Your skills picture is still being built." }, { status: 409 });
   }

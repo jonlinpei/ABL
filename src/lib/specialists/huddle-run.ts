@@ -17,8 +17,10 @@ export async function runHuddleById(huddleId: string, run: StepRunner, now = new
   const db = getDb();
   const state = await run("load-state", async () => {
     const [plan] = await db.select().from(schema.plans).where(eq(schema.plans.id, huddle.fromPlanId));
-    const [brief] = await db.select().from(schema.careerBriefs).where(eq(schema.careerBriefs.id, plan!.briefId));
-    const [gap] = await db.select().from(schema.gaps).where(eq(schema.gaps.briefId, plan!.briefId));
+    // Reworking toward a new version of the goal: plan for that version's brief.
+    const briefId = huddle.toBriefId ?? plan!.briefId;
+    const [brief] = await db.select().from(schema.careerBriefs).where(eq(schema.careerBriefs.id, briefId));
+    const [gap] = await db.select().from(schema.gaps).where(eq(schema.gaps.briefId, briefId));
     const sessions = await loadSessions(plan!.id);
     return { plan: plan!, brief: brief!.brief, gap: gap!.gap, sessions, mastery: await loadMastery(huddle.userId) };
   });

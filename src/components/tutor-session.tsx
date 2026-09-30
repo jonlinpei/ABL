@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PlanProgress } from "@/app/api/learner/status/route";
 import type { SessionMessage } from "@/app/api/session/route";
 import type { StartSessionResponse } from "@/app/api/session/start/route";
-import { REWORK_OPTION, type Plan } from "@/lib/specialists/schemas";
+import { REVISIT_OPTION, REWORK_OPTION, type Plan } from "@/lib/specialists/schemas";
 
 import { ChatText } from "./chat-text";
 import { goalAction } from "./goal-actions";
@@ -38,6 +38,7 @@ export function SessionPanel({
   // Kept here, not in the card: answering refreshes the status, which removes the card.
   const [acknowledged, setAcknowledged] = useState<string | null>(null);
   const [reworking, setReworking] = useState(false);
+  const router = useRouter();
 
   const done = progress.milestoneIndex >= plan.milestones.length;
   const milestone = plan.milestones[progress.milestoneIndex];
@@ -71,8 +72,9 @@ export function SessionPanel({
     }
   }
 
-  // A plan rework in progress or waiting for a decision takes over the panel.
-  if (progress.replan?.status === "running") {
+  // A rework in progress or a proposal waiting for a decision takes over the
+  // panel. An updated goal being prepared doesn't: the current plan stays usable.
+  if (progress.replan?.status === "running" && progress.replan.kind === "rework") {
     return (
       <section className="rounded-xl border border-dashed border-foreground/20 p-5 text-sm text-foreground/70">
         Reworking your plan. Your coach, planner and reviewer are going over it together; this takes a minute or two…
@@ -81,7 +83,14 @@ export function SessionPanel({
   }
   if (progress.replan?.status === "proposed") {
     return (
-      <ProposalView huddleId={progress.replan.huddleId} proposal={progress.replan.proposal} current={plan} onDecided={onSessionEnd} />
+      <ProposalView
+        huddleId={progress.replan.huddleId}
+        kind={progress.replan.kind}
+        proposal={progress.replan.proposal}
+        current={plan}
+        milestonesDone={progress.milestoneIndex}
+        onDecided={onSessionEnd}
+      />
     );
   }
   if (reworking) {
@@ -118,6 +127,7 @@ export function SessionPanel({
         checkIn={progress.checkIn}
         onAnswered={(choice) => {
           if (choice === REWORK_OPTION) setReworking(true);
+          else if (choice === REVISIT_OPTION) router.push(`/app/goals/${goalId}/change`);
           else setAcknowledged(choice);
           onSessionEnd();
         }}

@@ -1,4 +1,5 @@
 import { generateStructured } from "@/lib/ai/structured";
+import { changeFacts } from "@/lib/goals/plan-diff";
 import type { GoalBrief } from "@/lib/goals/schema";
 
 import { COACH_SKILL } from "./coach.generated";
@@ -201,12 +202,39 @@ export async function runHuddle({
     messages.push({ from: "planner", kind: "revision", title: final.title, weeks: sum(final), weeklyHours: final.weeklyHours });
   }
   const open = final === draft ? issues : hardChecks(final);
+  // 5. Describe the change from facts computed in code, so the summary and
+  // the list the learner reads before choosing can't misstate it.
+  const described = await run("describe-changes", () => describeChanges(plan, milestoneIndex, final, request, userId));
+  final = { ...final, ...described };
   messages.push({ from: "planner", kind: "decision", whatChanged: final.whatChanged, openIssues: open.length });
   return {
     replan: final,
     review: { verdict: open.some((i) => i.severity === "must_fix") ? "revise" : "approve", issues: open },
     messages,
   };
+}
+
+const ChangeDescriptionSchema = ReplanSchema.pick({ changeSummary: true, whatChanged: true });
+
+/** The summary and "what changed" for a rework, written from the computed facts of the change. */
+export async function describeChanges(current: Plan, milestonesDone: number, replan: Replan, request: ReplanRequest, userId: string) {
+  const { output } = await generateStructured({
+    task: "replan",
+    userId,
+    instructions: PLANNER_SKILL,
+    prompt: `Describe this rework to the learner, as set out under "Describing a rework". Use only these facts.
+
+## What they asked for
+${JSON.stringify(request)}
+
+## The change, computed from the two plans
+${changeFacts(current, milestonesDone, replan)}
+
+## The planner's own notes on why
+${replan.whatChanged.map((c) => `- ${c.change} ${c.because}`).join("\n") || "- None."}`,
+    schema: ChangeDescriptionSchema,
+  });
+  return output;
 }
 
 function sum(plan: Plan): number {

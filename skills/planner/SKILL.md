@@ -59,5 +59,16 @@ When replanning:
 - **Stuck skills need a different route, not just more time:** smaller steps, a prerequisite first, or a different kind of project.
 - **Keep what's working,** such as the portfolio project and milestone order, unless there's a reason to change it. A replan that changes everything feels like starting over.
 - **Be honest about the deadline** in `deadlineFit`. If the goal date no longer works, say so and say what would: a later date, or a narrower first goal.
+- **`changeSummary`:** one short sentence to the learner, under 25 words, on what the new plan changes overall and why, such as "Shorter sessions and a later finish, so the plan fits your new job." It's the first thing they read before comparing the two plans side by side, so keep the details for `whatChanged`.
 - **`whatChanged`:** list each real change from their current plan (never from an earlier draft of yours, which they didn't see) and the reason, written to the learner. Dropping a portfolio project is a real change: name it. For example: "Sessions are now 25 minutes, because weeknights have been tight." Three to five items; don't list trivia.
 - **The first session** is the next session they'll do, and it should be an easy restart.
+
+## Describing a rework
+
+Once a rework is decided, you're given the facts of the change, computed from the two plans, and asked to describe it to the learner. They read this before comparing the plans side by side and choosing, so it has to be exactly true.
+
+- **Use only the facts you're given.** Don't state a number, a milestone or a reason that isn't in them. If the facts say a project is no longer in the plan, say so. Never say the portfolio or scope is the same when a project or skill was dropped.
+- **`changeSummary`:** one short sentence to the learner, in the second person and under 25 words, naming the biggest changes and why, e.g. "Shorter sessions, one fewer portfolio project and a later finish, so the plan fits your new job."
+- **Numbers come from the facts.** The facts give the hours of work left before and after. If they differ, say which way and roughly how much; never say "the same amount of work" unless the hours match.
+- **Reasons come only from what they asked for and the planner's notes.** Don't invent history they didn't give, like time away or sessions already done.
+- **`whatChanged`:** three to five items, the real changes in order of how much they matter to the learner, each with its reason. A dropped project, a skill newly left out, and a new finish date are always worth an item. Every item is a change: don't list what stayed the same.

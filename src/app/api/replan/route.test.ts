@@ -90,7 +90,23 @@ describe("POST /api/replan/decide", () => {
   it("accepts or declines the learner's own proposal", async () => {
     expect((await DECIDE(req("http://t", { huddleId: H, accept: true }))).status).toBe(200);
     expect(decideHuddle).toHaveBeenCalledWith("user_1", H, true);
-    decideHuddle.mockResolvedValueOnce({ decided: false });
+    decideHuddle.mockResolvedValueOnce({ decided: false, reason: "not_open" });
     expect((await DECIDE(req("http://t", { huddleId: H, accept: false }))).status).toBe(409);
+  });
+
+  it("asks the learner to finish a session before switching plans", async () => {
+    decideHuddle.mockResolvedValueOnce({ decided: false, reason: "session_active" });
+    const res = await DECIDE(req("http://t", { huddleId: H, accept: true }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/Finish your current session/);
+  });
+});
+
+describe("POST /api/replan while an updated goal is pending", () => {
+  it("waits for the update's proposal instead of starting a competing rework", async () => {
+    loadGoalState.mockResolvedValueOnce({ plan: { id: "p1" }, pending: { brief: {} } });
+    const res = await POST(req("http://t/api/replan", { request }));
+    expect(res.status).toBe(409);
+    expect(startHuddle).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import type { ProposalKind } from "@/app/api/learner/status/route";
+import { compareMilestones, type ComparedMilestone, type CurrentMilestoneState, type ProposedMilestoneState } from "@/lib/goals/plan-diff";
 import type { Plan, Replan, ReplanRequest } from "@/lib/specialists/schemas";
 
 /** "Life changed? Rework my plan": new hours, session length, deadline, and what changed. */
@@ -98,21 +100,32 @@ export function ReplanForm({
   );
 }
 
-/** The reworked plan, what changed and why, and the learner's choice. */
+/**
+ * A proposed plan next to the current one, for the learner to compare and
+ * choose: a one-line summary of what changes, the two plans side by side
+ * (stacked on small screens), what changed and why, and the choice. Used for
+ * a rework of the plan and for the plan of an updated goal.
+ */
 export function ProposalView({
   huddleId,
+  kind,
   proposal,
   current,
+  milestonesDone,
   onDecided,
 }: {
   huddleId: string;
+  kind: ProposalKind;
   proposal: Replan;
   current: Plan;
+  milestonesDone: number;
   onDecided: () => void;
 }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const weeks = (p: Plan) => p.milestones.reduce((n, m) => n + m.weeks, 0);
+  const compared = compareMilestones(current, proposal, milestonesDone);
+  // Proposals saved before summaries existed fall back to their first change.
+  const summary = proposal.changeSummary || proposal.whatChanged[0]?.change || null;
 
   async function decide(accept: boolean) {
     setSending(true);
@@ -135,41 +148,46 @@ export function ProposalView({
 
   return (
     <section className="rounded-xl border border-sky-500/40 bg-sky-500/5 p-5">
-      <div className="text-xs uppercase tracking-wide text-foreground/50">Your reworked plan</div>
-      <h2 className="mt-1 text-lg font-medium">{proposal.title}</h2>
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/70">
-        <span>
-          {proposal.weeklyHours} h/week <span className="text-foreground/40">(was {current.weeklyHours})</span>
-        </span>
-        <span>
-          {proposal.sessionMinutes}-min sessions <span className="text-foreground/40">(was {current.sessionMinutes})</span>
-        </span>
-        <span>About {weeks(proposal)} weeks from here</span>
+      <div className="text-xs uppercase tracking-wide text-foreground/50">
+        {kind === "update" ? "The plan for your updated goal" : "Your reworked plan"}
       </div>
-      <div className="mt-4 text-sm">
-        <div className="text-foreground/50">What changed, and why</div>
-        <ul className="mt-1 flex flex-col gap-1.5">
-          {proposal.whatChanged.map((c, i) => (
-            <li key={i}>
-              <span className="font-medium">{c.change}</span> <span className="text-foreground/70">{c.because}</span>
-            </li>
-          ))}
-        </ul>
+      {summary && <p className="mt-1 text-lg font-medium">{summary}</p>}
+      <p className="mt-1 text-sm text-foreground/60">
+        Compare it with your current plan. Nothing changes until you choose, and your progress and skills carry over either way.
+      </p>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <PlanColumn
+          label="Your current plan"
+          plan={current}
+          weeksLeft={compared.weeksLeft.current}
+          milestones={compared.current}
+        />
+        <PlanColumn
+          label={kind === "update" ? "Updated plan" : "Reworked plan"}
+          plan={proposal}
+          weeksLeft={compared.weeksLeft.proposed}
+          milestones={compared.proposed}
+          compareTo={current}
+          highlight
+        />
       </div>
-      <p className="mt-3 text-sm text-foreground/70">{proposal.deadlineFit}</p>
-      <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-foreground/60">The new milestones</summary>
-        <ol className="mt-2 list-decimal pl-5 text-foreground/80">
-          {proposal.milestones.map((m, i) => (
-            <li key={i}>
-              {m.title} <span className="text-foreground/50">· {m.weeks} wk</span>
-            </li>
-          ))}
-        </ol>
-      </details>
+
+      {proposal.whatChanged.length > 0 && (
+        <div className="mt-4 text-sm">
+          <div className="text-foreground/50">What changed, and why</div>
+          <ul className="mt-1 flex flex-col gap-1.5">
+            {proposal.whatChanged.map((c, i) => (
+              <li key={i}>
+                <span className="font-medium">{c.change}</span> <span className="text-foreground/70">{c.because}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button onClick={() => decide(true)} disabled={sending} className="rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50">
-          Use the new plan
+          {kind === "update" ? "Switch to the updated plan" : "Use the new plan"}
         </button>
         <button onClick={() => decide(false)} disabled={sending} className="text-sm text-foreground/60 underline">
           Keep my current plan
@@ -177,5 +195,60 @@ export function ProposalView({
       </div>
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </section>
+  );
+}
+
+const STATE_LABEL: Record<CurrentMilestoneState | ProposedMilestoneState, { text: string; className: string } | null> = {
+  done: { text: "done", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
+  kept: null,
+  dropped: { text: "not in the new plan", className: "bg-foreground/10 text-foreground/60" },
+  new: { text: "new", className: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+};
+
+function PlanColumn({
+  label,
+  plan,
+  weeksLeft,
+  milestones,
+  compareTo,
+  highlight = false,
+}: {
+  label: string;
+  plan: Plan;
+  weeksLeft: number;
+  milestones: ComparedMilestone<CurrentMilestoneState | ProposedMilestoneState>[];
+  /** For the proposal: show what each number was on the current plan. */
+  compareTo?: Plan;
+  highlight?: boolean;
+}) {
+  const was = (now: number, before: number | undefined, unit: string) =>
+    before !== undefined && before !== now ? <span className="text-foreground/40"> (was {before}{unit})</span> : null;
+  return (
+    <div className={`rounded-lg border bg-background p-4 ${highlight ? "border-sky-500/40" : "border-foreground/15"}`}>
+      <div className="text-xs uppercase tracking-wide text-foreground/50">{label}</div>
+      <div className="mt-1 font-medium">{plan.title}</div>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm text-foreground/70">
+        <dt className="text-foreground/50">Week</dt>
+        <dd>
+          {plan.weeklyHours} h{was(plan.weeklyHours, compareTo?.weeklyHours, " h")} · {plan.sessionMinutes}-min sessions
+          {was(plan.sessionMinutes, compareTo?.sessionMinutes, " min")}
+        </dd>
+        <dt className="text-foreground/50">Time left</dt>
+        <dd>About {weeksLeft} weeks</dd>
+      </dl>
+      <p className="mt-2 text-sm text-foreground/70">{plan.deadlineFit}</p>
+      <ol className="mt-3 flex flex-col gap-1.5 text-sm">
+        {milestones.map((m, i) => (
+          <li key={i} className={`flex flex-wrap items-baseline gap-x-2 ${m.state === "done" || m.state === "dropped" ? "text-foreground/50" : ""}`}>
+            <span className="text-foreground/40">{i + 1}.</span>
+            <span className={m.state === "dropped" ? "line-through" : ""}>{m.title}</span>
+            <span className="text-xs text-foreground/40">{m.weeks} wk</span>
+            {STATE_LABEL[m.state] && (
+              <span className={`rounded px-1.5 py-0.5 text-xs ${STATE_LABEL[m.state]!.className}`}>{STATE_LABEL[m.state]!.text}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 import type { GoalBrief } from "@/lib/goals/schema";
@@ -6,23 +6,19 @@ import type { GoalBrief } from "@/lib/goals/schema";
 import { correctGap, type EditableBriefField } from "./corrections";
 import type { MasteryRecord } from "./mastery";
 import { loadLiveGaps } from "./mastery-store";
+import { loadGoalState } from "./store";
 import type { Gap } from "./schemas";
 
 const { assessments, careerBriefs, gaps, learnerEvents, learnerProfiles, plans, skillMastery, users } = schema;
 
 /**
  * What ABL holds about a learner for one goal, for them to see: the goal's
- * newest brief, the profile and gap built from it, and their skills check.
- * Undefined before the goal has a brief.
+ * current brief (the one their plan follows), the profile and gap built from
+ * it, and their skills check. Undefined before the goal has a brief.
  */
 export async function loadLearnerRecord(userId: string, goalId: string) {
   const db = getDb();
-  const [brief] = await db
-    .select()
-    .from(careerBriefs)
-    .where(and(eq(careerBriefs.goalId, goalId), eq(careerBriefs.userId, userId)))
-    .orderBy(desc(careerBriefs.version))
-    .limit(1);
+  const brief = (await loadGoalState(userId, goalId))?.brief;
   if (!brief) return undefined;
   const [[profile], [gap], [assessment], [plan], corrected] = await Promise.all([
     db.select({ profile: learnerProfiles.profile }).from(learnerProfiles).where(eq(learnerProfiles.briefId, brief.id)),

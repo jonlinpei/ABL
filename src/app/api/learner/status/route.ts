@@ -31,9 +31,22 @@ export interface PlanProgress {
   lastReport: SessionReport | null;
   /** The coach's newest unanswered check-in, if any. */
   checkIn: { id: string; message: string; options: string[] } | null;
-  /** A plan rework in progress, or waiting for the learner's decision. */
-  replan: { huddleId: string; status: "running" } | { huddleId: string; status: "proposed"; proposal: Replan } | null;
+  /**
+   * A new plan in progress, or waiting for the learner's decision: a rework
+   * of this plan, or the plan for an updated version of the goal.
+   */
+  replan:
+    | { huddleId: string; kind: ProposalKind; status: "running" }
+    | { huddleId: string; kind: ProposalKind; status: "proposed"; proposal: Replan }
+    | null;
+  /**
+   * An updated version of the goal being set up before there's a plan to
+   * compare: its skills picture is being built, or it needs a short skills check.
+   */
+  update: { status: "building" } | { status: "check"; skills: { skillId: string; name: string }[] } | null;
 }
+
+export type ProposalKind = "rework" | "update";
 
 /** Where the learner is on a goal (`?goalId=`, or their current goal), for the app to poll. */
 export async function GET(req: Request) {
@@ -63,6 +76,8 @@ export async function GET(req: Request) {
     } else if (!state.plan) {
       status = { stage: "planning", gap: state.gap.gap, assessed };
     } else {
+      const pending = state.pending;
+      const pendingSkills = pending?.gap && !pending.gap.assessedAt ? selectSkillsToCheck(pending.gap.gap) : [];
       const [rows, note, open, sessionsDone] = await Promise.all([
         loadSessions(state.plan.id),
         openCheckIn(userId, state.plan.id),
@@ -90,8 +105,15 @@ export async function GET(req: Request) {
           replan: !open
             ? null
             : open.huddle.status === "proposed" && open.proposed
-              ? { huddleId: open.huddle.id, status: "proposed", proposal: open.proposed.plan as Replan }
-              : { huddleId: open.huddle.id, status: "running" },
+              ? { huddleId: open.huddle.id, kind: open.huddle.toBriefId ? "update" : "rework", status: "proposed", proposal: open.proposed.plan as Replan }
+              : { huddleId: open.huddle.id, kind: open.huddle.toBriefId ? "update" : "rework", status: "running" },
+          // Until the update's plan is ready (then it's the proposal above).
+          update:
+            !pending || open
+              ? null
+              : pendingSkills.length > 0
+                ? { status: "check", skills: pendingSkills.map((s) => ({ skillId: s.skillId, name: s.name })) }
+                : { status: "building" },
         },
       };
     }

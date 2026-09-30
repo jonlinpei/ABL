@@ -24,6 +24,8 @@ import {
   saveRequirements,
 } from "@/lib/specialists/store";
 
+import { currentPlanOfGoal, saveVersionProposal } from "@/lib/goals/version-store";
+
 import { inngest } from "./client";
 import {
   assessmentDone,
@@ -47,7 +49,7 @@ const cancelOnDelete = [{ event: learnerDataDeleted, match: "data.userId" }];
 export const learnerLifecycle = inngest.createFunction(
   { id: "learner-lifecycle", triggers: [briefConfirmed], cancelOn: cancelOnDelete },
   async ({ event, step }) => {
-    const { userId, briefId } = event.data;
+    const { userId, briefId, goalId } = event.data;
 
     const { brief } = await step.run("load-brief", async () => {
       const [row] = await getDb()
@@ -111,7 +113,13 @@ export const learnerLifecycle = inngest.createFunction(
       // Step results come back JSON-serialized; plans and reviews are plain JSON.
       run: (name, fn) => step.run(name, fn) as never,
     });
-    const planRow = await step.run("save-plan", () => saveFirstPlan(userId, briefId, plan, review));
+    // A goal's first plan becomes theirs; a new version of a goal that has one
+    // is proposed next to it, for the learner to compare and choose.
+    const planRow = await step.run("save-plan", async () => {
+      const current = await currentPlanOfGoal(goalId);
+      if (!current || current.brief.id === briefId) return saveFirstPlan(userId, briefId, plan, review);
+      return (await saveVersionProposal(userId, briefId, plan, review)) ?? { id: null };
+    });
 
     return {
       briefId,
