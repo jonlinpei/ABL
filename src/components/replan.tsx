@@ -6,6 +6,8 @@ import type { ProposalKind } from "@/app/api/learner/status/route";
 import { compareMilestones, type ComparedMilestone, type CurrentMilestoneState, type ProposedMilestoneState } from "@/lib/goals/plan-diff";
 import type { Plan, Replan, ReplanRequest } from "@/lib/specialists/schemas";
 
+import { WorkingLabel } from "./thinking-words";
+
 /** "Life changed? Rework my plan": new hours, session length, deadline, and what changed. */
 export function ReplanForm({
   goalId,
@@ -89,7 +91,7 @@ export function ReplanForm({
       </label>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button onClick={submit} disabled={sending} className="rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50">
-          {sending ? "Starting…" : "Rework my plan"}
+          {sending ? <WorkingLabel label="Starting" onDark /> : "Rework my plan"}
         </button>
         <button onClick={onCancel} disabled={sending} className="text-sm text-foreground/60 underline">
           Cancel

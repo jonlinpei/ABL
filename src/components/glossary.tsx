@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import type { GlossaryView } from "@/app/api/glossary/route";
 import type { Familiarity } from "@/lib/specialists/glossary";
 
+import { WorkingLabel } from "./thinking-words";
+
 const FAMILIARITY: Record<Familiarity, { label: string; className: string }> = {
   new: { label: "new", className: "bg-foreground/10 text-foreground/70" },
   shaky: { label: "still learning", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
@@ -85,7 +87,7 @@ export function Glossary() {
           </div>
         </div>
       )}
-      {!data && !error && <p className="text-sm text-foreground/60">Loading…</p>}
+      {!data && !error && <p className="text-sm"><WorkingLabel label="Loading" /></p>}
       {data && total === 0 && (
         <p className="rounded-xl border border-dashed border-foreground/20 p-5 text-sm text-foreground/60">
           Nothing here yet. Terms you meet in sessions and quick questions will appear here, and you can add your own above.
@@ -179,7 +181,7 @@ function AddTerm({ onAdd }: { onAdd: (term: string, note: string | null) => Prom
         disabled={adding || !term.trim()}
         className="rounded-lg bg-foreground px-4 py-1.5 text-sm text-background disabled:opacity-40"
       >
-        {adding ? "Adding…" : "Add"}
+        {adding ? <WorkingLabel label="Defining" onDark /> : "Add"}
       </button>
     </form>
   );

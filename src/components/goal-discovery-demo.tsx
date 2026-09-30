@@ -13,6 +13,7 @@ import { attachedBytes, attachmentProblem } from "@/lib/goals/attachments";
 import { BriefCard } from "./brief-card";
 import { ChatText } from "./chat-text";
 import { TraceChip } from "./trace-chip";
+import { isWaiting, THINKING, ThinkingWords, WorkingLabel } from "./thinking-words";
 import { GoalBriefSchema, type GoalBrief } from "@/lib/goals/schema";
 
 /** Starting points to click. They only show the range of career moves. */
@@ -251,7 +252,7 @@ export function GoalDiscoveryDemo({ goalId, currentTitle }: { goalId?: string; c
               {m.role === "assistant" && m.metadata && <TraceChip trace={m.metadata} />}
             </div>
           ))}
-          {status === "submitted" && <div className="text-sm text-foreground/50">Thinking…</div>}
+          {isWaiting(status, messages) && <ThinkingWords words={THINKING.discovery} className="text-sm" />}
           {error && (
             <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
               {error.message || "Something went wrong."}
@@ -262,8 +263,8 @@ export function GoalDiscoveryDemo({ goalId, currentTitle }: { goalId?: string; c
 
       {confirmed && (
         <div className="rounded-lg border border-dashed border-foreground/20 p-4 text-sm text-foreground/70">
-          {save?.state === "saving" && <p>Saving your brief…</p>}
-          {save?.state === "saved" && <p>Saved. Taking you to your goal…</p>}
+          {save?.state === "saving" && <WorkingLabel label="Saving your brief" />}
+          {save?.state === "saved" && <ThinkingWords words={["Saved. Taking you to your goal"]} />}
           {save?.state === "failed" && (
             <p className="text-red-600 dark:text-red-400">
               {save.error}{" "}
