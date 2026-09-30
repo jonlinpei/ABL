@@ -13,7 +13,13 @@ export async function POST(req: Request) {
   if (!isDatabaseConfigured()) return Response.json({ error: "No database is configured." }, { status: 503 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Invalid request" }, { status: 400 });
-  const { decided } = await decideHuddle(userId, parsed.data.huddleId, parsed.data.accept);
-  if (!decided) return Response.json({ error: "There's no proposal waiting for you." }, { status: 409 });
+  const result = await decideHuddle(userId, parsed.data.huddleId, parsed.data.accept);
+  if (!result.decided) {
+    const error =
+      result.reason === "session_active"
+        ? "Finish your current session first, then switch to the new plan."
+        : "There's no proposal waiting for you.";
+    return Response.json({ error }, { status: 409 });
+  }
   return Response.json({ ok: true });
 }

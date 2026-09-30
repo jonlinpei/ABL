@@ -52,12 +52,14 @@ export async function POST(req: Request) {
   const attachmentError = invalidAttachments(messages);
   if (attachmentError) return Response.json({ error: attachmentError }, { status: 400 });
 
-  // Changing an existing goal: discovery starts from its current brief.
+  // Changing an existing goal: discovery starts from its newest brief, a
+  // pending version if one is being prepared, else the current one.
   let existing: GoalBrief | null = null;
   if (goalId != null && isDatabaseConfigured()) {
     const resolved = await goalForRequest(userId, goalId);
     if ("error" in resolved) return resolved.error;
-    existing = (await loadGoalState(userId, resolved.goal.id))?.brief.brief ?? null;
+    const state = await loadGoalState(userId, resolved.goal.id);
+    existing = (state?.pending ?? state)?.brief.brief ?? null;
   }
 
   let resolution;

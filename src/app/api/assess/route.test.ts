@@ -66,6 +66,15 @@ describe("POST /api/assess", () => {
     expect(streamTextOptions!.instructions).not.toContain("- sql-querying:");
   });
 
+  it("checks a pending updated version while the current plan stays, and refuses when there's nothing to check", async () => {
+    const pending = { brief: { id: "brief_2", brief: sampleBrief }, gap: { gap, assessedAt: null } };
+    loadGoalState.mockResolvedValueOnce({ ...state({ assessedAt: "2026-09-01" }), plan: { id: "p1" }, pending });
+    expect((await POST(request())).status).toBe(200);
+    expect(streamTextOptions!.instructions).toContain("- dashboards: Dashboards.");
+    loadGoalState.mockResolvedValueOnce({ ...state({ assessedAt: "2026-09-01" }), plan: { id: "p1" }, pending: null });
+    expect((await POST(request())).status).toBe(409);
+  });
+
   it("checks the goal it names, as a learning request", async () => {
     await POST(request({ goalId: GOAL_ID }));
     expect(goalForRequest).toHaveBeenCalledWith("user_1", GOAL_ID, { learning: true });

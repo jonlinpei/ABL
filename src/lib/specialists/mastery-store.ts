@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb, schema } from "@/db";
 
@@ -17,18 +17,32 @@ export async function loadMastery(userId: string, skillIds?: string[]): Promise<
 }
 
 /**
- * The current gap of each of the learner's live goals (active or paused):
- * the gap on each goal's newest brief. These follow the learner's skills.
+ * The gaps of each of the learner's live goals (active or paused): the
+ * current version's, and a pending new version's while one is being set up.
+ * These follow the learner's skills.
  */
 export async function loadLiveGaps(userId: string) {
-  return getDb()
-    .selectDistinctOn([careerBriefs.goalId], { id: gaps.id, briefId: gaps.briefId, goalId: careerBriefs.goalId, gap: gaps.gap })
-    .from(careerBriefs)
+  const db = getDb();
+  const rows = await db
+    .select({ id: gaps.id, briefId: gaps.briefId, goalId: careerBriefs.goalId, version: careerBriefs.version, gap: gaps.gap })
+    .from(gaps)
+    .innerJoin(careerBriefs, eq(careerBriefs.id, gaps.briefId))
     .innerJoin(goals, eq(goals.id, careerBriefs.goalId))
-    .leftJoin(gaps, eq(gaps.briefId, careerBriefs.id))
-    .where(and(eq(careerBriefs.userId, userId), inArray(goals.status, ["active", "paused"])))
-    .orderBy(careerBriefs.goalId, desc(careerBriefs.version))
-    .then((rows) => rows.flatMap((r) => (r.id && r.gap ? [{ id: r.id, briefId: r.briefId!, goalId: r.goalId, gap: r.gap }] : [])));
+    .where(and(eq(careerBriefs.userId, userId), isNull(careerBriefs.declinedAt), inArray(goals.status, ["active", "paused"])));
+  if (!rows.length) return [];
+  const active = new Set(
+    (
+      await db
+        .select({ briefId: plans.briefId })
+        .from(plans)
+        .where(and(inArray(plans.briefId, rows.map((r) => r.briefId)), eq(plans.status, "active")))
+    ).map((p) => p.briefId),
+  );
+  const newest = new Map<string, number>();
+  for (const r of rows) newest.set(r.goalId, Math.max(newest.get(r.goalId) ?? 0, r.version));
+  return rows
+    .filter((r) => active.has(r.briefId) || newest.get(r.goalId) === r.version)
+    .map(({ id, briefId, goalId, gap }) => ({ id, briefId, goalId, gap }));
 }
 
 /**
@@ -69,7 +83,22 @@ export async function applySessionEvidence(
     type: "mastery_updated",
     payload: { sessionId, skills: records.map((r) => ({ skillId: r.skillId, level: r.level, due: r.card.due })) },
   });
-  const upserts = records.map((r) =>
+  const upserts = masteryUpserts(userId, records, now);
+  // The session's own gap, even on an older brief or a paused goal, plus every live goal's.
+  const live = await loadLiveGaps(userId);
+  const toUpdate = [...(gapRow ? [{ id: gapRow.id, gap: gapRow.gap }] : []), ...live.filter((g) => g.id !== gapRow?.id)];
+  const gapUpdate = spreadMastery(toUpdate, records).map((g) => db.update(gaps).set({ gap: g.gap }).where(eq(gaps.id, g.id)));
+
+  // Key terms the tutor recorded go to the glossary in the same batch, so they're added exactly once.
+  const terms = termsInsert(userId, plan?.briefId ?? null, "session", session.report.terms ?? []);
+  await db.batch([markApplied, event, ...upserts, ...gapUpdate, ...(terms ? [terms] : [])]);
+  return { applied: true, skills: records.map((r) => r.skillId) };
+}
+
+/** Writes that save mastery records, inserting or replacing each skill's row. */
+export function masteryUpserts(userId: string, records: MasteryRecord[], now: Date) {
+  const db = getDb();
+  return records.map((r) =>
     db
       .insert(skillMastery)
       .values({ userId, skillId: r.skillId, name: r.name, level: r.level, evidence: r.evidence, card: r.card, due: new Date(r.card.due) })
@@ -85,13 +114,4 @@ export async function applySessionEvidence(
         },
       }),
   );
-  // The session's own gap, even on an older brief or a paused goal, plus every live goal's.
-  const live = await loadLiveGaps(userId);
-  const toUpdate = [...(gapRow ? [{ id: gapRow.id, gap: gapRow.gap }] : []), ...live.filter((g) => g.id !== gapRow?.id)];
-  const gapUpdate = spreadMastery(toUpdate, records).map((g) => db.update(gaps).set({ gap: g.gap }).where(eq(gaps.id, g.id)));
-
-  // Key terms the tutor recorded go to the glossary in the same batch, so they're added exactly once.
-  const terms = termsInsert(userId, plan?.briefId ?? null, "session", session.report.terms ?? []);
-  await db.batch([markApplied, event, ...upserts, ...gapUpdate, ...(terms ? [terms] : [])]);
-  return { applied: true, skills: records.map((r) => r.skillId) };
 }

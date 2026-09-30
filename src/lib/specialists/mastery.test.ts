@@ -143,3 +143,15 @@ describe("spreadMastery", () => {
     expect(spreadMastery([], [apply(undefined, 3)])).toEqual([]);
   });
 });
+
+describe("masteryBasis", () => {
+  const rec = (sources: ("session" | "assessment" | "learner")[]) =>
+    ({ skillId: "s", name: "S", level: 2, card: {} as never, evidence: sources.map((source) => ({ level: 2, evidence: "e", source, at: "2026-10-01" })) });
+  it("labels a level by where it came from", async () => {
+    const { masteryBasis } = await import("./mastery");
+    expect(masteryBasis(rec(["assessment"]))).toBe("assessed");
+    expect(masteryBasis(rec(["assessment", "session"]))).toBe("practiced");
+    expect(masteryBasis(rec(["session", "learner"]))).toBe("self_reported");
+    expect(masteryBasis(rec([]))).toBe("practiced");
+  });
+});

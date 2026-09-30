@@ -12,6 +12,8 @@ import type {
   SessionReport,
   TargetRequirements,
 } from "./schemas";
+import { applyEvidence, spreadMastery } from "./mastery";
+import { loadLiveGaps, loadMastery, masteryUpserts } from "./mastery-store";
 import type { RequirementsChange } from "./signals";
 
 const {
@@ -23,6 +25,7 @@ const {
   gaps,
   learnerEvents,
   plans,
+  huddles,
   sessions,
 } = schema;
 
@@ -213,28 +216,39 @@ export async function saveGap(userId: string, briefId: string, profileId: string
 }
 
 /**
- * A goal's newest brief and, once the lifecycle has built them, its gap and
- * newest active plan. Undefined before the goal has a brief (or if it isn't
- * the learner's).
+ * A goal's current state, and any pending version of it.
+ *
+ * The **current** version is the one the learner is working from: the brief
+ * of the goal's newest active plan, with that brief's gap. Before the goal
+ * has a plan, it's the newest brief. A newer brief confirmed since then is
+ * **pending**: it's being built or reworked, or waiting for the learner to
+ * choose between its plan and the current one. Declined versions are
+ * history and never current or pending.
  */
 export async function loadGoalState(userId: string, goalId: string) {
   const db = getDb();
-  const [brief] = await db
+  const briefs = await db
     .select()
     .from(careerBriefs)
-    .where(and(eq(careerBriefs.goalId, goalId), eq(careerBriefs.userId, userId)))
-    .orderBy(desc(careerBriefs.version))
-    .limit(1);
-  if (!brief) return undefined;
-  const [gap] = await db.select().from(gaps).where(eq(gaps.briefId, brief.id));
+    .where(and(eq(careerBriefs.goalId, goalId), eq(careerBriefs.userId, userId), isNull(careerBriefs.declinedAt)))
+    .orderBy(desc(careerBriefs.version));
+  if (!briefs.length) return undefined;
   const [plan] = await db
     .select()
     .from(plans)
-    // The learner's plan is the newest active one; a proposed replan isn't theirs until accepted.
-    .where(and(eq(plans.briefId, brief.id), eq(plans.status, "active")))
-    .orderBy(desc(plans.version))
+    // The learner's plan is the newest active one; a proposed plan isn't theirs until accepted.
+    .where(and(inArray(plans.briefId, briefs.map((b) => b.id)), eq(plans.status, "active")))
+    .orderBy(desc(plans.createdAt))
     .limit(1);
-  return { brief, gap, plan };
+  const brief = (plan && briefs.find((b) => b.id === plan.briefId)) || briefs[0]!;
+  const newest = briefs[0]!;
+  const gapRows = await db
+    .select()
+    .from(gaps)
+    .where(inArray(gaps.briefId, [...new Set([brief.id, newest.id])]));
+  const gapOf = (briefId: string) => gapRows.find((g) => g.briefId === briefId);
+  const pending = newest.id !== brief.id ? { brief: newest, gap: gapOf(newest.id) } : null;
+  return { brief, gap: gapOf(brief.id), plan, pending };
 }
 
 /**
@@ -254,14 +268,37 @@ export async function saveAssessment(
     .from(assessments)
     .where(eq(assessments.briefId, briefId));
   if (existing) return { saved: false };
+  // The levels shown count as mastery evidence too, so they follow the
+  // learner into other goals and later versions of this one, instead of
+  // being checked again.
+  const now = new Date();
+  const known = new Map((await loadMastery(userId, results.map((r) => r.skillId))).map((r) => [r.skillId, r]));
+  const records = results.map((r) => {
+    const item = assessedGap.items.find((i) => i.skillId === r.skillId);
+    return applyEvidence({
+      record: known.get(r.skillId),
+      skillId: r.skillId,
+      name: item?.name ?? r.skillId,
+      // A first record starts at what the check showed; practised skills weigh it as more evidence.
+      startingLevel: r.level,
+      entry: { level: r.level, evidence: r.evidence, source: "assessment", at: now.toISOString() },
+      now,
+    });
+  });
+  const others = spreadMastery(
+    (await loadLiveGaps(userId)).filter((g) => g.briefId !== briefId),
+    records,
+  ).map((g) => db.update(gaps).set({ gap: g.gap }).where(eq(gaps.id, g.id)));
   await db.batch([
     db.insert(assessments).values({ userId, briefId, results }),
-    db.update(gaps).set({ gap: assessedGap, assessedAt: new Date() }).where(eq(gaps.briefId, briefId)),
+    db.update(gaps).set({ gap: assessedGap, assessedAt: now }).where(eq(gaps.briefId, briefId)),
     db.insert(learnerEvents).values({
       userId,
       type: "assessment_done",
       payload: { briefId, skills: results.length, ...assessedGap.counts },
     }),
+    ...masteryUpserts(userId, records, now),
+    ...others,
   ]);
   return { saved: true };
 }
@@ -412,4 +449,14 @@ export async function goalOfSession(userId: string, sessionId: string): Promise<
     .innerJoin(careerBriefs, eq(careerBriefs.id, plans.briefId))
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
   return row?.goalId;
+}
+
+/** When the learner accepted reworks of this goal's plan (not new versions of the goal), oldest first. */
+export async function loadAcceptedReworks(goalId: string): Promise<Date[]> {
+  const rows = await getDb()
+    .select({ at: huddles.decidedAt })
+    .from(huddles)
+    .where(and(inArray(huddles.fromPlanId, goalPlanIds(goalId)), eq(huddles.status, "accepted"), isNull(huddles.toBriefId)))
+    .orderBy(huddles.decidedAt);
+  return rows.flatMap((r) => (r.at ? [r.at] : []));
 }

@@ -4,8 +4,8 @@ import { isLearnable } from "@/lib/goals/lifecycle";
 import { coachContext, decide, mayCheckIn } from "./coach";
 import { loadCoachNotes, saveCoachNote } from "./coach-store";
 import { loadMastery } from "./mastery-store";
-import { detectSignals, requirementsChangedSignal } from "./signals";
-import { loadGoalState, loadRequirementsChanges, loadSessions } from "./store";
+import { detectSignals, repeatedReplansSignal, requirementsChangedSignal } from "./signals";
+import { loadAcceptedReworks, loadGoalState, loadRequirementsChanges, loadSessions } from "./store";
 import { currentMilestone } from "./tutor";
 
 /**
@@ -39,6 +39,9 @@ export async function runCoach(userId: string, goalId: string, now = new Date())
   const lastLook = notes.at(-1)?.createdAt ?? state.plan.createdAt;
   const changed = requirementsChangedSignal(await loadRequirementsChanges(userId, goalId, lastLook));
   if (changed) signals.push(changed);
+  // Reworks that don't stick only matter alongside trouble with the current plan.
+  const replans = signals.length ? repeatedReplansSignal(await loadAcceptedReworks(goalId), now) : null;
+  if (replans) signals.push(replans);
   if (signals.length === 0) return { outcome: "on_track" as const };
 
   const lastCheckIn = notes.filter((n) => n.message).at(-1)?.createdAt ?? null;

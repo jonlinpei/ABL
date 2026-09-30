@@ -23,6 +23,10 @@ export async function POST(req: Request) {
   if ("error" in resolved) return resolved.error;
   const state = await loadGoalState(userId, resolved.goal.id);
   if (!state?.plan) return Response.json({ error: "You don't have a plan to rework yet." }, { status: 409 });
+  // A goal change in progress gets its own proposal; reworking now would compete with it.
+  if (state.pending) {
+    return Response.json({ error: "Your updated goal's plan is still being prepared. You'll be able to compare it with this one shortly." }, { status: 409 });
+  }
   const { id, created } = await startHuddle(userId, state.plan.id, parsed.data.request, "learner", "The learner asked to rework their plan.");
   if (created) {
     try {

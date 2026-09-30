@@ -30,6 +30,7 @@ describe("enforce", () => {
     message: "Hi",
     options: ["a", "b", "c", "d"],
     tutorNote: "Try smaller steps.",
+    suggestGoalRevisit: false,
     suggestReplan: false,
     reason: "r",
   };
@@ -41,6 +42,13 @@ describe("enforce", () => {
   it("gives the one-tap rework option when a replan is suggested, replacing the model's own wording", () => {
     const d = enforce({ ...decision, suggestReplan: true, options: ["Do a 20-minute session", "Rework my plan around less time", "Aim for two next week"] }, true);
     expect(d.options).toEqual(["Do a 20-minute session", "Aim for two next week", "Rework my plan"]);
+  });
+
+  it("gives the one-tap rethink option when a goal revisit is suggested, alongside a rework if both are", () => {
+    const revisit = enforce({ ...decision, suggestGoalRevisit: true, options: ["Talk it through", "Change my goal", "Do a short session"] }, true);
+    expect(revisit.options).toEqual(["Talk it through", "Do a short session", "Rethink my goal"]);
+    const both = enforce({ ...decision, suggestReplan: true, suggestGoalRevisit: true, options: ["Take a week off", "b"] }, true);
+    expect(both.options).toEqual(["Take a week off", "Rework my plan", "Rethink my goal"]);
   });
 
   it("caps options at three and drops options without a message", () => {

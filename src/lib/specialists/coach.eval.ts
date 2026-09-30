@@ -47,6 +47,35 @@ async function judge(decision: CoachDecision, situation: string, assertions: str
 }
 
 describe.concurrent("coach decisions", () => {
+  it("two reworks haven't stuck and she's lapsed again: gently asks whether the goal still fits", async () => {
+    const d = await run(
+      "revisit",
+      [
+        { kind: "repeated_replans", accepted: 2, days: 90 },
+        { kind: "missed_sessions", daysSinceLast: 23, expectedPerWeek: 3, lapsed: true },
+        { kind: "behind_pace", sessionsPerWeek: 0.3, expectedPerWeek: 3, projectedFinish: null, plannedFinish: "2027-06-15" },
+      ],
+      [recap("You started on joins, then stopped partway.", 23)],
+    );
+    expect(d.suggestGoalRevisit).toBe(true);
+    expect(d.message).not.toBeNull();
+    expect(d.options).toContain("Rethink my goal");
+    await judge(d, "She has accepted two reworks of her plan in three months, and has again not had a session for 23 days.", [
+      "The message raises whether the goal itself still fits as an open question, not a verdict or a judgment of her",
+      "It carries no guilt or blame about the lapse or the earlier reworks",
+      "It leaves room to keep the goal, for example by offering a small restart as well",
+    ]);
+  });
+
+  it("a single slow stretch is a plan problem, not a goal problem", async () => {
+    const d = await run(
+      "no-revisit",
+      [{ kind: "behind_pace", sessionsPerWeek: 1.5, expectedPerWeek: 4, projectedFinish: "2027-11-01", plannedFinish: "2027-06-15" }],
+      [recap("You wrote joins across two tables.", 5)],
+    );
+    expect(d.suggestGoalRevisit).toBe(false);
+  });
+
   it("postings now screen for Python, which her plan doesn't teach: tells her and suggests a rework", async () => {
     const d = await run(
       "requirements-changed",

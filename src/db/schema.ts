@@ -100,6 +100,12 @@ export const careerBriefs = pgTable(
     version: integer("version").notNull(),
     brief: jsonb("brief").$type<GoalBrief>().notNull(),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Set when the learner kept their current plan instead of this version's,
+     * or confirmed a newer version before this one was ready. A declined
+     * version is history, never the goal's current or pending brief.
+     */
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("career_briefs_goal_version").on(t.goalId, t.version)],
 );
@@ -353,6 +359,8 @@ export const huddles = pgTable(
       .notNull()
       .references(() => plans.id, { onDelete: "cascade" }),
     proposedPlanId: uuid("proposed_plan_id").references(() => plans.id, { onDelete: "set null" }),
+    /** Set when the proposal is for a new version of the goal's brief, not a rework of the same one. */
+    toBriefId: uuid("to_brief_id").references(() => careerBriefs.id, { onDelete: "cascade" }),
     request: jsonb("request").$type<ReplanRequest>().notNull(),
     messages: jsonb("messages").$type<HuddleMessage[]>().notNull().default([]),
     status: text("status").$type<"running" | "proposed" | "accepted" | "declined" | "failed">().notNull().default("running"),

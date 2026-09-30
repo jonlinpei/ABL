@@ -282,6 +282,9 @@ export type SessionReport = z.infer<typeof SessionReport>;
 
 /** A replan: the revised plan for the remaining work, and what changed and why. */
 export const ReplanSchema = PlanSchema.extend({
+  changeSummary: z
+    .string()
+    .describe('One short sentence to the learner, under 25 words, on what the new plan changes overall and why, e.g. "Shorter sessions and a later finish, so the plan fits your new job." Details go in whatChanged.'),
   whatChanged: z
     .array(z.object({ change: z.string(), because: z.string() }))
     .describe("Each change from the current plan, and the reason, in plain words to the learner."),
@@ -319,3 +322,6 @@ export type HuddleMessage =
 
 /** The coach option that opens the replan form. The app recognises it by this exact text. */
 export const REWORK_OPTION = "Rework my plan";
+
+/** The coach option that opens "Change this goal". The app recognises it by this exact text. */
+export const REVISIT_OPTION = "Rethink my goal";

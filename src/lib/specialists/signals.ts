@@ -23,6 +23,12 @@ export type Signal =
     }
   | { kind: "stuck_topic"; skillId: string; name: string; sessionsOnMilestone: number; level: number; toLevel: number }
   | {
+      kind: "repeated_replans";
+      /** Reworks of this goal's plan the learner accepted recently, and the window counted. */
+      accepted: number;
+      days: number;
+    }
+  | {
       kind: "requirements_changed";
       /** Skills that became must-haves they haven't met, and ones that stopped being must-haves. */
       nowMustHave: string[];
@@ -125,6 +131,15 @@ export function detectSignals({
     }
   }
   return signals;
+}
+
+/** Reworks that don't stick: two or more accepted in the window. */
+export const REPLAN_WINDOW_DAYS = 90;
+
+export function repeatedReplansSignal(acceptedAt: Date[], now: Date): Signal | null {
+  const since = now.getTime() - REPLAN_WINDOW_DAYS * DAY;
+  const accepted = acceptedAt.filter((d) => d.getTime() >= since).length;
+  return accepted >= 2 ? { kind: "repeated_replans", accepted, days: REPLAN_WINDOW_DAYS } : null;
 }
 
 /**

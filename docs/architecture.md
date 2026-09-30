@@ -107,6 +107,27 @@ During a session, "Ask a quick question" opens a panel over the lesson. The less
 
 The tutor sees the session's side questions on each turn, in the per-turn part next to the clock, so the instructions stay cacheable. It connects to them and doesn't repeat them. It never counts a side question as mastery, so the session report stays the one way into the graph. PostHog client events `sidekick_opened` and `sidekick_closed` measure the PRD's sidekick metric.
 
+### Changing a goal: versions and proposals
+
+"Change this goal" confirms a new version of the goal's brief. The goal keeps a **current** version, the brief of its newest active plan, until the learner accepts a new plan. A newer version is **pending** until then (`loadGoalState` returns both). What happens next depends on what changed (`classifyGoalChange`):
+- **Rebuild:** where they're going or starting from changed (role, market or industry). The lifecycle builds the new version's profile, gap and plan. The skills check covers only skills they haven't practised or been checked on, since check results are mastery evidence too. The plan is saved as a proposal next to the current one.
+- **Replan:** their week, deadline, priority or definition of success changed. The current gap carries over, and a huddle reworks the current plan toward the new version.
+- **Details:** nothing the plan depends on changed. The plan moves to the new version, and there's nothing to decide.
+
+While an update is prepared, the current plan and its sessions stay usable. A banner shows the progress and offers any skills check inline. Every proposal, whether a rework or an update, is shown side by side with the current plan:
+- a one-line summary, then both plans;
+- finished milestones marked done, and others kept, dropped or new;
+- what changed and why.
+
+For reworks, the summary and the change list are written after the plan is decided, from facts computed in code (`changeFacts`), so they can't misstate hours, dropped projects or new milestones.
+
+**Choosing:**
+- **Accept:** the current plan is superseded. Accepting waits until a running session has ended.
+- **Keep my current plan:** the proposal and its version are declined, and stay only as history.
+- **A newer version:** confirming one declines any update still pending.
+
+The coach can suggest rethinking the goal itself (`suggestGoalRevisit`, the "Rethink my goal" option linking to the change page). It does so sparingly, when reworks haven't stuck (`repeated_replans`) or the learner's direction seems to have shifted.
+
 ### Glossary (`/app/glossary`)
 
 Each learner's glossary is stored in `glossary_terms`, one row per **sense**: a term in a broad field (`domain`, such as "data analysis" or "finance"). "leverage (finance)" and "leverage (physics)" are separate rows under one headword, and matching uses normalized keys, so "LEFT JOIN" and "left join" are the same term.

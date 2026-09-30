@@ -16,6 +16,7 @@ const coachInput = { engagement: "Two short sessions a week.", mustRespect: ["30
 const noObjection = { objection: null, severity: null };
 const approve = { verdict: "approve", issues: [] };
 const request = { weeklyHours: 2, sessionMinutes: 30, deadline: null, note: "New job" };
+const described = { changeSummary: "Shorter sessions to fit your new job.", whatChanged: [{ change: "Sessions are 30 minutes", because: "Evenings are tight" }] };
 
 /** Replies to each model call in order, by task. */
 function reply(...outputs: unknown[]) {
@@ -32,19 +33,22 @@ beforeEach(() => generateStructured.mockReset());
 
 describe("runHuddle", () => {
   it("collects inputs, proposes, takes objections and decides, logging each step", async () => {
-    reply(coachInput, { ...replan, weeklyHours: 2, sessionMinutes: 30 }, approve, noObjection);
+    reply(coachInput, { ...replan, weeklyHours: 2, sessionMinutes: 30 }, approve, noObjection, described);
     const out = await huddle();
+    expect(out.replan).toMatchObject(described);
     expect(out.messages.map((m) => `${m.from}:${m.kind}`)).toEqual([
       "system:trigger", "mastery:input", "requirements:input", "coach:input", "planner:proposal", "planner:decision",
     ]);
     expect(out.review.verdict).toBe("approve");
     const tasks = generateStructured.mock.calls.map((c) => c[0].task);
-    expect(tasks).toEqual(["coach_decide", "replan", "plan_review", "coach_decide"]);
+    expect(tasks).toEqual(["coach_decide", "replan", "plan_review", "coach_decide", "replan"]);
+    // The description is written from the computed facts of the change.
+    expect(generateStructured.mock.calls[4]![0].prompt).toContain("- Week: 3 h in 45-min sessions -> 2 h in 30-min sessions.");
   });
 
   it("plans with the learner's new constraints, and checks against them", async () => {
     // The draft keeps the old 3 hours; the learner asked for 2, so code objects and the planner revises once.
-    reply(coachInput, replan, approve, noObjection, { ...replan, weeklyHours: 2, sessionMinutes: 30 });
+    reply(coachInput, replan, approve, noObjection, { ...replan, weeklyHours: 2, sessionMinutes: 30 }, described);
     const out = await huddle();
     expect(generateStructured.mock.calls[1]![0].prompt).toContain("2 hours a week, sessions of 30 minutes");
     expect(out.messages.map((m) => m.kind)).toContain("revision");
@@ -55,18 +59,18 @@ describe("runHuddle", () => {
 
   it("revises once on the coach's must-fix objection, and doesn't loop", async () => {
     const fits = { ...replan, weeklyHours: 2, sessionMinutes: 30 };
-    reply(coachInput, fits, approve, { objection: "Make the first week back a single 20-minute win", severity: "must_fix" }, fits);
+    reply(coachInput, fits, approve, { objection: "Make the first week back a single 20-minute win", severity: "must_fix" }, fits, described);
     const out = await huddle();
     expect(out.messages.filter((m) => m.from === "coach" && m.kind === "objection")).toHaveLength(1);
     expect(generateStructured.mock.calls[4]![0].prompt).toContain("Make the first week back a single 20-minute win");
-    expect(generateStructured).toHaveBeenCalledTimes(5);
+    expect(generateStructured).toHaveBeenCalledTimes(6);
   });
 
   it("puts every model call through the step runner", async () => {
-    reply(coachInput, { ...replan, weeklyHours: 2, sessionMinutes: 30 }, approve, noObjection);
+    reply(coachInput, { ...replan, weeklyHours: 2, sessionMinutes: 30 }, approve, noObjection, described);
     const names: string[] = [];
     await huddle({ run: (name: string, fn: () => Promise<unknown>) => (names.push(name), fn()) });
-    expect(names).toEqual(["coach-input", "draft-replan", "review-replan", "coach-objection"]);
+    expect(names).toEqual(["coach-input", "draft-replan", "review-replan", "coach-objection", "describe-changes"]);
   });
 });
 
