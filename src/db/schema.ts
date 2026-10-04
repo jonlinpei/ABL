@@ -510,3 +510,26 @@ export const sideQuests = pgTable(
   (t) => [uniqueIndex("side_quests_one_open_per_goal").on(t.goalId).where(sql`${t.status} in ('proposed', 'active')`)],
 );
 export type SideQuestRow = typeof sideQuests.$inferSelect;
+
+/**
+ * When a learner wants reminders (PRD story 11): on these days, at this
+ * local time, ABL runs their coach check and emails their next step and any
+ * check-in. Off until they turn it on; unsubscribing turns it off.
+ */
+export const reminderPrefs = pgTable("reminder_prefs", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(false),
+  /** Local weekdays, 0 (Sunday) to 6. */
+  days: integer("days").array().notNull().default([]),
+  /** Local time, "HH:MM". */
+  time: text("time").notNull().default("19:00"),
+  /** IANA time zone, e.g. "America/Los_Angeles". */
+  timeZone: text("time_zone").notNull().default("America/Los_Angeles"),
+  /** The local date of the last reminder sent, so one goes out a day at most. */
+  lastSentOn: text("last_sent_on"),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ReminderPrefs = typeof reminderPrefs.$inferSelect;

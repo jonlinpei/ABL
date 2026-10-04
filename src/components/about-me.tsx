@@ -12,6 +12,7 @@ import type { GoalBrief } from "@/lib/goals/schema";
 import type { Gap } from "@/lib/specialists/schemas";
 
 import { BriefCard, GuessTag, PRIORITY_LABEL } from "./brief-card";
+import { Reminders } from "./reminders";
 import { ReplanForm } from "./replan";
 import { BASIS_LABEL, LEVEL_LABEL, LevelBar } from "./skill-labels";
 import { WorkingLabel } from "./thinking-words";
@@ -108,6 +109,7 @@ export function AboutMe({ initialGoalId }: { initialGoalId: string | null }) {
           {record.gap && <YourSkills record={record} gap={record.gap} canRework={goal.status === "active"} onSaved={load} />}
         </>
       )}
+      <Reminders />
       {completed.length > 0 && <CompletedGoals goals={completed} />}
       <DeleteData />
     </Page>
