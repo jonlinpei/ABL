@@ -34,6 +34,11 @@ export const coachCheck = eventType("learner/coach.check", {
   schema: z.object({ userId: z.string(), goalId: z.string() }),
 });
 
+/** A learner's chosen reminder time has come: run their coach, then email them. */
+export const reminderDue = eventType("learner/reminder.due", {
+  schema: z.object({ userId: z.string(), localDate: z.string() }),
+});
+
 /** The learner deleted their data; running and waiting work for them stops. */
 export const learnerDataDeleted = eventType("learner/data.deleted", {
   schema: z.object({ userId: z.string() }),

@@ -3,7 +3,7 @@ import { NonRetriableError } from "inngest";
 
 import { getDb, schema } from "@/db";
 import { selectSkillsToCheck } from "@/lib/specialists/assessment";
-import { activeGoalPlans, purgeExpiredGoals } from "@/lib/goals/goal-store";
+import { activeGoalPlans, currentGoal, purgeExpiredGoals } from "@/lib/goals/goal-store";
 import { runCoach } from "@/lib/specialists/coach-run";
 import { runHuddleById } from "@/lib/specialists/huddle-run";
 import { failHuddle } from "@/lib/specialists/huddle-store";
@@ -26,6 +26,10 @@ import {
 
 import { currentPlanOfGoal, saveVersionProposal } from "@/lib/goals/version-store";
 
+import { enabledReminderPrefs, markReminderSent } from "@/lib/reminders/reminder-store";
+import { reminderDue } from "@/lib/reminders/reminders";
+import { sendReminder } from "@/lib/reminders/send-reminder";
+
 import { inngest } from "./client";
 import {
   assessmentDone,
@@ -33,6 +37,7 @@ import {
   coachCheck,
   learnerDataDeleted,
   replanRequested,
+  reminderDue as reminderDueEvent,
   requirementsRefreshRequested,
   sessionCompleted,
 } from "./events";
@@ -168,7 +173,11 @@ export const coach = inngest.createFunction(
 export const dailyCoachCheck = inngest.createFunction(
   { id: "daily-coach-check", triggers: [{ cron: "TZ=America/Los_Angeles 0 17 * * *" }] },
   async ({ step }) => {
-    const targets = await step.run("list-goals", () => activeGoalPlans());
+    const targets = await step.run("list-goals", async () => {
+      // Learners with reminders get their coach check at their chosen time instead.
+      const timed = new Set((await enabledReminderPrefs()).map((p) => p.userId));
+      return (await activeGoalPlans()).filter((t) => !timed.has(t.userId));
+    });
     if (targets.length > 0) {
       await step.sendEvent("fan-out", targets.map((t) => coachCheck.create(t)));
     }
@@ -242,6 +251,51 @@ export const refreshRequirements = inngest.createFunction(
   },
 );
 
+/**
+ * Every 15 minutes: find learners whose reminder time has come in their own
+ * time zone (a chosen day, not sent today) and start their reminder.
+ */
+export const reminderTick = inngest.createFunction(
+  { id: "reminder-tick", triggers: [{ cron: "*/15 * * * *" }] },
+  async ({ step }) => {
+    const due = await step.run("find-due", async () => {
+      const now = new Date();
+      return (await enabledReminderPrefs()).flatMap((p) => {
+        const r = reminderDue(p, now);
+        return r.due ? [{ userId: p.userId, localDate: r.localDate }] : [];
+      });
+    });
+    if (due.length > 0) await step.sendEvent("fan-out", due.map((d) => reminderDueEvent.create(d)));
+    return { due: due.length };
+  },
+);
+
+/**
+ * One learner's reminder: the coach checks on their current goal first, so a
+ * check-in lands at the time they chose, then the email goes out with their
+ * next step and that check-in. Marked sent for the day either way, and one
+ * run per learner per local date, so a failed send isn't retried every tick.
+ */
+export const sendReminderFn = inngest.createFunction(
+  {
+    id: "send-reminder",
+    triggers: [reminderDueEvent],
+    idempotency: "event.data.userId + '-' + event.data.localDate",
+    concurrency: { key: "event.data.userId", limit: 1 },
+    cancelOn: cancelOnDelete,
+  },
+  async ({ event, step }) => {
+    const { userId, localDate } = event.data;
+    await step.run("coach", async () => {
+      const goal = await currentGoal(userId);
+      return goal ? runCoach(userId, goal.id) : { outcome: "no_goal" as const };
+    });
+    const result = await step.run("send", () => sendReminder(userId));
+    await step.run("mark-sent", () => markReminderSent(userId, localDate));
+    return result;
+  },
+);
+
 export const functions = [
   learnerLifecycle,
   masteryKeeper,
@@ -251,4 +305,6 @@ export const functions = [
   huddle,
   weeklyRequirementsRefresh,
   refreshRequirements,
+  reminderTick,
+  sendReminderFn,
 ];

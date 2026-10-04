@@ -126,6 +126,17 @@ When a session completes a milestone, the goal page offers a short, optional che
 
 **Saving it.** `milestone_checks` keeps one row per plan and milestone, taken or skipped, with the levels before the check. Results become mastery evidence (source `assessment`) and spread to every live gap, which also settles levels the learner set themselves. The learner sees a before → after for each skill, and it stays on the roadmap for a week. "Not now" means it isn't offered again for that milestone, and it never blocks the next one.
 
+### Reminders at chosen times
+
+A learner picks the days, a time and a time zone in About me (`reminder_prefs`, PRD story 11). The time zone defaults to the browser's.
+
+**Sending.**
+- Every 15 minutes, `reminder-tick` finds learners whose time has come in their own zone: a chosen day, at or up to 3 hours after their time (so a missed run catches up), and not sent today.
+- `send-reminder` runs the coach on their current goal first, so a check-in lands at the time they chose. Then it emails their next milestone with that check-in. The day is marked sent either way, so it's one a day at most.
+- Learners with reminders are left out of `daily-coach-check`, since their coach check happens at their time instead.
+
+**Email** goes through Resend's REST API (`RESEND_API_KEY`, from `REMINDER_FROM`, default `ABL <hello@iamabl.com>`). Without the key, check-ins still happen and the email is skipped, which the settings card says. Every email has a stop link and RFC 8058 one-click unsubscribe headers. The link carries an HMAC of the user id (`REMINDER_SECRET`), so it works without signing in. Links point at `APP_URL`.
+
 ### Changing a goal: versions and proposals
 
 "Change this goal" confirms a new version of the goal's brief. The goal keeps a **current** version, the brief of its newest active plan, until the learner accepts a new plan. A newer version is **pending** until then (`loadGoalState` returns both). What happens next depends on what changed (`classifyGoalChange`):
@@ -268,7 +279,7 @@ Settled defaults:
   - **Each session is applied once,** via `mastery_applied_at` and one-at-a-time processing per learner.
   - **Due reviews:** skills due for review outside the current milestone, at most two, go into the Tutor's context, and it opens with one quick review question.
   - The `mastery_update` task, for LLM topic upkeep, isn't needed until there are topic graphs.
-- **Coach** (`skills/coach`, task `coach_decide`, standard tier; Inngest functions `coach` and `daily-coach-check`): the Keep-Going Engine, levels 1–2 of the escalation ladder.
+- **Coach** (`skills/coach`, task `coach_decide`, standard tier; Inngest functions `coach`, `daily-coach-check` and `send-reminder`): the Keep-Going Engine, levels 1–2 of the escalation ladder.
   - **Signals come from code** (`signals.ts`):
     - `missed_sessions`: 5+ days and at least two expected sessions; a lapse after 14 days.
     - `behind_pace`: under 60% of planned sessions over the last 3 weeks. It includes a projected finish date only when the pace is at least a quarter of the plan's.
