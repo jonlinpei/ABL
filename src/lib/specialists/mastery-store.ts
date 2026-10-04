@@ -5,7 +5,7 @@ import { getDb, schema } from "@/db";
 import { termsInsert } from "./glossary-store";
 import { applyEvidence, spreadMastery, type MasteryRecord } from "./mastery";
 
-const { careerBriefs, gaps, goals, learnerEvents, plans, sessions, skillMastery } = schema;
+const { careerBriefs, gaps, goals, learnerEvents, plans, sessions, sideQuests, skillMastery } = schema;
 
 /** The learner's mastery records, optionally limited to some skills. */
 export async function loadMastery(userId: string, skillIds?: string[]): Promise<MasteryRecord[]> {
@@ -64,13 +64,17 @@ export async function applySessionEvidence(
   const [plan] = await db.select({ briefId: plans.briefId }).from(plans).where(eq(plans.id, session.planId));
   const [gapRow] = plan ? await db.select().from(gaps).where(eq(gaps.briefId, plan.briefId)) : [];
   const gapItems = new Map(gapRow?.gap.items.map((i) => [i.skillId, i]));
+  // A side quest's skill may not be in the gap; it's named by the quest.
+  const [quest] = session.sideQuestId
+    ? await db.select({ skillId: sideQuests.skillId, skillName: sideQuests.skillName }).from(sideQuests).where(eq(sideQuests.id, session.sideQuestId))
+    : [];
   const existing = new Map((await loadMastery(userId, evidence.map((e) => e.skillId))).map((r) => [r.skillId, r]));
 
   const records = evidence.map((e) =>
     applyEvidence({
       record: existing.get(e.skillId),
       skillId: e.skillId,
-      name: gapItems.get(e.skillId)?.name ?? e.skillId,
+      name: gapItems.get(e.skillId)?.name ?? (quest?.skillId === e.skillId ? quest.skillName : e.skillId),
       startingLevel: gapItems.get(e.skillId)?.current ?? 0,
       entry: { level: e.level, evidence: e.evidence, source: "session", at: now.toISOString() },
       now,

@@ -15,6 +15,7 @@ import { ChatText } from "./chat-text";
 import { goalAction } from "./goal-actions";
 import { ProposalView, ReplanForm } from "./replan";
 import { BeforeAndAfter, MilestoneCheck } from "./milestone-check";
+import { SideQuest } from "./side-quest";
 import { SidekickPanel } from "./sidekick-panel";
 import { TraceChip } from "./trace-chip";
 import { isWaiting, THINKING, ThinkingWords, WorkingLabel } from "./thinking-words";
@@ -46,14 +47,14 @@ export function SessionPanel({
   const milestone = plan.milestones[progress.milestoneIndex];
   const last = progress.lastReport;
 
-  async function start() {
+  async function start(sideQuestId?: string) {
     setStarting(true);
     setError(null);
     try {
       const res = await fetch("/api/session/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goalId }),
+        body: JSON.stringify({ goalId, ...(sideQuestId && { sideQuestId }) }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
@@ -167,7 +168,7 @@ export function SessionPanel({
             </div>
           )}
           <button
-            onClick={start}
+            onClick={() => start()}
             disabled={starting}
             className="mt-4 rounded-lg bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
           >
@@ -186,6 +187,7 @@ export function SessionPanel({
         </>
       )}
     </section>
+    <SideQuest goalId={goalId} quest={progress.sideQuest} onStartSession={(id) => start(id)} onChanged={onSessionEnd} />
     </>
   );
 }
@@ -281,7 +283,9 @@ function SessionChat({
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-foreground/20 p-4">
       <div className="text-xs uppercase tracking-wide text-foreground/50">
-        Session {info.sessionNumber} · {info.milestoneTitle}
+        {info.sideQuest
+          ? `Side quest · ${info.milestoneTitle} · session ${info.sideQuest.sessionNumber} of ${info.sideQuest.sessions}`
+          : `Session ${info.sessionNumber} · ${info.milestoneTitle}`}
       </div>
       {messages.map((m) => (
         <div key={m.id} className={m.role === "user" ? "max-w-[85%] self-end" : "max-w-full"}>

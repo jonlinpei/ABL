@@ -15,7 +15,8 @@ export async function loadSessionState(userId: string, goalId: string) {
   if (!state?.gap || !state.plan) return undefined;
   const rows = await loadSessions(state.plan.id);
   const history: PastSession[] = rows
-    .filter((r) => r.endedAt && r.report)
+    // Side-quest sessions don't advance the plan; the quest has its own count.
+    .filter((r) => r.endedAt && r.report && !r.sideQuestId)
     .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
   const active = rows.find((r) => !r.endedAt);
   const milestoneIndex = currentMilestone(state.plan.plan, history);

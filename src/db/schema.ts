@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -131,6 +132,8 @@ export const LEARNER_EVENT_TYPES = [
   "skill_corrected",
   "goal_status_changed",
   "goal_purged",
+  "side_quest_started",
+  "side_quest_done",
 ] as const;
 export type LearnerEventType = (typeof LEARNER_EVENT_TYPES)[number];
 
@@ -271,6 +274,8 @@ export const sessions = pgTable(
     endedAt: timestamp("ended_at", { withTimezone: true }),
     /** Set when the mastery keeper applied this session's evidence, so it's applied once. */
     masteryAppliedAt: timestamp("mastery_applied_at", { withTimezone: true }),
+    /** Set for a side-quest session: it teaches the quest, not a milestone, and doesn't advance the plan. */
+    sideQuestId: uuid("side_quest_id"),
   },
   (t) => [
     index("sessions_user_started").on(t.userId, t.startedAt),
@@ -468,3 +473,40 @@ export const milestoneChecks = pgTable(
   },
   (t) => [uniqueIndex("milestone_checks_plan_milestone").on(t.planId, t.milestoneIndex)],
 );
+
+/**
+ * A side quest (PRD story 13): a short detour into a related topic, in a
+ * few sessions of its own. The learner chooses before starting whether it
+ * uses their plan time (the finish moves by `planWeeks`) or extra time (it
+ * doesn't). One open at a time per goal.
+ */
+export const sideQuests = pgTable(
+  "side_quests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    topic: text("topic").notNull(),
+    title: text("title").notNull(),
+    why: text("why").notNull(),
+    outline: jsonb("outline").$type<string[]>().notNull(),
+    sessions: integer("sessions").notNull(),
+    /** The skill it builds: one from the goal's gap, or a new related one. */
+    skillId: text("skill_id").notNull(),
+    skillName: text("skill_name").notNull(),
+    relevance: text("relevance").$type<"core" | "related" | "tangent">().notNull(),
+    /** Weeks the finish moves if it uses plan time, from their session length and hours. */
+    planWeeks: real("plan_weeks").notNull(),
+    mode: text("mode").$type<"plan_time" | "extra">(),
+    status: text("status").$type<"proposed" | "active" | "done" | "dropped">().notNull().default("proposed"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("side_quests_one_open_per_goal").on(t.goalId).where(sql`${t.status} in ('proposed', 'active')`)],
+);
+export type SideQuestRow = typeof sideQuests.$inferSelect;

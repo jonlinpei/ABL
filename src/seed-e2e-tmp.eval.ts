@@ -18,9 +18,6 @@ it("seed", async () => {
   const v1 = await saveConfirmedBrief(userId, GoalBriefSchema.parse(read("brief")));
   const [p] = await db.insert(schema.learnerProfiles).values({ userId, briefId: v1.id, requirementsId: r!.id, profile }).returning();
   await db.insert(schema.gaps).values({ userId, briefId: v1.id, profileId: p!.id, gap: computeGap(requirements, profile), assessedAt: new Date() });
-  const [pl] = await db.insert(schema.plans).values({ userId, briefId: v1.id, version: 1, plan: PlanSchema.parse(read("plan")), review: { verdict: "approve", issues: [] } }).returning();
-  // The latest session just finished milestone 1.
-  await db.insert(schema.sessions).values({ userId, planId: pl!.id, milestoneIndex: 0, endedAt: new Date(),
-    report: { summary: "s", recap: "You rebuilt your leads-by-source pivot in SQL.", covered: [], evidence: [], homework: null, milestoneComplete: true, endedEarly: false } });
+  await db.insert(schema.plans).values({ userId, briefId: v1.id, version: 1, plan: PlanSchema.parse(read("plan")), review: { verdict: "approve", issues: [] } }).returning();
   process.stdout.write(`SEEDED ${v1.goalId}\n`);
 });

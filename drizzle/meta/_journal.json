@@ -106,6 +106,13 @@
       "when": 1791099860222,
       "tag": "0014_milestone_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791100701309,
+      "tag": "0015_side_quests",
+      "breakpoints": true
     }
   ]
 }
