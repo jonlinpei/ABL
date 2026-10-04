@@ -14,6 +14,7 @@ import { REVISIT_OPTION, REWORK_OPTION, type Plan } from "@/lib/specialists/sche
 import { ChatText } from "./chat-text";
 import { goalAction } from "./goal-actions";
 import { ProposalView, ReplanForm } from "./replan";
+import { BeforeAndAfter, MilestoneCheck } from "./milestone-check";
 import { SidekickPanel } from "./sidekick-panel";
 import { TraceChip } from "./trace-chip";
 import { isWaiting, THINKING, ThinkingWords, WorkingLabel } from "./thinking-words";
@@ -124,6 +125,10 @@ export function SessionPanel({
 
   return (
     <>
+    {progress.milestoneCheck && <MilestoneCheck goalId={goalId} offer={progress.milestoneCheck} onDone={onSessionEnd} />}
+    {!progress.milestoneCheck && progress.lastCheck && (
+      <BeforeAndAfter results={progress.lastCheck.results} title={progress.lastCheck.title} />
+    )}
     {progress.checkIn && (
       <CheckInCard
         checkIn={progress.checkIn}

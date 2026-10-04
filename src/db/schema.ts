@@ -442,3 +442,29 @@ export const glossaryTerms = pgTable(
 );
 
 export type GlossaryTermRow = typeof glossaryTerms.$inferSelect;
+
+/**
+ * A short skills check after a milestone (PRD story 12): the learner proves
+ * to themselves they've improved. Offered once per milestone on a plan;
+ * taken (results) or skipped. `before` holds their levels as the check began,
+ * for the before-and-after.
+ */
+export const milestoneChecks = pgTable(
+  "milestone_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    milestoneIndex: integer("milestone_index").notNull(),
+    before: jsonb("before").$type<{ skillId: string; level: number }[]>().notNull().default([]),
+    results: jsonb("results").$type<AssessedSkill[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    skippedAt: timestamp("skipped_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("milestone_checks_plan_milestone").on(t.planId, t.milestoneIndex)],
+);
