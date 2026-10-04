@@ -22,13 +22,15 @@ export async function runCoach(userId: string, goalId: string, now = new Date())
   const rows = await loadSessions(state.plan.id);
   if (rows.some((r) => !r.endedAt)) return { outcome: "session_in_progress" as const };
 
-  const ended = rows.filter((r) => r.endedAt && r.report);
+  // Plan sessions only: side quests don't advance the plan.
+  const ended = rows.filter((r) => r.endedAt && r.report && !r.sideQuestId);
   const history = ended.map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
   const milestoneIndex = currentMilestone(plan, history);
   const signals = detectSignals({
     plan,
     planStartedAt: state.plan.createdAt,
-    sessions: rows.map((r) => ({ milestoneIndex: r.milestoneIndex, endedAt: r.endedAt, report: r.report })),
+    // Side-quest sessions count as studying, never as time on a milestone.
+    sessions: rows.map((r) => ({ milestoneIndex: r.sideQuestId ? -1 : r.milestoneIndex, endedAt: r.endedAt, report: r.report })),
     mastery: await loadMastery(userId),
     milestoneIndex,
     now,

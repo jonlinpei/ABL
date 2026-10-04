@@ -24,6 +24,8 @@ vi.mock("@/lib/specialists/store", () => ({
 vi.mock("@/lib/specialists/coach-store", () => ({ openCheckIn: async () => undefined }));
 let checks: unknown[] = [];
 vi.mock("@/lib/specialists/milestone-check-store", () => ({ loadMilestoneChecks: async () => checks }));
+let quest: unknown;
+vi.mock("@/lib/specialists/side-quest-store", () => ({ openSideQuest: async () => quest }));
 let sessionRows: unknown[] = [];
 let openHuddleRow: unknown;
 vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => openHuddleRow }));
@@ -52,6 +54,7 @@ beforeEach(() => {
   loadGoalState.mockReset();
   openHuddleRow = undefined;
   checks = [];
+  quest = undefined;
   sessionRows = [];
   currentGoal.mockReset().mockResolvedValue(goal());
   resolveGoal.mockReset();
@@ -84,7 +87,7 @@ describe("GET /api/learner/status", () => {
     expect(await (await get()).json()).toMatchObject({
       stage: "plan_ready",
       plan: { title: samplePlan.title },
-      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null, update: null, milestoneCheck: null, lastCheck: null },
+      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null, update: null, milestoneCheck: null, lastCheck: null, sideQuest: null },
     });
     expect(loadGoalState).toHaveBeenCalledWith("user_1", GOAL_ID);
   });
@@ -132,6 +135,15 @@ describe("GET /api/learner/status", () => {
       title: samplePlan.milestones[0]!.title,
       results: [{ skillId: "sql-querying", name: "SQL querying", before: 0, after: 2, toLevel: 2 }],
     });
+  });
+
+  it("shows the open side quest with its sessions done", async () => {
+    quest = { id: "q1", title: "Clean data with pandas", why: "w", outline: ["a"], sessions: 2, relevance: "related", planWeeks: 0.5, mode: "extra", status: "active", skillName: "Python data cleaning" };
+    sessionRows = [{ id: "s1", milestoneIndex: 0, endedAt: new Date(), report: null, sideQuestId: "q1" }];
+    loadGoalState.mockResolvedValueOnce({ brief: {}, gap: { gap, assessedAt: "2026-09-28" }, plan: { id: "plan_1", plan: samplePlan } });
+    const progress = (await (await get()).json()).progress;
+    expect(progress.sideQuest).toMatchObject({ id: "q1", status: "active", mode: "extra", sessionsDone: 1 });
+    expect(progress.milestoneIndex).toBe(0);
   });
 
   it("falls back to the current goal when no goalId is given", async () => {

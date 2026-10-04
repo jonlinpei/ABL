@@ -352,11 +352,11 @@ export async function loadSessions(planId: string) {
 }
 
 /** Start a session on a milestone, or return the one already active for this plan. */
-export async function startSession(userId: string, planId: string, milestoneIndex: number) {
+export async function startSession(userId: string, planId: string, milestoneIndex: number, sideQuestId: string | null = null) {
   const db = getDb();
   // The partial unique index allows one active session per plan, so a
   // concurrent start inserts nothing and both callers get the same session.
-  await db.insert(sessions).values({ userId, planId, milestoneIndex }).onConflictDoNothing();
+  await db.insert(sessions).values({ userId, planId, milestoneIndex, sideQuestId }).onConflictDoNothing();
   const [active] = await db
     .select()
     .from(sessions)

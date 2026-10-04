@@ -24,13 +24,19 @@ export async function runHuddleById(huddleId: string, run: StepRunner, now = new
     const sessions = await loadSessions(plan!.id);
     return { plan: plan!, brief: brief!.brief, gap: gap!.gap, sessions, mastery: await loadMastery(huddle.userId) };
   });
-  const ended = state.sessions.filter((s) => s.endedAt && s.report);
+  // Side-quest sessions don't advance the plan.
+  const ended = state.sessions.filter((s) => s.endedAt && s.report && !s.sideQuestId);
   const history = ended.map((s) => ({ milestoneIndex: s.milestoneIndex, report: s.report!, endedAt: new Date(s.endedAt!).toISOString() }));
   const milestoneIndex = currentMilestone(state.plan.plan, history);
   const signals = detectSignals({
     plan: state.plan.plan,
     planStartedAt: new Date(state.plan.createdAt),
-    sessions: state.sessions.map((s) => ({ milestoneIndex: s.milestoneIndex, endedAt: s.endedAt ? new Date(s.endedAt) : null, report: s.report })),
+    // Side-quest sessions count as studying, never as time on a milestone.
+    sessions: state.sessions.map((s) => ({
+      milestoneIndex: s.sideQuestId ? -1 : s.milestoneIndex,
+      endedAt: s.endedAt ? new Date(s.endedAt) : null,
+      report: s.report,
+    })),
     mastery: state.mastery,
     milestoneIndex,
     now,

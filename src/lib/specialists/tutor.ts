@@ -32,6 +32,7 @@ export function tutorContext({
   dueReviews = [],
   coachNotes = [],
   carried = [],
+  sideQuest = null,
 }: {
   brief: GoalBrief;
   gap: Gap;
@@ -42,6 +43,8 @@ export function tutorContext({
   coachNotes?: string[];
   /** Sessions on earlier plan versions, when this plan has none of its own yet. */
   carried?: PastSession[];
+  /** For a side-quest session: the quest's brief, which replaces the milestone and session sections. */
+  sideQuest?: string | null;
 }): string {
   const m = plan.milestones[milestoneIndex]!;
   const byId = new Map(gap.items.map((i) => [i.skillId, i]));
@@ -66,7 +69,7 @@ export function tutorContext({
 ${brief.current.role} (${brief.current.industry}) moving to ${brief.target.role}. ${brief.current.work}
 Interests: ${brief.interests.join(", ") || "none listed"}. Tried before: ${brief.pastAttempts ?? "nothing"}.
 
-## Where they are in the plan: "${plan.title}"
+${sideQuest ?? `## Where they are in the plan: "${plan.title}"
 Milestone ${milestoneIndex + 1} of ${plan.milestones.length}: ${m.title}
 - Why it matters: ${m.whyItMatters}
 - Topics: ${m.topics.join("; ")}
@@ -84,7 +87,7 @@ ${
           changes.length ? `\nWhat changed in their plan: ${changes.map((c) => `${c.change} (${c.because})`).join("; ")}` : ""
         }`
       : `Session ${history.length + 1} on this plan. Pick up from where the last one ended and move toward the milestone's visible win.`
-}
+}`}
 ${last?.report.homework ? `\nLast session's homework was: "${last.report.homework.task}" Open by asking how it went.` : ""}
 ${
   dueReviews.length

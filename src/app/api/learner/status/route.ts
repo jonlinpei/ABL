@@ -12,6 +12,8 @@ import { countEndedSessions, loadEarlierSessions, loadGoalState, loadSessions } 
 import { currentMilestone } from "@/lib/specialists/tutor";
 import { beforeAndAfter, milestoneToCheck, type MilestoneToCheck } from "@/lib/specialists/milestone-check";
 import { loadMilestoneChecks } from "@/lib/specialists/milestone-check-store";
+import { openSideQuest } from "@/lib/specialists/side-quest-store";
+import type { SideQuestRow } from "@/db/schema";
 
 export type LearnerStatus = GoalStage & {
   /** The goal this status is for; null only before the learner has any goal. */
@@ -48,6 +50,12 @@ export interface PlanProgress {
   update: { status: "building" } | { status: "check"; skills: { skillId: string; name: string }[] } | null;
   /** A milestone just finished, with a short check offered to prove it. */
   milestoneCheck: MilestoneToCheck | null;
+  /** The goal's open side quest: proposed (with what it costs) or under way. */
+  sideQuest:
+    | (Pick<SideQuestRow, "id" | "title" | "why" | "outline" | "sessions" | "relevance" | "planWeeks" | "mode" | "status" | "skillName"> & {
+        sessionsDone: number;
+      })
+    | null;
   /** The latest milestone check's before-and-after, for a week after it's taken. */
   lastCheck: { milestoneIndex: number; title: string; results: ReturnType<typeof beforeAndAfter> } | null;
 }
@@ -84,15 +92,17 @@ export async function GET(req: Request) {
     } else {
       const pending = state.pending;
       const pendingSkills = pending?.gap && !pending.gap.assessedAt ? selectSkillsToCheck(pending.gap.gap) : [];
-      const [rows, note, open, sessionsDone, checks] = await Promise.all([
+      const [rows, note, open, sessionsDone, checks, quest] = await Promise.all([
         loadSessions(state.plan.id),
         openCheckIn(userId, state.plan.id),
         openHuddle(userId, state.plan.id),
         countEndedSessions(userId, goal.id),
         loadMilestoneChecks(state.plan.id),
+        openSideQuest(goal.id),
       ]);
       const history = rows
-        .filter((r) => r.endedAt && r.report)
+        // Side-quest sessions don't advance the plan.
+        .filter((r) => r.endedAt && r.report && !r.sideQuestId)
         .map((r) => ({ milestoneIndex: r.milestoneIndex, report: r.report!, endedAt: r.endedAt!.toISOString() }));
       status = {
         stage: "plan_ready",
@@ -116,6 +126,21 @@ export async function GET(req: Request) {
               : { huddleId: open.huddle.id, kind: open.huddle.toBriefId ? "update" : "rework", status: "running" },
           milestoneCheck: milestoneToCheck(state.plan.plan, history, state.gap.gap, new Set(checks.map((c) => c.milestoneIndex))),
           lastCheck: recentCheck(checks, state.plan.plan, state.gap.gap),
+          sideQuest: quest
+            ? {
+                id: quest.id,
+                title: quest.title,
+                why: quest.why,
+                outline: quest.outline,
+                sessions: quest.sessions,
+                relevance: quest.relevance,
+                planWeeks: quest.planWeeks,
+                mode: quest.mode,
+                status: quest.status,
+                skillName: quest.skillName,
+                sessionsDone: rows.filter((r) => r.sideQuestId === quest.id && r.endedAt).length,
+              }
+            : null,
           // Until the update's plan is ready (then it's the proposal above).
           update:
             !pending || open

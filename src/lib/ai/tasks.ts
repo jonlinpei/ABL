@@ -21,6 +21,7 @@ export const TASK_TYPES = [
   "coach_decide",
   "mastery_update",
   "plan_review",
+  "side_quest_draft",
 ] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 
@@ -109,6 +110,13 @@ export const TASK_ROUTES: Readonly<Record<TaskType, TaskRoute>> = {
     fallback: ["deep"],
     rationale:
       "Profiler: turn a resume, LinkedIn profile and discovery transcript into a skills profile with evidence. Runs once per confirmed brief; misread skills skew the gap, so no fast-tier fallback.",
+  },
+  side_quest_draft: {
+    tier: "standard",
+    requires: { structuredOutput: true },
+    fallback: ["deep"],
+    rationale:
+      "Side quest drafter: turns a topic the learner wants to explore into a small quest tied to their goal (PRD story 13). One call per quest; it frames how the topic connects, so not the fast tier.",
   },
   requirements_research: {
     tier: "standard",

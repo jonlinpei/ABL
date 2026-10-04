@@ -107,6 +107,17 @@ During a session, "Ask a quick question" opens a panel over the lesson. The less
 
 The tutor sees the session's side questions on each turn, in the per-turn part next to the clock, so the instructions stay cacheable. It connects to them and doesn't repeat them. It never counts a side question as mastery, so the session report stays the one way into the graph. PostHog client events `sidekick_opened` and `sidekick_closed` measure the PRD's sidekick metric.
 
+### Side quests
+
+A learner names a topic to explore off their path. The drafter (`side_quest_draft`, `skills/side-quest`) turns it into a short quest:
+- a title, and how it connects to their goal, honestly (`core`, `related` or `tangent`);
+- 2–4 things to cover, over 1–4 sessions;
+- the skill it builds, from the gap or a new one.
+
+**Choosing.** Code computes the timeline cost: the sessions at their session length over their weekly hours, rounded up to the half week. The learner then chooses **plan time** (the finish moves that far) or **extra time** (the finish stays). One quest is open per goal (`side_quests`).
+
+**Quest sessions** are tutor sessions with `sessions.side_quest_id`. The tutor teaches the quest instead of the milestone (`sideQuestContext`), and evidence is for the quest's skill, so it joins the shared skills graph. Quest sessions never advance or stall a milestone, since they're left out of plan history and stuck-topic counts. They still count as studying for pace. The tutor marks the quest done when the outline is covered.
+
 ### Milestone checks
 
 When a session completes a milestone, the goal page offers a short, optional check: "Prove it to yourself" (PRD story 12). It's the Assessor in milestone-check mode (`skills/assessor`, "Milestone checks"):

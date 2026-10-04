@@ -56,6 +56,11 @@ const SKILLS = [
     exportName: "GLOSSARY_SKILL",
   },
   {
+    source: "skills/side-quest/SKILL.md",
+    target: "src/lib/specialists/side-quest.generated.ts",
+    exportName: "SIDE_QUEST_SKILL",
+  },
+  {
     source: "skills/sidekick/SKILL.md",
     target: "src/lib/specialists/sidekick.generated.ts",
     exportName: "SIDEKICK_SKILL",
