@@ -107,6 +107,14 @@ During a session, "Ask a quick question" opens a panel over the lesson. The less
 
 The tutor sees the session's side questions on each turn, in the per-turn part next to the clock, so the instructions stay cacheable. It connects to them and doesn't repeat them. It never counts a side question as mastery, so the session report stays the one way into the graph. PostHog client events `sidekick_opened` and `sidekick_closed` measure the PRD's sidekick metric.
 
+### Milestone checks
+
+When a session completes a milestone, the goal page offers a short, optional check: "Prove it to yourself" (PRD story 12). It's the Assessor in milestone-check mode (`skills/assessor`, "Milestone checks"):
+- one small practical task per skill of that milestone, at the level the milestone aimed for;
+- no teaching or grading out loud, and a closing that names one specific thing they did well, with no levels.
+
+**Saving it.** `milestone_checks` keeps one row per plan and milestone, taken or skipped, with the levels before the check. Results become mastery evidence (source `assessment`) and spread to every live gap, which also settles levels the learner set themselves. The learner sees a before → after for each skill, and it stays on the roadmap for a week. "Not now" means it isn't offered again for that milestone, and it never blocks the next one.
+
 ### Changing a goal: versions and proposals
 
 "Change this goal" confirms a new version of the goal's brief. The goal keeps a **current** version, the brief of its newest active plan, until the learner accepts a new plan. A newer version is **pending** until then (`loadGoalState` returns both). What happens next depends on what changed (`classifyGoalChange`):

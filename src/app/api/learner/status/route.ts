@@ -10,6 +10,8 @@ import { currentGoal } from "@/lib/goals/goal-store";
 import { goalForRequest, goalIdParam } from "@/lib/goals/request-goal";
 import { countEndedSessions, loadEarlierSessions, loadGoalState, loadSessions } from "@/lib/specialists/store";
 import { currentMilestone } from "@/lib/specialists/tutor";
+import { beforeAndAfter, milestoneToCheck, type MilestoneToCheck } from "@/lib/specialists/milestone-check";
+import { loadMilestoneChecks } from "@/lib/specialists/milestone-check-store";
 
 export type LearnerStatus = GoalStage & {
   /** The goal this status is for; null only before the learner has any goal. */
@@ -44,6 +46,10 @@ export interface PlanProgress {
    * compare: its skills picture is being built, or it needs a short skills check.
    */
   update: { status: "building" } | { status: "check"; skills: { skillId: string; name: string }[] } | null;
+  /** A milestone just finished, with a short check offered to prove it. */
+  milestoneCheck: MilestoneToCheck | null;
+  /** The latest milestone check's before-and-after, for a week after it's taken. */
+  lastCheck: { milestoneIndex: number; title: string; results: ReturnType<typeof beforeAndAfter> } | null;
 }
 
 export type ProposalKind = "rework" | "update";
@@ -78,11 +84,12 @@ export async function GET(req: Request) {
     } else {
       const pending = state.pending;
       const pendingSkills = pending?.gap && !pending.gap.assessedAt ? selectSkillsToCheck(pending.gap.gap) : [];
-      const [rows, note, open, sessionsDone] = await Promise.all([
+      const [rows, note, open, sessionsDone, checks] = await Promise.all([
         loadSessions(state.plan.id),
         openCheckIn(userId, state.plan.id),
         openHuddle(userId, state.plan.id),
         countEndedSessions(userId, goal.id),
+        loadMilestoneChecks(state.plan.id),
       ]);
       const history = rows
         .filter((r) => r.endedAt && r.report)
@@ -107,6 +114,8 @@ export async function GET(req: Request) {
             : open.huddle.status === "proposed" && open.proposed
               ? { huddleId: open.huddle.id, kind: open.huddle.toBriefId ? "update" : "rework", status: "proposed", proposal: open.proposed.plan as Replan }
               : { huddleId: open.huddle.id, kind: open.huddle.toBriefId ? "update" : "rework", status: "running" },
+          milestoneCheck: milestoneToCheck(state.plan.plan, history, state.gap.gap, new Set(checks.map((c) => c.milestoneIndex))),
+          lastCheck: recentCheck(checks, state.plan.plan, state.gap.gap),
           // Until the update's plan is ready (then it's the proposal above).
           update:
             !pending || open
@@ -122,4 +131,18 @@ export async function GET(req: Request) {
     ...status,
     goal: { id: goal.id, status: goal.status, completedAt: goal.completedAt?.toISOString() ?? null },
   } satisfies LearnerStatus);
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** The newest milestone check taken in the last week, with its before-and-after. */
+function recentCheck(checks: Awaited<ReturnType<typeof loadMilestoneChecks>>, plan: Plan, gap: Gap) {
+  const taken = checks
+    .filter((c) => c.results && c.completedAt && Date.now() - c.completedAt.getTime() < WEEK_MS)
+    .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime())[0];
+  const milestone = taken && plan.milestones[taken.milestoneIndex];
+  if (!taken || !milestone) return null;
+  const names = new Map(gap.items.map((i) => [i.skillId, i.name]));
+  const skills = milestone.skills.map((s) => ({ skillId: s.skillId, name: names.get(s.skillId) ?? s.skillId, toLevel: s.toLevel }));
+  return { milestoneIndex: taken.milestoneIndex, title: milestone.title, results: beforeAndAfter(taken.before, taken.results!, skills) };
 }

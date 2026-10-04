@@ -17,11 +17,14 @@ vi.mock("@/lib/goals/goal-store", () => ({
 }));
 vi.mock("@/lib/specialists/store", () => ({
   loadGoalState: (...a: unknown[]) => loadGoalState(...a),
-  loadSessions: async () => [],
+  loadSessions: async () => sessionRows,
   loadEarlierSessions: async () => [],
   countEndedSessions: async () => 0,
 }));
 vi.mock("@/lib/specialists/coach-store", () => ({ openCheckIn: async () => undefined }));
+let checks: unknown[] = [];
+vi.mock("@/lib/specialists/milestone-check-store", () => ({ loadMilestoneChecks: async () => checks }));
+let sessionRows: unknown[] = [];
 let openHuddleRow: unknown;
 vi.mock("@/lib/specialists/huddle-store", () => ({ openHuddle: async () => openHuddleRow }));
 
@@ -48,6 +51,8 @@ beforeEach(() => {
   auth.mockReset().mockResolvedValue({ userId: "user_1" });
   loadGoalState.mockReset();
   openHuddleRow = undefined;
+  checks = [];
+  sessionRows = [];
   currentGoal.mockReset().mockResolvedValue(goal());
   resolveGoal.mockReset();
 });
@@ -79,7 +84,7 @@ describe("GET /api/learner/status", () => {
     expect(await (await get()).json()).toMatchObject({
       stage: "plan_ready",
       plan: { title: samplePlan.title },
-      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null, update: null },
+      progress: { milestoneIndex: 0, sessionsDone: 0, activeSessionId: null, lastReport: null, checkIn: null, replan: null, update: null, milestoneCheck: null, lastCheck: null },
     });
     expect(loadGoalState).toHaveBeenCalledWith("user_1", GOAL_ID);
   });
@@ -105,6 +110,28 @@ describe("GET /api/learner/status", () => {
     openHuddleRow = { huddle: { id: "h2", status: "running", toBriefId: null } };
     loadGoalState.mockResolvedValueOnce(current);
     expect((await progress()).replan).toEqual({ huddleId: "h2", kind: "rework", status: "running" });
+  });
+
+  it("offers a check for the milestone just finished, and shows its before-and-after once taken", async () => {
+    const current = { brief: {}, gap: { gap, assessedAt: "2026-09-28" }, plan: { id: "plan_1", plan: samplePlan } };
+    const report = { summary: "s", recap: "r", covered: [], evidence: [], homework: null, milestoneComplete: true, endedEarly: false };
+    sessionRows = [{ id: "s1", milestoneIndex: 0, endedAt: new Date(), report }];
+    loadGoalState.mockResolvedValueOnce(current);
+    expect((await (await get()).json()).progress.milestoneCheck).toEqual({
+      milestoneIndex: 0,
+      title: samplePlan.milestones[0]!.title,
+      skills: [{ skillId: "sql-querying", name: "SQL querying", current: 0, toLevel: 2 }],
+    });
+
+    checks = [{ milestoneIndex: 0, before: [{ skillId: "sql-querying", level: 0 }], results: [{ skillId: "sql-querying", level: 2, confidence: "high", evidence: "e" }], completedAt: new Date(), skippedAt: null }];
+    loadGoalState.mockResolvedValueOnce(current);
+    const progress = (await (await get()).json()).progress;
+    expect(progress.milestoneCheck).toBeNull();
+    expect(progress.lastCheck).toEqual({
+      milestoneIndex: 0,
+      title: samplePlan.milestones[0]!.title,
+      results: [{ skillId: "sql-querying", name: "SQL querying", before: 0, after: 2, toLevel: 2 }],
+    });
   });
 
   it("falls back to the current goal when no goalId is given", async () => {
