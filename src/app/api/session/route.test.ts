@@ -33,6 +33,13 @@ const loadGlossary = vi.fn();
 vi.mock("@/lib/specialists/glossary-store", () => ({ loadGlossary: (...a: unknown[]) => loadGlossary(...a) }));
 const loadSessionSidekicks = vi.fn();
 vi.mock("@/lib/specialists/sidekick-store", () => ({ loadSessionSidekicks: (...a: unknown[]) => loadSessionSidekicks(...a) }));
+const loadSideQuest = vi.fn();
+const finishSideQuest = vi.fn();
+vi.mock("@/lib/specialists/side-quest-store", () => ({
+  loadSideQuest: (...a: unknown[]) => loadSideQuest(...a),
+  finishSideQuest: (...a: unknown[]) => finishSideQuest(...a),
+  endedQuestSessions: async () => 1,
+}));
 vi.mock("@/inngest/client", () => ({ inngest: { send: (...a: unknown[]) => send(...a) } }));
 vi.mock("@/lib/ai/providers", () => ({ configuredProviders: () => ["anthropic"], toLanguageModel: () => ({}) }));
 vi.mock("ai", async (importOriginal) => ({
@@ -88,6 +95,8 @@ const report = {
 };
 
 beforeEach(() => {
+  loadSideQuest.mockReset();
+  finishSideQuest.mockReset();
   loadSessionSidekicks.mockReset().mockResolvedValue([]);
   loadGlossary.mockReset().mockResolvedValue([]);
   auth.mockReset().mockResolvedValue({ userId: "user_1" });
@@ -223,8 +232,33 @@ describe("POST /api/session/start", () => {
     loadSessionState.mockResolvedValueOnce(state({ active: undefined, milestoneIndex: 1 }));
     startSession.mockResolvedValueOnce({ ...active, id: "s2", milestoneIndex: 1 });
     const res = await (await start()).json();
-    expect(startSession).toHaveBeenCalledWith("user_1", "p1", 1);
-    expect(res).toMatchObject({ id: "s2", milestoneTitle: samplePlan.milestones[1]!.title });
+    expect(startSession).toHaveBeenCalledWith("user_1", "p1", 1, null);
+    expect(res).toMatchObject({ id: "s2", milestoneTitle: samplePlan.milestones[1]!.title, sideQuest: null });
+  });
+
+  it("starts a session on the goal's active side quest, and refuses one that isn't under way", async () => {
+    const quest = { id: "q1", goalId: GOAL_ID, status: "active", title: "Clean data with pandas", sessions: 2 };
+    loadSessionState.mockResolvedValueOnce(state({ active: undefined, milestoneIndex: 1 }));
+    loadSideQuest.mockResolvedValue(quest);
+    startSession.mockResolvedValueOnce({ ...active, id: "s3", milestoneIndex: 1, sideQuestId: "q1" });
+    const res = await (await start({ sideQuestId: "q1" })).json();
+    expect(startSession).toHaveBeenCalledWith("user_1", "p1", 1, "q1");
+    expect(res).toMatchObject({ id: "s3", milestoneTitle: "Clean data with pandas", sideQuest: { id: "q1", sessionNumber: 2, sessions: 2 } });
+    loadSessionState.mockResolvedValueOnce(state({ active: undefined, milestoneIndex: 1 }));
+    loadSideQuest.mockResolvedValueOnce({ ...quest, status: "done" });
+    expect((await start({ sideQuestId: "q1" })).status).toBe(409);
+  });
+
+  it("teaches the quest in a side-quest session, with evidence for its skill, and ends the quest when covered", async () => {
+    loadSessionState.mockResolvedValueOnce(state({ active: { ...active, sideQuestId: "q1" } }));
+    loadSideQuest.mockResolvedValueOnce({
+      id: "q1", status: "active", title: "Clean data with pandas", why: "Analysts clean data.", outline: ["Load a CSV"], sessions: 2, skillId: "python-data-cleaning", skillName: "Python data cleaning",
+    });
+    await POST(turn());
+    expect(streamTextOptions!.instructions).toContain("## This is a side quest, not a milestone");
+    expect(streamTextOptions!.instructions).not.toContain("## Where they are in the plan");
+    await streamTextOptions!.tools.end_session.execute({ ...report, evidence: [], terms: [], milestoneComplete: true });
+    expect(finishSideQuest).toHaveBeenCalledWith("user_1", "q1");
   });
 
   it("refuses when there's no plan yet or every milestone is done", async () => {

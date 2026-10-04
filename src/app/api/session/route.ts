@@ -22,6 +22,8 @@ import { goalForRequest } from "@/lib/goals/request-goal";
 import { loadSessionState } from "@/lib/specialists/session-state";
 import { glossaryNotes } from "@/lib/specialists/glossary";
 import { loadGlossary } from "@/lib/specialists/glossary-store";
+import { sideQuestContext } from "@/lib/specialists/side-quest";
+import { endedQuestSessions, finishSideQuest, loadSideQuest } from "@/lib/specialists/side-quest-store";
 import { sidekickNotes } from "@/lib/specialists/sidekick";
 import { loadSessionSidekicks } from "@/lib/specialists/sidekick-store";
 import { endSession, goalOfSession, saveSessionMessages } from "@/lib/specialists/store";
@@ -54,15 +56,22 @@ export async function POST(req: Request) {
 
   const plan = state.plan.plan;
   const milestone = plan.milestones[session.milestoneIndex]!;
+  // A side-quest session teaches the quest; its evidence is for the quest's skill.
+  const quest = session.sideQuestId ? await loadSideQuest(userId, session.sideQuestId) : undefined;
+  if (session.sideQuestId && quest?.status !== "active") {
+    return Response.json({ error: "This side quest has ended." }, { status: 409 });
+  }
+  const sessionSkills = quest ? [quest.skillId] : milestone.skills.map((s) => s.skillId);
   const tools = {
     end_session: tool({
       description: "Record what the learner covered and showed, and end the session. Call once, at the end.",
       // Evidence can cover the milestone's skills and any skill reviewed this session.
-      inputSchema: endSessionSchema([...new Set([...milestone.skills.map((s) => s.skillId), ...state.dueReviews.map((r) => r.skillId)])]),
+      inputSchema: endSessionSchema([...new Set([...sessionSkills, ...state.dueReviews.map((r) => r.skillId)])]),
       strict: true,
       execute: async (input) => {
         const report = normalizeReport(input);
         const { ended } = await endSession(session.id, userId, report);
+        if (ended && quest && report.milestoneComplete) await finishSideQuest(userId, quest.id);
         if (ended) await startMasteryUpdate(userId, session.id, goalId);
         return { status: ended ? ("ended" as const) : ("already_ended" as const), milestoneComplete: report.milestoneComplete };
       },
@@ -78,7 +87,7 @@ export async function POST(req: Request) {
   const notes = [
     sessionClock(elapsed, plan.sessionMinutes),
     sidekickNotes(sidekicks),
-    glossaryNotes(glossary, milestone.skills.map((s) => s.skillId), state.gap),
+    glossaryNotes(glossary, sessionSkills, state.gap),
   ];
   const modelMessages = withTurnNotes(await convertToModelMessages(messages), notes.filter((n): n is string => !!n));
   // Sessions are long: cache everything up to the newest message.
@@ -87,7 +96,13 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: toLanguageModel(routed),
-    instructions: `${TUTOR_SKILL}\n\n${tutorContext({ ...state, brief: state.brief.brief, plan, milestoneIndex: session.milestoneIndex })}`,
+    instructions: `${TUTOR_SKILL}\n\n${tutorContext({
+      ...state,
+      brief: state.brief.brief,
+      plan,
+      milestoneIndex: session.milestoneIndex,
+      sideQuest: quest ? sideQuestContext(quest, (await endedQuestSessions(quest.id)) + 1) : null,
+    })}`,
     messages: modelMessages,
     tools,
     stopWhen: hasToolCall("end_session"),
